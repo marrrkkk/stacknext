@@ -1,0 +1,14 @@
+{
+  "projectName": "nextscope-example",
+  "dashboard": { "port": 4400 },
+  "collector": { "maxSpans": 5000, "retentionMs": 900000 },
+  "instrumentation": { "verbose": false, "captureFetch": true, "captureErrors": true },
+  "privacy": {
+    "captureHeaders": false,
+    "captureRequestBodies": false,
+    "captureSqlParameters": false,
+    "redactSensitiveData": true
+  },
+  "database": { "drizzle": true, "prisma": false },
+  "slowRequestMs": 250
+}

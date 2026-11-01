@@ -1,0 +1,34 @@
+{
+  "name": "nextscope",
+  "version": "0.1.0",
+  "description": "Local-first runtime inspection for Next.js App Router applications",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "nextscope": "./dist/bin.js"
+  },
+  "files": ["dist"],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@nextscope/core": "workspace:*",
+    "@nextscope/dashboard": "workspace:*",
+    "@nextscope/mcp": "workspace:*",
+    "commander": "14.0.3",
+    "zod": "4.6.7"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}

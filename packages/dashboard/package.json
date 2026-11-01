@@ -1,0 +1,27 @@
+{
+  "name": "@nextscope/dashboard",
+  "version": "0.1.0",
+  "description": "NextScope local dashboard",
+  "license": "MIT",
+  "type": "module",
+  "files": ["dist"],
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@nextscope/core": "workspace:*",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "5.2.0",
+    "vite": "7.3.7"
+  }
+}

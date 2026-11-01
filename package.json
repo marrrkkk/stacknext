@@ -1,0 +1,30 @@
+{
+  "name": "nextscope-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first runtime inspection for Next.js App Router applications",
+  "license": "MIT",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "node scripts/e2e.mjs",
+    "benchmark": "node scripts/benchmark.mjs",
+    "example:dev": "pnpm --filter @nextscope/example-next-app dev"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "eslint": "9.39.5",
+    "eslint-plugin-react-hooks": "7.0.1",
+    "globals": "16.5.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "3.2.7"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": [
+      "node"
+    ],
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@nextscope/core": [
+        "../core/src/index.ts"
+      ],
+      "@nextscope/core/transport": [
+        "../core/src/transport.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts"
+  ]
+}
