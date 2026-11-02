@@ -213,6 +213,9 @@ export async function runDev(
     await terminateChild(child)
     await collector.close()
     await removeRuntimeState(project.dir)
+    // An IPC channel created by a programmatic launcher keeps the event loop
+    // alive after cleanup; close it before reporting the exit.
+    if (process.connected) process.disconnect()
     resolveExit?.(exitCode)
   }
 
@@ -221,6 +224,14 @@ export async function runDev(
   })
   process.once('SIGTERM', () => {
     void shutdown(143)
+  })
+  // Windows cannot deliver SIGINT/SIGTERM to another console process, so a
+  // programmatic launcher can request the same graceful shutdown over the IPC
+  // channel it created. Parent processes are always trusted; no network API.
+  process.on('message', (message: unknown) => {
+    if ((message as { type?: unknown } | null)?.type === 'shutdown') {
+      void shutdown(0)
+    }
   })
 
   if (!options.quiet) {

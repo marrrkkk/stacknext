@@ -235,7 +235,9 @@ async function startDev() {
       NO_COLOR: '1',
       STACKNEXT_DEBUG: '1',
     },
-    stdio: ['ignore', 'pipe', 'pipe'],
+    // The IPC channel lets Windows ask for a graceful shutdown; taskkill /F
+    // cannot run the CLI's exit cleanup.
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
     detached: process.platform !== 'win32',
   })
   const append = (chunk) => {
@@ -252,6 +254,16 @@ async function stopDev() {
   if (!devChild || devChild.exitCode !== null || devChild.signalCode !== null) return
   const pid = devChild.pid
   if (!pid) return
+  const exited = () => devChild.exitCode !== null || devChild.signalCode !== null
+  if (devChild.connected) {
+    devChild.send({ type: 'shutdown' })
+    try {
+      await waitFor('stacknext dev to exit', exited, 20_000)
+      return
+    } catch {
+      // Fall through to signal/forced termination when the control message is lost.
+    }
+  }
   if (process.platform === 'win32') {
     spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore' })
   } else {
@@ -261,7 +273,7 @@ async function stopDev() {
       devChild.kill('SIGINT')
     }
   }
-  await waitFor('stacknext dev to exit', () => devChild.exitCode !== null || devChild.signalCode !== null, 20_000)
+  await waitFor('stacknext dev to exit', exited, 20_000)
 }
 
 async function mcpCheck() {

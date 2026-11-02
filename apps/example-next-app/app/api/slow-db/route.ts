@@ -3,11 +3,15 @@ import { db } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
+// Large enough to exceed the default 250 ms database span threshold even on
+// fast CI runners. The current default threshold lives in StackNextConfig.
+const SLOW_ROW_COUNT = 4_000_000
+
 const SLOW_SQL = `
 WITH RECURSIVE counter(x) AS (
   SELECT 1
   UNION ALL
-  SELECT x + 1 FROM counter WHERE x < 1500000
+  SELECT x + 1 FROM counter WHERE x < ${SLOW_ROW_COUNT}
 )
 SELECT count(*) AS count FROM counter
 `
