@@ -45,7 +45,12 @@ export async function packPackages(options = {}) {
     execFileSync(
       'pnpm',
       ['--filter', entry.name, 'pack', '--pack-destination', outDir],
-      { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] },
+      {
+        cwd: ROOT,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        // Windows resolves pnpm through pnpm.cmd, which needs a shell.
+        shell: process.platform === 'win32',
+      },
     )
     const file = path.join(outDir, tarballName(entry.name, version))
     packages.push({

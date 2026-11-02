@@ -36,6 +36,8 @@ function run(command, args, options = {}) {
     cwd: options.cwd ?? ROOT,
     stdio: options.stdio ?? 'inherit',
     env: { ...process.env, ...options.env },
+    // Windows resolves pnpm/npm through .cmd shims, which need a shell.
+    shell: process.platform === 'win32' && !path.isAbsolute(command),
   })
   if (result.error) throw result.error
   if (result.status !== 0) {

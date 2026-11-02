@@ -26,7 +26,11 @@ const json = process.argv.includes('--json')
 
 if (!process.argv.includes('--skip-build')) {
   console.log('Building packages before packing...')
-  const result = spawnSync('pnpm', ['build'], { cwd: ROOT, stdio: 'inherit' })
+  const result = spawnSync('pnpm', ['build'], {
+    cwd: ROOT,
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  })
   if (result.status !== 0) process.exit(result.status ?? 1)
 }
 
