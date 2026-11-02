@@ -6,7 +6,7 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.6.0] - 2026-11-02
+## [0.6.0] - 2026-11-03
 
 This is the first public package release. The project, packages, CLI, config,
 runtime directory, cookies, MCP tools and agent skill are named **StackNext**.

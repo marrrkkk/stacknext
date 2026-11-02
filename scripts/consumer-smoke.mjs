@@ -245,6 +245,9 @@ async function startDev() {
   }
   devChild.stdout?.on('data', append)
   devChild.stderr?.on('data', append)
+  devChild.on('error', (error) => {
+    append(`\n[stacknext dev error] ${error.message}`)
+  })
   devChild.once('exit', (code, signal) => {
     append(`\n[stacknext dev exited ${code ?? signal}]`)
   })
@@ -256,8 +259,10 @@ async function stopDev() {
   if (!pid) return
   const exited = () => devChild.exitCode !== null || devChild.signalCode !== null
   if (devChild.connected) {
-    devChild.send({ type: 'shutdown' })
     try {
+      // A callback consumes asynchronous IPC channel errors so the fallback
+      // below runs instead of an unhandled 'error' event aborting the smoke.
+      devChild.send({ type: 'shutdown' }, () => {})
       await waitFor('stacknext dev to exit', exited, 20_000)
       return
     } catch {

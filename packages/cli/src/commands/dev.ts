@@ -215,7 +215,11 @@ export async function runDev(
     await removeRuntimeState(project.dir)
     // An IPC channel created by a programmatic launcher keeps the event loop
     // alive after cleanup; close it before reporting the exit.
-    if (process.connected) process.disconnect()
+    try {
+      if (process.connected) process.disconnect()
+    } catch {
+      // The launcher may have closed the channel first.
+    }
     resolveExit?.(exitCode)
   }
 
