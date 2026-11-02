@@ -4,11 +4,11 @@ Core wire types, Zod schemas, redaction, configuration, framework span metadata,
 bounded in-memory storage and async transport for [StackNext](https://github.com/marrrkkk/stacknext).
 
 This package is the shared foundation for the StackNext CLI, adapters and app
-instrumentation. Most applications should install `stacknext` and
+instrumentation. Most applications should install `@stacknext/cli` and
 `@stacknext/next` instead of depending on this package directly.
 
 ```bash
-npm install --save-dev stacknext @stacknext/next
+npm install --save-dev @stacknext/cli @stacknext/next
 npx stacknext init
 npx stacknext dev
 ```

@@ -30,7 +30,7 @@ the validation matrix.
 - Hosted or multi-user deployments. The collector binds to loopback and is
   designed for one developer machine.
 - Parallel Playwright workers during a captured regression run.
-- CommonJS consumers. `stacknext` and all `@stacknext/*` packages are ESM-only.
+- CommonJS consumers. `@stacknext/cli` and all `@stacknext/*` packages are ESM-only.
 - Statistical significance or causal claims from regression comparisons.
 
 ## Validated package versions
@@ -91,7 +91,7 @@ All ten packages are published at the same version:
 
 | Package | Runtime role | Peer / dependency notes |
 | --- | --- | --- |
-| `stacknext` | CLI and collector | Depends on core, diagnostics, regression, mcp and dashboard |
+| `@stacknext/cli` | CLI and collector | Depends on core, diagnostics, regression, mcp and dashboard |
 | `@stacknext/next` | Instrumentation and exporter | Peer `next >=15 <17` |
 | `@stacknext/core` | Shared types, redaction, transport | Base package |
 | `@stacknext/diagnostics` | Deterministic findings | Used by CLI, MCP and dashboard |

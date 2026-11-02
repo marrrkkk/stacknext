@@ -4,7 +4,7 @@ Next.js App Router instrumentation and OpenTelemetry exporter for
 [StackNext](https://github.com/marrrkkk/stacknext).
 
 ```bash
-npm install --save-dev stacknext @stacknext/next
+npm install --save-dev @stacknext/cli @stacknext/next
 npx stacknext init
 npx stacknext dev
 ```

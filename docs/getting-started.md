@@ -98,7 +98,7 @@ comparison is report-only unless `--fail-on` matches. See
 Inside the app project:
 
 ```bash
-npm install --save-dev stacknext @stacknext/next
+npm install --save-dev @stacknext/cli @stacknext/next
 npx stacknext init
 npx stacknext dev
 ```
@@ -106,7 +106,7 @@ npx stacknext dev
 pnpm and other package managers work the same way:
 
 ```bash
-pnpm add -D stacknext @stacknext/next
+pnpm add -D @stacknext/cli @stacknext/next
 pnpm exec stacknext init
 pnpm exec stacknext dev
 ```

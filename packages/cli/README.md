@@ -1,4 +1,4 @@
-# stacknext
+# @stacknext/cli
 
 Local-first runtime debugging, diagnostics and Playwright regression testing for
 Next.js App Router apps and AI coding agents.
@@ -13,7 +13,7 @@ upload.
 ## Quick start
 
 ```bash
-npm install --save-dev stacknext @stacknext/next
+npm install --save-dev @stacknext/cli @stacknext/next
 npx stacknext init
 npx stacknext doctor
 npx stacknext dev

@@ -18,28 +18,28 @@ Install inside the application directory, not in a parent folder.
 npm:
 
 ```bash
-npm install --save-dev stacknext @stacknext/next
+npm install --save-dev @stacknext/cli @stacknext/next
 ```
 
 pnpm:
 
 ```bash
-pnpm add -D stacknext @stacknext/next
+pnpm add -D @stacknext/cli @stacknext/next
 ```
 
 yarn:
 
 ```bash
-yarn add -D stacknext @stacknext/next
+yarn add -D @stacknext/cli @stacknext/next
 ```
 
 bun:
 
 ```bash
-bun add -d stacknext @stacknext/next
+bun add -d @stacknext/cli @stacknext/next
 ```
 
-`stacknext` contains the CLI, collector and dashboard. `@stacknext/next` is the
+`@stacknext/cli` contains the CLI, collector and dashboard. `@stacknext/next` is the
 instrumentation and OpenTelemetry exporter loaded by your app. The collector,
 dashboard, diagnostics, regression and MCP packages are installed automatically
 as dependencies of the CLI.
@@ -212,7 +212,7 @@ so the CLI can find that app's `package.json`, `dev` script and Next.js version.
 In a pnpm workspace:
 
 ```bash
-pnpm --filter ./apps/my-app add -D stacknext @stacknext/next
+pnpm --filter ./apps/my-app add -D @stacknext/cli @stacknext/next
 pnpm --filter ./apps/my-app exec stacknext init
 pnpm --filter ./apps/my-app exec stacknext dev
 ```

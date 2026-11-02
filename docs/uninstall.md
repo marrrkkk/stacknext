@@ -72,17 +72,17 @@ After the file cleanup, remove the packages with the package manager shown by
 the command. For npm:
 
 ```bash
-npm uninstall stacknext @stacknext/next @stacknext/drizzle @stacknext/prisma @stacknext/playwright
+npm uninstall @stacknext/cli @stacknext/next @stacknext/drizzle @stacknext/prisma @stacknext/playwright
 ```
 
 For pnpm:
 
 ```bash
-pnpm remove stacknext @stacknext/next @stacknext/drizzle @stacknext/prisma @stacknext/playwright
+pnpm remove @stacknext/cli @stacknext/next @stacknext/drizzle @stacknext/prisma @stacknext/playwright
 ```
 
 Remove only the optional adapters that are installed. The other `@stacknext/*`
-packages are dependencies of the CLI and disappear when `stacknext` is removed.
+packages are dependencies of the CLI and disappear when `@stacknext/cli` is removed.
 
 ## Manual cleanup
 

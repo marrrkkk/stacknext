@@ -16,7 +16,7 @@ export default defineConfig({
       '@stacknext/mcp': `${root}packages/mcp/src/index.ts`,
       '@stacknext/drizzle': `${root}packages/drizzle/src/index.ts`,
       '@stacknext/prisma': `${root}packages/prisma/src/index.ts`,
-      stacknext: `${root}packages/cli/src/index.ts`,
+      '@stacknext/cli': `${root}packages/cli/src/index.ts`,
     },
   },
   test: {

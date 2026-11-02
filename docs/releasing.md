@@ -14,7 +14,7 @@ publishes only after environment approval.
   contain a `workspace:` range.
 - Publishing order follows the dependency graph:
   `core`, `diagnostics`, `regression`, `next`, `drizzle`, `prisma`,
-  `playwright`, `mcp`, `dashboard`, `stacknext`.
+  `playwright`, `mcp`, `dashboard`, `@stacknext/cli`.
 - Normal releases use GitHub Actions OIDC with npm trusted publishing and
   provenance. No long-lived npm token is stored in the repository.
 - npm releases are immutable. If a release is wrong, publish a fixed patch and
@@ -58,7 +58,7 @@ Run these checks before touching the version or packing archives:
 ```bash
 npm login
 npm whoami
-npm view stacknext version
+npm view @stacknext/cli version
 npm view @stacknext/core version
 ```
 
@@ -116,7 +116,7 @@ setting is left at staged publishing, the workflow fails and must be changed to
 
 | Package |
 | --- |
-| `stacknext` |
+| `@stacknext/cli` |
 | `@stacknext/core` |
 | `@stacknext/diagnostics` |
 | `@stacknext/regression` |
@@ -237,7 +237,7 @@ npx stacknext --version
 npx stacknext doctor
 ```
 
-Installing only `stacknext-0.6.0.tgz` fails before publication because its nine
+Installing only `stacknext-cli-0.6.0.tgz` fails before publication because its five
 `@stacknext/*@0.6.0` dependencies are not in the registry yet. Install the whole
 archive set, or use `pnpm test:consumer`, which does this automatically.
 
@@ -319,7 +319,7 @@ It does not push commits, create tags or create a GitHub release.
    mkdir -p /tmp/stacknext-registry-smoke
    cd /tmp/stacknext-registry-smoke
    npm init -y
-   npm install stacknext@0.6.0 @stacknext/next@0.6.0
+   npm install @stacknext/cli@0.6.0 @stacknext/next@0.6.0
    npm audit signatures
    npx stacknext --version
    ```
@@ -332,7 +332,7 @@ It does not push commits, create tags or create a GitHub release.
 3. Inspect provenance metadata for a workflow-published version:
 
    ```bash
-   npm view stacknext@0.6.1 dist.integrity dist.attestations
+   npm view @stacknext/cli@0.6.1 dist.integrity dist.attestations
    ```
 
 4. Tag the released commit and publish the GitHub release only after the

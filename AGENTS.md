@@ -37,7 +37,7 @@ Useful scoped commands:
 pnpm --filter @stacknext/core build
 pnpm --filter @stacknext/regression build
 pnpm --filter @stacknext/playwright build
-pnpm --filter stacknext build
+pnpm --filter @stacknext/cli build
 pnpm --filter @stacknext/example-next-app dev
 pnpm exec stacknext dev --open       # from an app directory after build
 pnpm exec stacknext doctor

@@ -9,7 +9,7 @@ Findings are heuristics, not confirmed root causes. The same report is exposed
 by the StackNext CLI, dashboard, JSON export and read-only MCP server.
 
 ```bash
-npm install --save-dev stacknext @stacknext/next
+npm install --save-dev @stacknext/cli @stacknext/next
 npx stacknext diagnose
 ```
 

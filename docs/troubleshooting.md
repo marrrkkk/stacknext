@@ -19,7 +19,7 @@ for that.
 Install the CLI in the app package and run it through the package manager:
 
 ```bash
-npm install --save-dev stacknext @stacknext/next
+npm install --save-dev @stacknext/cli @stacknext/next
 npx stacknext --version
 ```
 

@@ -3,11 +3,11 @@
 Static React dashboard served by the [StackNext](https://github.com/marrrkkk/stacknext)
 local collector.
 
-This package is a runtime dependency of the `stacknext` CLI. Applications
+This package is a runtime dependency of the `@stacknext/cli` CLI. Applications
 should install the CLI rather than use this package directly:
 
 ```bash
-npm install --save-dev stacknext @stacknext/next
+npm install --save-dev @stacknext/cli @stacknext/next
 npx stacknext dev
 ```
 

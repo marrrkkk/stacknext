@@ -13,7 +13,7 @@ runtime directory, cookies, MCP tools and agent skill are named **StackNext**.
 
 ### Added
 
-- Ten publishable packages: `stacknext`, `@stacknext/core`,
+- Ten publishable packages: `@stacknext/cli`, `@stacknext/core`,
   `@stacknext/diagnostics`, `@stacknext/regression`, `@stacknext/next`,
   `@stacknext/drizzle`, `@stacknext/prisma`, `@stacknext/playwright`,
   `@stacknext/mcp` and `@stacknext/dashboard`.
@@ -42,8 +42,8 @@ runtime directory, cookies, MCP tools and agent skill are named **StackNext**.
 
 ### Changed
 
-- Renamed public packages to the `@stacknext/*` scope and the CLI to
-  `stacknext`.
+- Renamed public packages to the `@stacknext/*` scope and the CLI package to
+  `@stacknext/cli` (the command remains `stacknext`).
 - Renamed configuration to `stacknext.config.json`, runtime state to
   `.stacknext`, environment variables to `STACKNEXT_*`, MCP tools to
   `stacknext_*` and the agent skill to `stacknext-debugging`.

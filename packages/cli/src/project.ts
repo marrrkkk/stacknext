@@ -207,5 +207,5 @@ export function stackNextPackages(project: ProjectInfo): string[] {
     ...Object.keys(project.dependencies),
     ...Object.keys(project.devDependencies),
   ])
-  return [...names].filter((name) => name === 'stacknext' || name.startsWith('@stacknext/'))
+  return [...names].filter((name) => name.startsWith('@stacknext/'))
 }

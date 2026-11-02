@@ -9,7 +9,7 @@ are not statistical tests and do not prove causality. Records are redacted
 local JSON files under `.stacknext`.
 
 ```bash
-npm install --save-dev stacknext @stacknext/next @stacknext/playwright
+npm install --save-dev @stacknext/cli @stacknext/next @stacknext/playwright
 npx stacknext capture --name baseline -- npx playwright test --workers=1
 ```
 

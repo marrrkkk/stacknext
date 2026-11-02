@@ -89,7 +89,7 @@ function run(command, args, options = {}) {
 }
 
 async function runCli(args) {
-  return run(process.execPath, [path.join(fixtureDir, 'node_modules', 'stacknext', 'dist', 'bin.js'), ...args], {
+  return run(process.execPath, [path.join(fixtureDir, 'node_modules', '@stacknext', 'cli', 'dist', 'bin.js'), ...args], {
     timeout: 60_000,
   })
 }
@@ -226,7 +226,7 @@ async function install() {
 }
 
 async function startDev() {
-  const bin = path.join(fixtureDir, 'node_modules', 'stacknext', 'dist', 'bin.js')
+  const bin = path.join(fixtureDir, 'node_modules', '@stacknext', 'cli', 'dist', 'bin.js')
   devChild = spawn(process.execPath, [bin, 'dev', '--quiet'], {
     cwd: fixtureDir,
     env: {
@@ -282,7 +282,7 @@ async function stopDev() {
 }
 
 async function mcpCheck() {
-  const bin = path.join(fixtureDir, 'node_modules', 'stacknext', 'dist', 'bin.js')
+  const bin = path.join(fixtureDir, 'node_modules', '@stacknext', 'cli', 'dist', 'bin.js')
   mcpChild = spawn(process.execPath, [bin, 'mcp'], {
     cwd: fixtureDir,
     env: { ...process.env, NO_COLOR: '1' },

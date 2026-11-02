@@ -17,7 +17,7 @@ export const PUBLIC_PACKAGES = [
   { name: '@stacknext/playwright', dir: 'packages/playwright' },
   { name: '@stacknext/mcp', dir: 'packages/mcp' },
   { name: '@stacknext/dashboard', dir: 'packages/dashboard' },
-  { name: 'stacknext', dir: 'packages/cli' },
+  { name: '@stacknext/cli', dir: 'packages/cli' },
 ]
 
 export function tarballName(name, version) {
@@ -117,7 +117,7 @@ export async function inspectTarball(entry) {
   if (!files.includes('README.md')) problems.push('README.md is missing')
   if (!files.includes('LICENSE')) problems.push('LICENSE is missing')
   if (!files.some((file) => file.startsWith('dist/'))) problems.push('dist/ is missing')
-  if (entry.name === 'stacknext' && !files.includes('dist/bin.js')) {
+  if (entry.name === '@stacknext/cli' && !files.includes('dist/bin.js')) {
     problems.push('CLI bin entry is missing')
   }
   if (entry.name === '@stacknext/next') {
@@ -159,7 +159,7 @@ export async function inspectTarball(entry) {
   if (forbidden.length > 0) {
     problems.push(`unexpected files: ${forbidden.slice(0, 5).join(', ')}`)
   }
-  if (entry.name === 'stacknext') {
+  if (entry.name === '@stacknext/cli') {
     const binLine = verbose.find((line) => line.includes('package/dist/bin.js'))
     if (binLine && !binLine.includes('rwx')) problems.push('dist/bin.js is not executable')
   }

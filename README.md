@@ -16,7 +16,7 @@ account, no hosted backend, no AI API client and no telemetry upload.
 Add StackNext to an existing Next.js 15/16 App Router project:
 
 ```bash
-npm install --save-dev stacknext @stacknext/next
+npm install --save-dev @stacknext/cli @stacknext/next
 npx stacknext init
 npx stacknext dev
 ```
@@ -24,7 +24,7 @@ npx stacknext dev
 Or with pnpm:
 
 ```bash
-pnpm add -D stacknext @stacknext/next
+pnpm add -D @stacknext/cli @stacknext/next
 pnpm exec stacknext init
 pnpm exec stacknext dev
 ```
@@ -107,7 +107,7 @@ the request, waterfall, database queries and errors on your machine.
 - Playwright **1.40+** only if you use runtime regression testing.
 
 > 0.6 is the first public package release. All ten packages are published under
-> `stacknext` and `@stacknext/*`; the dashboard and regression packages are
+> `@stacknext/cli` and `@stacknext/*`; the dashboard and regression packages are
 > installed automatically as CLI dependencies. Next.js runtime verification in
 > this repository used **Next.js 16.4.3** and **15.5.28**.
 
