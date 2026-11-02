@@ -300,7 +300,9 @@ branch. The publish job waits for all 12 consumer-matrix jobs and then:
   validation, e2e and both benchmarks;
 - packs and validates the archives;
 - publishes in dependency order with npm trusted publishing and provenance;
-- verifies that every version exists in the registry.
+- verifies that every version exists in the registry, retrying for up to 120
+  seconds per package because npm replicas can lag a successful publish
+  (`STACKNEXT_REGISTRY_WAIT_MS` overrides the wait).
 
 It does not push commits, create tags or create a GitHub release.
 

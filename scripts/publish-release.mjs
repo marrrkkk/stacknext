@@ -127,6 +127,30 @@ async function registryHasVersion(name, releaseVersion) {
   )
 }
 
+/**
+ * Registry replicas can lag a successful npm publish. Wait for the exact
+ * version to become visible instead of failing the workflow immediately.
+ */
+async function waitForRegistryVersion(name, releaseVersion) {
+  const waitMs = Number(process.env.STACKNEXT_REGISTRY_WAIT_MS ?? 120_000)
+  if (!Number.isFinite(waitMs) || waitMs < 0) {
+    throw new Error('STACKNEXT_REGISTRY_WAIT_MS must be a non-negative number')
+  }
+  const deadline = Date.now() + waitMs
+  let lastError
+  for (;;) {
+    try {
+      if (await registryHasVersion(name, releaseVersion)) return true
+    } catch (error) {
+      lastError = error
+    }
+    if (Date.now() >= deadline) break
+    await new Promise((resolve) => setTimeout(resolve, 5_000))
+  }
+  if (lastError) throw lastError
+  return false
+}
+
 const existing = []
 for (const entry of PUBLIC_PACKAGES) {
   if (await registryHasVersion(entry.name, version)) existing.push(entry.name)
@@ -163,9 +187,9 @@ for (const result of results) {
 
 if (!dryRun) {
   for (const entry of PUBLIC_PACKAGES) {
-    if (!(await registryHasVersion(entry.name, version))) {
+    if (!(await waitForRegistryVersion(entry.name, version))) {
       throw new Error(
-        `Registry does not show ${entry.name}@${version} yet. Re-run with --resume after fixing the failure.`,
+        `Registry does not show ${entry.name}@${version} after waiting ${process.env.STACKNEXT_REGISTRY_WAIT_MS ?? 120_000}ms. Re-run with --resume after fixing the failure.`,
       )
     }
   }
