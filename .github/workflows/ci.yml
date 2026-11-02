@@ -16,7 +16,7 @@ concurrency:
 jobs:
   quality:
     name: Quality (Node ${{ matrix.node }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -54,7 +54,7 @@ jobs:
 
   package-archives:
     name: Package archives
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     needs: quality
     steps:
@@ -87,7 +87,7 @@ jobs:
 
   e2e:
     name: End-to-end
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     needs: quality
     steps:
@@ -119,7 +119,7 @@ jobs:
 
   consumer:
     name: Consumer (Node ${{ matrix.node }}, Next ${{ matrix.next }}, ${{ matrix.pm }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     needs: quality
     strategy:

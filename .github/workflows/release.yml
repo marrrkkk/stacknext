@@ -35,7 +35,7 @@ concurrency:
 jobs:
   compatibility:
     name: Compatibility Node ${{ matrix.node }} / Next ${{ matrix.next }} / ${{ matrix.pm }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
       fail-fast: true
@@ -70,7 +70,7 @@ jobs:
   publish:
     name: Publish ${{ inputs.version }}
     needs: compatibility
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 75
     environment: npm
     steps:
