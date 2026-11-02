@@ -1,0 +1,101 @@
+name: Bug report
+description: Report a reproducible StackNext problem.
+title: 'bug: '
+labels: ['bug', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Do not paste tokens, `.stacknext/run.json`, customer data, request bodies, headers, cookies, SQL bind parameters or full captured records. Security issues must go through SECURITY.md, not this form.
+  - type: input
+    id: stacknext-version
+    attributes:
+      label: StackNext version
+      description: Output of `npx stacknext --version`.
+      placeholder: 0.6.0
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      placeholder: 24.21.0
+    validations:
+      required: true
+  - type: input
+    id: next-version
+    attributes:
+      label: Next.js version
+      placeholder: 16.4.3
+    validations:
+      required: true
+  - type: dropdown
+    id: package-manager
+    attributes:
+      label: Package manager
+      options:
+        - npm
+        - pnpm
+        - yarn
+        - bun
+    validations:
+      required: true
+  - type: dropdown
+    id: language
+    attributes:
+      label: App language
+      options:
+        - TypeScript
+        - JavaScript
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: Linux (Ubuntu 24.04), WSL2, macOS 15, Windows 11
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Use the smallest app and route that reproduce the problem.
+      placeholder: |
+        1. Run ...
+        2. Open ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the exact error text and the relevant redacted log lines.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Diagnostics
+      description: Paste redacted `npx stacknext doctor --json` output and any relevant `status`, `coverage` or `diagnose` output.
+      render: json
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I ran `npx stacknext doctor --json`.
+          required: true
+        - label: I removed tokens, customer data and unredacted captured records.
+          required: true
+        - label: This is not a security vulnerability (those go through SECURITY.md).
+          required: true
+        - label: I checked the troubleshooting and compatibility docs.
+          required: true

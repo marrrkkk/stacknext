@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { TraceListResult } from '@nextscope/core'
+import type { TraceListResult } from '@stacknext/core'
 import { api } from '../api'
 import { useAsync, useDebounced } from '../hooks'
 import {
@@ -123,7 +123,7 @@ export function TracesPage({
                   Clear search
                 </button>
               ) : (
-                <code className="inline-code">nextscope dev</code>
+                <code className="inline-code">stacknext dev</code>
               )
             }
           />

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { NextScopeDatabaseQuery, NextScopeError, NextScopeSpan, TraceDetail } from '@nextscope/core'
+import type { StackNextDatabaseQuery, StackNextError, StackNextSpan, TraceDetail } from '@stacknext/core'
 import { api } from '../api'
 import { useAsync } from '../hooks'
 import {
@@ -19,7 +19,7 @@ import { formatDateTime, formatDuration, formatRelative, sqlPreview } from '../f
 
 type Tab = 'timeline' | 'errors' | 'database' | 'raw'
 
-function ErrorCard({ error }: { error: NextScopeError }): React.ReactElement {
+function ErrorCard({ error }: { error: StackNextError }): React.ReactElement {
   return (
     <article className="error-card">
       <header>
@@ -56,7 +56,7 @@ function DatabaseTable({
   queries,
   onNavigate,
 }: {
-  queries: NextScopeDatabaseQuery[]
+  queries: StackNextDatabaseQuery[]
   onNavigate: (path: string) => void
 }): React.ReactElement {
   if (queries.length === 0) {
@@ -96,7 +96,15 @@ function DatabaseTable({
               <Badge tone="accent">{query.databaseSystem}</Badge>
             </td>
             <td className="muted">{query.source}</td>
-            <td className="numeric">{formatDuration(query.durationMs)}</td>
+            <td className="numeric">
+              {query.durationMs === null ? (
+                <span className="muted" title="Drizzle Logger does not expose query duration">
+                  not measured
+                </span>
+              ) : (
+                formatDuration(query.durationMs)
+              )}
+            </td>
             <td className="muted nowrap">{formatRelative(query.timestamp)}</td>
           </tr>
         ))}
@@ -125,7 +133,7 @@ export function TraceDetailPage({
   const [tab, setTab] = useState<Tab>('timeline')
   const [selectedSpanId, setSelectedSpanId] = useState<string | null>(null)
 
-  const selectedSpan = useMemo<NextScopeSpan | null>(() => {
+  const selectedSpan = useMemo<StackNextSpan | null>(() => {
     if (!state.data) return null
     if (selectedSpanId) {
       return state.data.spans.find((span) => span.spanId === selectedSpanId) ?? null
@@ -176,7 +184,9 @@ export function TraceDetailPage({
               <span className="meta-line">
                 <span>{formatDateTime(state.data.startTime)}</span>
                 <span>·</span>
-                <span>{formatDuration(state.data.durationMs)}</span>
+                <span title="First span start to last span end; not a sum of span durations">
+                  window {formatDuration(state.data.durationMs)}
+                </span>
                 <span>·</span>
                 <span>{state.data.spans.length} spans</span>
                 <span>·</span>
@@ -195,6 +205,21 @@ export function TraceDetailPage({
               </div>
             }
           />
+
+          {state.data.warnings.length > 0 && (
+            <div className="trace-warnings" role="note">
+              <div className="trace-warnings__title">
+                <Icon name="errors" size={15} /> Evidence warnings
+              </div>
+              <ul>
+                {state.data.warnings.map((warning, index) => (
+                  <li key={`${warning.code}:${warning.spanId ?? index}`}>
+                    <strong>{warning.code}</strong> {warning.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="tabs" role="tablist" aria-label="Trace sections">
             {(
@@ -232,7 +257,18 @@ export function TraceDetailPage({
               <aside className="card trace-layout__aside">
                 <div className="card__body">
                   {selectedSpan ? (
-                    <SpanDetail span={selectedSpan} />
+                    <SpanDetail
+                      span={selectedSpan}
+                      requestTraceId={state.data.request ? traceId : null}
+                      parentInTrace={
+                        selectedSpan.parentSpanId !== undefined &&
+                        state.data.spans.some(
+                          (span) => span.spanId === selectedSpan.parentSpanId,
+                        )
+                      }
+                      onSelectSpan={setSelectedSpanId}
+                      onNavigateRequest={() => onNavigate(`/requests/${traceId}`)}
+                    />
                   ) : (
                     <EmptyState
                       compact
@@ -274,13 +310,6 @@ export function TraceDetailPage({
                 <JsonView value={state.data} maxHeight={640} />
               </div>
             </section>
-          )}
-
-          {state.data.missingParentSpanIds.length > 0 && tab === 'timeline' && (
-            <p className="muted detail-note">
-              {state.data.missingParentSpanIds.length} parent span(s) are outside the retention
-              window or were sampled away.
-            </p>
           )}
         </>
       ) : (

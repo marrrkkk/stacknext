@@ -1,5 +1,7 @@
+import { createServer } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { describe, expect, it } from 'vitest'
-import { isLoopbackUrl, NextScopeTransport, transportOptionsFromEnv } from '../src/transport.js'
+import { isLoopbackUrl, StackNextTransport, transportOptionsFromEnv } from '../src/transport.js'
 
 describe('transport helpers', () => {
   it('only accepts loopback collector URLs', () => {
@@ -16,20 +18,20 @@ describe('transport helpers', () => {
     expect(
       'error' in
         transportOptionsFromEnv({
-          NEXTSCOPE_COLLECTOR_URL: 'http://127.0.0.1:4400',
-          NEXTSCOPE_TOKEN: 'short',
+          STACKNEXT_COLLECTOR_URL: 'http://127.0.0.1:4400',
+          STACKNEXT_TOKEN: 'short',
         }),
     ).toBe(true)
     const result = transportOptionsFromEnv({
-      NEXTSCOPE_COLLECTOR_URL: 'http://127.0.0.1:4400',
-      NEXTSCOPE_TOKEN: 'a'.repeat(32),
-      NEXTSCOPE_PROJECT_NAME: 'demo',
+      STACKNEXT_COLLECTOR_URL: 'http://127.0.0.1:4400',
+      STACKNEXT_TOKEN: 'a'.repeat(32),
+      STACKNEXT_PROJECT_NAME: 'demo',
     })
     expect('options' in result && result.options.projectName).toBe('demo')
   })
 
   it('bounds the in-memory queue', async () => {
-    const transport = new NextScopeTransport({
+    const transport = new StackNextTransport({
       collectorUrl: 'http://127.0.0.1:9',
       token: 'a'.repeat(32),
       maxQueueSize: 2,
@@ -62,5 +64,148 @@ describe('transport helpers', () => {
     expect(snapshot.queuedErrors).toBe(2)
     expect(snapshot.droppedEvents).toBe(1)
     await transport.shutdown(25)
+  })
+
+  it('keeps every batch below the collector body limit', async () => {
+    const sizes: number[] = []
+    const server = createServer((request, response) => {
+      let size = 0
+      request.on('data', (chunk: Buffer) => {
+        size += chunk.length
+      })
+      request.on('end', () => {
+        sizes.push(size)
+        response.statusCode = 200
+        response.end('{}')
+      })
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const address = server.address() as AddressInfo
+    const transport = new StackNextTransport({
+      collectorUrl: `http://127.0.0.1:${address.port}`,
+      token: 'a'.repeat(32),
+      batchSize: 100,
+      flushIntervalMs: 60_000,
+      heartbeatIntervalMs: 60_000,
+      requestTimeoutMs: 2_000,
+    })
+    for (let index = 0; index < 30; index += 1) {
+      transport.enqueueError({
+        id: `large-${index}`,
+        message: 'x',
+        name: 'Error',
+        stack: 'x'.repeat(64_000),
+        timestamp: 1,
+        attributes: {},
+      })
+    }
+    while (transport.snapshot().queuedErrors > 0) {
+      expect(await transport.flush()).toBe(true)
+    }
+    const snapshot = transport.snapshot()
+    await transport.shutdown(100)
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+    expect(sizes.length).toBeGreaterThan(1)
+    expect(Math.max(...sizes)).toBeLessThanOrEqual(2 * 1024 * 1024)
+    expect(snapshot.exportedEvents).toBe(30)
+    expect(snapshot.droppedEvents).toBe(0)
+  })
+
+  it('drops a batch rejected with HTTP 413 instead of retrying forever', async () => {
+    const server = createServer((request, response) => {
+      request.resume()
+      request.on('end', () => {
+        response.statusCode = 413
+        response.end('too large')
+      })
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const address = server.address() as AddressInfo
+    const transport = new StackNextTransport({
+      collectorUrl: `http://127.0.0.1:${address.port}`,
+      token: 'a'.repeat(32),
+      batchSize: 10,
+      flushIntervalMs: 60_000,
+      heartbeatIntervalMs: 60_000,
+      requestTimeoutMs: 2_000,
+    })
+    transport.enqueueError({
+      id: 'e1',
+      message: 'one',
+      name: 'Error',
+      timestamp: 1,
+      attributes: {},
+    })
+    transport.enqueueError({
+      id: 'e2',
+      message: 'two',
+      name: 'Error',
+      timestamp: 2,
+      attributes: {},
+    })
+    expect(await transport.flush()).toBe(true)
+    const snapshot = transport.snapshot()
+    expect(snapshot.queuedErrors).toBe(0)
+    expect(snapshot.exportedEvents).toBe(0)
+    expect(snapshot.droppedEvents).toBe(2)
+    expect(snapshot.lastError).toContain('413')
+    await transport.shutdown(100)
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+  })
+
+  it('does not splice out telemetry queued while a flush is in flight', async () => {
+    let releaseResponse!: () => void
+    const responseReleased = new Promise<void>((resolve) => {
+      releaseResponse = resolve
+    })
+    let markReceived!: () => void
+    const received = new Promise<void>((resolve) => {
+      markReceived = resolve
+    })
+    const server = createServer((request, response) => {
+      request.resume()
+      request.on('end', () => {
+        markReceived()
+        void responseReleased.then(() => {
+          response.statusCode = 200
+          response.end('{}')
+        })
+      })
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const address = server.address() as AddressInfo
+    const transport = new StackNextTransport({
+      collectorUrl: `http://127.0.0.1:${address.port}`,
+      token: 'a'.repeat(32),
+      batchSize: 1,
+      maxQueueSize: 1,
+      flushIntervalMs: 60_000,
+      heartbeatIntervalMs: 60_000,
+      requestTimeoutMs: 2_000,
+    })
+    transport.enqueueError({
+      id: 'first',
+      message: 'first',
+      name: 'Error',
+      timestamp: 1,
+      attributes: {},
+    })
+    const inFlight = transport.flush()
+    await received
+    transport.enqueueError({
+      id: 'second',
+      message: 'second',
+      name: 'Error',
+      timestamp: 2,
+      attributes: {},
+    })
+    releaseResponse()
+    expect(await inFlight).toBe(true)
+    const snapshot = transport.snapshot()
+    expect(snapshot.queuedErrors).toBe(1)
+    expect(snapshot.exportedEvents).toBe(0)
+    expect(snapshot.droppedEvents).toBe(1)
+    await transport.shutdown(100)
+    await new Promise<void>((resolve) => server.close(() => resolve()))
   })
 })

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { ErrorListResponse } from '@nextscope/core'
+import type { ErrorListResponse } from '@stacknext/core'
 import { api } from '../api'
 import { useAsync, useDebounced } from '../hooks'
 import {

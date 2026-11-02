@@ -7,10 +7,10 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@nextscope/core": [
+      "@stacknext/core": [
         "../core/src/index.ts"
       ],
-      "@nextscope/core/transport": [
+      "@stacknext/core/transport": [
         "../core/src/transport.ts"
       ]
     }

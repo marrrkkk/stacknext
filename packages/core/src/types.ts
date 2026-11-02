@@ -1,46 +1,61 @@
-import type { NextScopeConfig } from './config.js'
+import type { StackNextConfig } from './config.js'
+import type {
+  DiagnosticOverview,
+  DiagnosticReference,
+  DiagnosticReport,
+} from './diagnostics.js'
 
-export const NEXTSCOPE_SCHEMA_VERSION = 1
-export const NEXTSCOPE_SDK_VERSION = '0.1.0'
+export const STACKNEXT_SCHEMA_VERSION = 1
+export const STACKNEXT_SDK_VERSION = '0.6.0'
 
 export const SPAN_KINDS = ['internal', 'server', 'client', 'producer', 'consumer'] as const
-export type NextScopeSpanKind = (typeof SPAN_KINDS)[number]
+export type StackNextSpanKind = (typeof SPAN_KINDS)[number]
 
 export const SPAN_STATUSES = ['unset', 'ok', 'error'] as const
-export type NextScopeSpanStatus = (typeof SPAN_STATUSES)[number]
+export type StackNextSpanStatus = (typeof SPAN_STATUSES)[number]
 
 export const DATABASE_SOURCES = ['drizzle', 'prisma', 'manual'] as const
-export type NextScopeDatabaseSource = (typeof DATABASE_SOURCES)[number]
+export type StackNextDatabaseSource = (typeof DATABASE_SOURCES)[number]
 
-export interface NextScopeSpanEvent {
+export interface StackNextSpanEvent {
   name: string
   time: number
   attributes: Record<string, unknown>
 }
 
-export interface NextScopeSpan {
+export interface StackNextSpan {
   traceId: string
   spanId: string
   parentSpanId?: string
   name: string
-  kind: NextScopeSpanKind
+  kind: StackNextSpanKind
   startTime: number
   endTime: number
   durationMs: number
-  status: NextScopeSpanStatus
+  status: StackNextSpanStatus
   statusMessage?: string
   serviceName: string
   route?: string
   method?: string
   statusCode?: number
   nextSpanType?: string
+  /** Human-readable name Next.js attached to a framework span. */
+  nextSpanName?: string
+  /** Route pattern from `next.route`, query-free. */
+  nextRoute?: string
+  /** App Router page from `next.page`, query-free. */
+  nextPage?: string
+  /** App Router segment from `next.segment`, query-free. */
+  nextSegment?: string
+  /** Whether Next.js marked a framework span as part of an RSC render. */
+  nextRsc?: boolean
   attributes: Record<string, unknown>
-  events: NextScopeSpanEvent[]
+  events: StackNextSpanEvent[]
   resource: Record<string, unknown>
   receivedAt: number
 }
 
-export interface NextScopeError {
+export interface StackNextError {
   id: string
   fingerprint: string
   message: string
@@ -60,7 +75,7 @@ export interface NextScopeError {
   receivedAt: number
 }
 
-export interface NextScopeDatabaseQuery {
+export interface StackNextDatabaseQuery {
   id: string
   traceId?: string
   spanId?: string
@@ -71,12 +86,12 @@ export interface NextScopeDatabaseQuery {
   operation?: string
   success: boolean
   errorMessage?: string
-  source: NextScopeDatabaseSource
+  source: StackNextDatabaseSource
   attributes: Record<string, unknown>
   receivedAt: number
 }
 
-export interface NextScopeExporterDiagnostics {
+export interface StackNextExporterDiagnostics {
   instanceId: string
   exportedSpans: number
   droppedSpans: number
@@ -87,28 +102,30 @@ export interface NextScopeExporterDiagnostics {
   timestamp: number
 }
 
-export interface NextScopeInstance {
+export interface StackNextInstance {
   instanceId: string
   serviceName: string
   projectName?: string
   nextVersion?: string
+  /** Application Node.js version, used only for capture environment checks. */
+  runtimeVersion?: string
   sdkVersion: string
   runtime: 'nodejs'
 }
 
-export interface NextScopeIngestEnvelope {
+export interface StackNextIngestEnvelope {
   version: 1
-  instance: NextScopeInstance
-  spans: NextScopeSpanInput[]
-  errors: NextScopeErrorInput[]
-  databaseQueries: NextScopeDatabaseQueryInput[]
-  diagnostics?: NextScopeExporterDiagnostics
+  instance: StackNextInstance
+  spans: StackNextSpanInput[]
+  errors: StackNextErrorInput[]
+  databaseQueries: StackNextDatabaseQueryInput[]
+  diagnostics?: StackNextExporterDiagnostics
 }
 
 /** Wire format: server-maintained fields such as receivedAt are excluded. */
-export type NextScopeSpanInput = Omit<NextScopeSpan, 'receivedAt'>
-export type NextScopeErrorInput = Omit<NextScopeError, 'fingerprint' | 'receivedAt'>
-export type NextScopeDatabaseQueryInput = Omit<NextScopeDatabaseQuery, 'receivedAt'>
+export type StackNextSpanInput = Omit<StackNextSpan, 'receivedAt'>
+export type StackNextErrorInput = Omit<StackNextError, 'fingerprint' | 'receivedAt'>
+export type StackNextDatabaseQueryInput = Omit<StackNextDatabaseQuery, 'receivedAt'>
 
 export type RequestStatusClass = '2xx' | '3xx' | '4xx' | '5xx' | 'none'
 
@@ -147,16 +164,93 @@ export interface TraceSummary {
   request: RequestSummary | null
 }
 
+export type TraceWarningCode =
+  | 'missing-parent'
+  | 'unmeasured-query-duration'
+  | 'no-request-root'
+  | 'clock-skew'
+
+export interface TraceWarning {
+  code: TraceWarningCode
+  message: string
+  spanId?: string
+}
+
 export interface TraceDetail {
   traceId: string
   request: RequestSummary | null
-  spans: NextScopeSpan[]
-  errors: NextScopeError[]
-  databaseQueries: NextScopeDatabaseQuery[]
+  spans: StackNextSpan[]
+  errors: StackNextError[]
+  databaseQueries: StackNextDatabaseQuery[]
   startTime: number
   endTime: number
   durationMs: number
   missingParentSpanIds: string[]
+  /** Additive warnings for incomplete or misleading trace evidence. */
+  warnings: TraceWarning[]
+  /** Deterministic diagnostic findings that reference this trace (0.4+). */
+  diagnostics?: DiagnosticReference[]
+}
+
+export const COVERAGE_STATUSES = [
+  'observed',
+  'active',
+  'configured',
+  'not-observed',
+  'unsupported',
+  'unknown',
+] as const
+export type CoverageStatus = (typeof COVERAGE_STATUSES)[number]
+
+export const COVERAGE_CATEGORIES = [
+  'framework',
+  'database',
+  'errors',
+  'custom',
+  'runtime',
+] as const
+export type CoverageCategory = (typeof COVERAGE_CATEGORIES)[number]
+
+export interface CoverageEvidenceSummary {
+  spanTypes: string[]
+  count: number
+  lastSeen: number | null
+}
+
+export interface CoverageItem {
+  id: string
+  label: string
+  category: CoverageCategory
+  status: CoverageStatus
+  /** Whether the feature is enabled by config; null when it cannot be known. */
+  configured: boolean | null
+  observed: boolean
+  description: string
+  evidence: CoverageEvidenceSummary
+  limitations: string[]
+}
+
+export interface CoverageSample {
+  firstEventTime: number | null
+  lastEventTime: number | null
+  retentionMs: number
+  requests: number
+  spans: number
+  errors: number
+  databaseQueries: number
+  connectedInstances: number
+  connected: boolean
+}
+
+export interface CoverageReport {
+  projectName: string
+  generatedAt: number
+  collectorVersion: string
+  sample: CoverageSample
+  statusCounts: Record<CoverageStatus, number>
+  items: CoverageItem[]
+  notes: string[]
+  limitations: string[]
 }
 
 export interface RequestFilters {
@@ -199,11 +293,11 @@ export interface ErrorGroup {
   traceId: string | null
 }
 
-export interface ErrorListItem extends NextScopeError {
+export interface ErrorListItem extends StackNextError {
   resolvedTraceId: string | null
 }
 
-export interface DatabaseQueryListItem extends NextScopeDatabaseQuery {
+export interface DatabaseQueryListItem extends StackNextDatabaseQuery {
   resolvedTraceId: string | null
   route: string | null
 }
@@ -243,15 +337,27 @@ export interface ConnectionInfo {
   serviceName: string
   projectName?: string
   nextVersion?: string
+  runtimeVersion?: string
   sdkVersion: string
   lastSeen: number
   connected: boolean
-  diagnostics?: NextScopeExporterDiagnostics
+  diagnostics?: StackNextExporterDiagnostics
+}
+
+export type NextOtelVerboseSource =
+  | 'config'
+  | 'environment'
+  | 'disabled'
+  | 'unknown'
+
+export interface NextOtelVerboseStatus {
+  enabled: boolean
+  source: NextOtelVerboseSource
 }
 
 export interface HealthResponse {
   status: 'ok'
-  name: 'nextscope'
+  name: 'stacknext'
   version: string
   projectName: string
   dashboardUrl: string
@@ -260,6 +366,9 @@ export interface HealthResponse {
   time: number
   connected: boolean
   connections: ConnectionInfo[]
+  instrumentation: {
+    nextOtelVerbose: NextOtelVerboseStatus
+  }
   counts: {
     requests: number
     failedRequests: number
@@ -294,12 +403,16 @@ export interface HealthResponse {
     droppedEvents: number
     lastError: string | null
   }
-  config: NextScopeConfig
+  config: StackNextConfig
 }
 
 export interface OverviewResponse {
   health: HealthResponse
   summary: StoreSummary
+  /** Additive instrumentation coverage metadata (StackNext 0.3+). */
+  coverage?: CoverageReport
+  /** Additive deterministic diagnostic overview (StackNext 0.4+). */
+  diagnosticOverview?: DiagnosticOverview
 }
 
 export interface ErrorListResponse extends PageResult<ErrorListItem> {
@@ -312,21 +425,23 @@ export interface ErrorDetailResponse {
 }
 
 export interface ExportResponse {
-  format: 'nextscope-export'
+  format: 'stacknext-export'
   version: 1
   exportedAt: number
   projectName: string
   collectorVersion: string
-  config: NextScopeConfig
-  spans: NextScopeSpan[]
-  errors: NextScopeError[]
-  databaseQueries: NextScopeDatabaseQuery[]
+  config: StackNextConfig
+  spans: StackNextSpan[]
+  errors: StackNextError[]
+  databaseQueries: StackNextDatabaseQuery[]
   stats: {
     requests: number
     errors: number
     databaseQueries: number
     spans: number
   }
+  /** Additive deterministic diagnostic report (StackNext 0.4+). */
+  diagnostics?: DiagnosticReport
   limitations: string[]
 }
 

@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { isSpanContextValid, trace } from '@opentelemetry/api'
-import { redactSql, type NextScopeDatabaseQueryInput } from '@nextscope/core'
+import { redactSql, type StackNextDatabaseQueryInput } from '@stacknext/core'
 import {
-  getNextScopeTransport,
-  type NextScopeTransport,
-} from '@nextscope/core/transport'
+  getStackNextTransport,
+  type StackNextTransport,
+} from '@stacknext/core/transport'
 
 /** Structural subset of Prisma's `$on('query')` event. */
 export interface PrismaQueryEventLike {
@@ -21,11 +21,11 @@ export interface PrismaClientLike {
   $on(event: 'query', callback: (event: PrismaQueryEventLike) => void): void
 }
 
-export interface NextScopePrismaOptions {
-  /** Database engine reported to NextScope, for example "postgresql". */
+export interface StackNextPrismaOptions {
+  /** Database engine reported to StackNext, for example "postgresql". */
   databaseSystem?: string
   /** Override the process-wide transport (mostly for tests). */
-  transport?: Pick<NextScopeTransport, 'enqueueDatabaseQuery'>
+  transport?: Pick<StackNextTransport, 'enqueueDatabaseQuery'>
   onError?: (error: unknown) => void
 }
 
@@ -51,7 +51,7 @@ function inferOperation(sql: string): string | undefined {
  */
 export function instrumentPrismaClient(
   client: PrismaClientLike,
-  options: NextScopePrismaOptions = {},
+  options: StackNextPrismaOptions = {},
 ): () => void {
   if (instrumented.has(client)) return () => undefined
   instrumented.add(client)
@@ -61,7 +61,7 @@ export function instrumentPrismaClient(
   const listener = (event: PrismaQueryEventLike): void => {
     if (disposed) return
     try {
-      const transport = options.transport ?? getNextScopeTransport()
+      const transport = options.transport ?? getStackNextTransport()
       if (!transport) return
       const activeSpan = trace.getActiveSpan()
       const spanContext = activeSpan?.spanContext()
@@ -70,7 +70,7 @@ export function instrumentPrismaClient(
         typeof event.duration === 'number' && Number.isFinite(event.duration)
           ? Math.max(0, event.duration)
           : null
-      const input: NextScopeDatabaseQueryInput = {
+      const input: StackNextDatabaseQueryInput = {
         id: randomUUID(),
         ...(spanContext && isSpanContextValid(spanContext)
           ? { traceId: spanContext.traceId, spanId: spanContext.spanId }

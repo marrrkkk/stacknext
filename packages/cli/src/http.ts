@@ -21,7 +21,7 @@ function assertLoopback(baseUrl: string): URL {
     throw new Error('Collector URL must use http or https')
   }
   if (!LOOPBACK_HOSTS.has(url.hostname)) {
-    throw new Error('NextScope only talks to a loopback collector')
+    throw new Error('StackNext only talks to a loopback collector')
   }
   return url
 }

@@ -1,8 +1,14 @@
 import {
   ProxyTracerProvider,
+  propagation,
   trace,
   type TracerProvider,
 } from '@opentelemetry/api'
+import {
+  CompositePropagator,
+  W3CBaggagePropagator,
+  W3CTraceContextPropagator,
+} from '@opentelemetry/core'
 import { resourceFromAttributes } from '@opentelemetry/resources'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
@@ -11,18 +17,18 @@ import {
   ATTR_SERVICE_VERSION,
 } from '@opentelemetry/semantic-conventions'
 import {
-  NEXTSCOPE_SDK_VERSION,
-} from '@nextscope/core'
+  STACKNEXT_SDK_VERSION,
+} from '@stacknext/core'
 import {
-  getNextScopeTransport,
-  type NextScopeTransport,
-  type NextScopeTransportOptions,
-} from '@nextscope/core/transport'
-import { NextScopeSpanExporter } from './exporter.js'
+  getStackNextTransport,
+  type StackNextTransport,
+  type StackNextTransportOptions,
+} from '@stacknext/core/transport'
+import { StackNextSpanExporter } from './exporter.js'
 
-export interface NextScopeRegisterOptions {
+export interface StackNextRegisterOptions {
   /** Overrides environment-based transport configuration. */
-  transport?: NextScopeTransportOptions
+  transport?: StackNextTransportOptions
   /** Collector URL; used to filter self-instrumentation requests. */
   collectorUrl?: string
   serviceName?: string
@@ -30,21 +36,21 @@ export interface NextScopeRegisterOptions {
   nextVersion?: string
   /** Set to false to drop Next.js fetch spans. Defaults to true. */
   captureFetch?: boolean
-  /** Set to false to keep NextScope loaded but inactive. */
+  /** Set to false to keep StackNext loaded but inactive. */
   enabled?: boolean
 }
 
-export interface NextScopeRegistration {
+export interface StackNextRegistration {
   provider: NodeTracerProvider
-  transport: NextScopeTransport
-  exporter: NextScopeSpanExporter
+  transport: StackNextTransport
+  exporter: StackNextSpanExporter
   serviceName: string
   registeredAt: number
 }
 
 interface RegistrationGlobalState {
-  __nextscopeRegistration?: NextScopeRegistration
-  __nextscopeBeforeExit?: () => void
+  __stacknextRegistration?: StackNextRegistration
+  __stacknextBeforeExit?: () => void
 }
 
 function globalState(): RegistrationGlobalState {
@@ -52,8 +58,8 @@ function globalState(): RegistrationGlobalState {
 }
 
 function debugLog(message: string): void {
-  if (process.env.NEXTSCOPE_DEBUG === '1') {
-    console.warn(`[nextscope] ${message}`)
+  if (process.env.STACKNEXT_DEBUG === '1') {
+    console.warn(`[stacknext] ${message}`)
   }
 }
 
@@ -82,10 +88,10 @@ function isNodeRuntime(): boolean {
   return runtime === undefined || runtime === 'nodejs'
 }
 
-function readNextVersion(options: NextScopeRegisterOptions): string | undefined {
+function readNextVersion(options: StackNextRegisterOptions): string | undefined {
   const value =
     options.nextVersion ??
-    process.env.NEXTSCOPE_NEXT_VERSION ??
+    process.env.STACKNEXT_NEXT_VERSION ??
     process.env.npm_package_dependencies_next ??
     undefined
   return value && value.trim() !== '' ? value.trim() : undefined
@@ -98,7 +104,7 @@ function buildResource(
   const serviceVersion =
     process.env.npm_package_version && process.env.npm_package_version.trim() !== ''
       ? process.env.npm_package_version.trim()
-      : NEXTSCOPE_SDK_VERSION
+      : STACKNEXT_SDK_VERSION
   return resourceFromAttributes({
     [ATTR_SERVICE_NAME]: serviceName,
     [ATTR_SERVICE_VERSION]: serviceVersion,
@@ -109,32 +115,32 @@ function buildResource(
 }
 
 function resolveTransport(
-  options: NextScopeRegisterOptions,
-): NextScopeTransport | null {
+  options: StackNextRegisterOptions,
+): StackNextTransport | null {
   if (options.transport) {
-    return getNextScopeTransport({
+    return getStackNextTransport({
       ...options.transport,
       ...(options.serviceName ? { serviceName: options.serviceName } : {}),
       ...(options.projectName ? { projectName: options.projectName } : {}),
       ...(readNextVersion(options) ? { nextVersion: readNextVersion(options) } : {}),
     })
   }
-  return getNextScopeTransport()
+  return getStackNextTransport()
 }
 
 /**
  * Starts OpenTelemetry span collection for a Next.js Node.js runtime.
  *
- * Call this from `instrumentation.ts` `register()`. It is inert when NextScope
+ * Call this from `instrumentation.ts` `register()`. It is inert when StackNext
  * environment variables are absent, so applications can deploy the same build
  * without a local collector. Existing tracer providers are never replaced:
- * NextScope yields to another APM rather than breaking its instrumentation.
+ * StackNext yields to another APM rather than breaking its instrumentation.
  */
-export async function registerNextScope(
-  options: NextScopeRegisterOptions = {},
-): Promise<NextScopeRegistration | null> {
+export async function registerStackNext(
+  options: StackNextRegisterOptions = {},
+): Promise<StackNextRegistration | null> {
   const state = globalState()
-  if (state.__nextscopeRegistration) return state.__nextscopeRegistration
+  if (state.__stacknextRegistration) return state.__stacknextRegistration
   if (options.enabled === false) return null
   if (!isNodeRuntime()) return null
 
@@ -148,7 +154,7 @@ export async function registerNextScope(
   const transport = resolveTransport(options)
   if (!transport) {
     debugLog(
-      'NEXTSCOPE_COLLECTOR_URL and NEXTSCOPE_TOKEN are not set; tracing is disabled',
+      'STACKNEXT_COLLECTOR_URL and STACKNEXT_TOKEN are not set; tracing is disabled',
     )
     return null
   }
@@ -160,12 +166,12 @@ export async function registerNextScope(
     transport.options.projectName ??
     'next-app'
   const collectorUrl = options.collectorUrl ?? transport.options.collectorUrl
-  const exporter = new NextScopeSpanExporter({
+  const exporter = new StackNextSpanExporter({
     transport,
     collectorUrl,
     fallbackServiceName: serviceName,
     captureFetch:
-      options.captureFetch ?? process.env.NEXTSCOPE_CAPTURE_FETCH !== '0',
+      options.captureFetch ?? process.env.STACKNEXT_CAPTURE_FETCH !== '0',
   })
   const processor = new BatchSpanProcessor(exporter, {
     scheduledDelayMillis: 200,
@@ -178,20 +184,29 @@ export async function registerNextScope(
     spanProcessors: [processor],
   })
   tracerProvider.register()
+  // Next.js extracts W3C context from the request headers through the global
+  // propagator. Installing a real propagator makes an incoming `traceparent`
+  // from a local test runner the parent of the Next.js request trace. Without
+  // it the API's no-op propagator silently drops the header.
+  propagation.setGlobalPropagator(
+    new CompositePropagator({
+      propagators: [new W3CTraceContextPropagator(), new W3CBaggagePropagator()],
+    }),
+  )
 
-  const registration: NextScopeRegistration = {
+  const registration: StackNextRegistration = {
     provider: tracerProvider,
     transport,
     exporter,
     serviceName,
     registeredAt: Date.now(),
   }
-  state.__nextscopeRegistration = registration
+  state.__stacknextRegistration = registration
 
   const beforeExit = (): void => {
-    void shutdownNextScope()
+    void shutdownStackNext()
   }
-  state.__nextscopeBeforeExit = beforeExit
+  state.__stacknextBeforeExit = beforeExit
   process.once('beforeExit', beforeExit)
 
   debugLog(
@@ -201,24 +216,24 @@ export async function registerNextScope(
 }
 
 /** Returns the active registration without creating one. */
-export function getNextScopeRegistration():
-  | NextScopeRegistration
+export function getStackNextRegistration():
+  | StackNextRegistration
   | undefined {
-  return globalState().__nextscopeRegistration
+  return globalState().__stacknextRegistration
 }
 
 /**
  * Flushes buffered spans and shuts the provider down. Safe to call more than
- * once. Next owns process signals; NextScope only hooks process exit.
+ * once. Next owns process signals; StackNext only hooks process exit.
  */
-export async function shutdownNextScope(): Promise<void> {
+export async function shutdownStackNext(): Promise<void> {
   const state = globalState()
-  const registration = state.__nextscopeRegistration
+  const registration = state.__stacknextRegistration
   if (!registration) return
-  state.__nextscopeRegistration = undefined
-  if (state.__nextscopeBeforeExit) {
-    process.removeListener('beforeExit', state.__nextscopeBeforeExit)
-    state.__nextscopeBeforeExit = undefined
+  state.__stacknextRegistration = undefined
+  if (state.__stacknextBeforeExit) {
+    process.removeListener('beforeExit', state.__stacknextBeforeExit)
+    state.__stacknextBeforeExit = undefined
   }
   try {
     await registration.provider.shutdown()
@@ -238,7 +253,7 @@ export async function shutdownNextScope(): Promise<void> {
  * Next.js `register()` entry point. Re-export this from `instrumentation.ts`.
  */
 export async function register(
-  options: NextScopeRegisterOptions = {},
-): Promise<NextScopeRegistration | null> {
-  return registerNextScope(options)
+  options: StackNextRegisterOptions = {},
+): Promise<StackNextRegistration | null> {
+  return registerStackNext(options)
 }

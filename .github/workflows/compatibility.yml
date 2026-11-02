@@ -1,0 +1,80 @@
+name: Compatibility
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compatibility-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  consumer-matrix:
+    name: Node ${{ matrix.node }} / Next ${{ matrix.next }} / ${{ matrix.pm }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24, 26]
+        next: [15.5.28, 16.4.3]
+        pm: [npm, pnpm]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.16.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: External consumer smoke
+        run: pnpm test:consumer --next ${{ matrix.next }} --pm ${{ matrix.pm }} --skip-build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          CI: 'true'
+
+  platform-smoke:
+    name: ${{ matrix.os }} package smoke
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.16.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install archives into an external Next.js app
+        run: pnpm test:consumer --next 16.4.3 --pm npm --skip-build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          CI: 'true'

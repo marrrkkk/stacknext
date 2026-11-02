@@ -2,7 +2,7 @@ import { ProxyTracerProvider, trace } from '@opentelemetry/api'
 import { resourceFromAttributes } from '@opentelemetry/resources'
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { registerNextScope } from '../src/register.js'
+import { registerStackNext } from '../src/register.js'
 
 let existing: NodeTracerProvider
 
@@ -17,9 +17,9 @@ afterAll(async () => {
   await existing.shutdown()
 })
 
-describe('registerNextScope with an existing provider', () => {
+describe('registerStackNext with an existing provider', () => {
   it('yields to the application provider instead of replacing it', async () => {
-    const result = await registerNextScope({
+    const result = await registerStackNext({
       transport: {
         collectorUrl: 'http://127.0.0.1:9',
         token: 'e'.repeat(32),

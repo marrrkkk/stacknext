@@ -1,16 +1,24 @@
 {
-  "name": "@nextscope/next",
-  "version": "0.1.0",
-  "description": "Next.js instrumentation and OpenTelemetry exporter for NextScope",
+  "name": "@stacknext/next",
+  "version": "0.6.0",
+  "description": "Next.js instrumentation and OpenTelemetry exporter for StackNext",
   "license": "MIT",
   "type": "module",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "edge": "./dist/edge.js",
+      "edge-light": "./dist/edge.js",
+      "worker": "./dist/edge.js",
+      "workerd": "./dist/edge.js",
+      "node": "./dist/index.js",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -19,9 +27,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@nextscope/core": "workspace:*",
+    "@stacknext/core": "workspace:*",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/context-async-hooks": "2.12.0",
+    "@opentelemetry/core": "2.12.0",
     "@opentelemetry/resources": "2.12.0",
     "@opentelemetry/sdk-trace-base": "2.12.0",
     "@opentelemetry/sdk-trace-node": "2.12.0",
@@ -29,5 +38,29 @@
   },
   "engines": {
     "node": ">=20.9.0"
+  },
+  "author": "StackNext contributors",
+  "homepage": "https://github.com/marrrkkk/stacknext#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marrrkkk/stacknext.git",
+    "directory": "packages/next"
+  },
+  "bugs": {
+    "url": "https://github.com/marrrkkk/stacknext/issues"
+  },
+  "keywords": [
+    "stacknext",
+    "nextjs",
+    "opentelemetry",
+    "instrumentation",
+    "tracing",
+    "debugging"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "next": ">=15.0.0 <17"
   }
 }

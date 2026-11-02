@@ -1,8 +1,9 @@
 import { readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import type { Command } from 'commander'
-import type { HealthResponse, NextScopeConfig } from '@nextscope/core'
-import { NextScopeConfigError, loadConfig } from '@nextscope/core'
+import type { HealthResponse, StackNextConfig } from '@stacknext/core'
+import { StackNextConfigError } from '@stacknext/core'
+import { loadConfig } from '@stacknext/core/config-file'
 import { collectorJson } from '../http.js'
 import { printSection, style } from '../output.js'
 import { detectProject } from '../project.js'
@@ -29,7 +30,7 @@ function nodeSupported(version: string): boolean {
 }
 
 function isIntegrated(source: string): boolean {
-  return source.includes('@nextscope/next')
+  return source.includes('@stacknext/next')
 }
 
 async function fileMode(file: string): Promise<number | null> {
@@ -59,10 +60,10 @@ export async function runDoctor(
     'Environment',
     nodeSupported(process.versions.node) ? 'pass' : 'fail',
     `Node.js ${process.versions.node}`,
-    nodeSupported(process.versions.node) ? '>= 20.9' : 'NextScope requires Node.js 20.9 or newer',
+    nodeSupported(process.versions.node) ? '>= 20.9' : 'StackNext requires Node.js 20.9 or newer',
   )
 
-  let config: NextScopeConfig | null = null
+  let config: StackNextConfig | null = null
   let projectName = path.basename(cwd)
   try {
     const project = await detectProject(cwd)
@@ -83,18 +84,18 @@ export async function runDoctor(
     if (project.appDir) {
       add('Project', 'pass', `App Router at ${project.appDir}/`)
     } else {
-      add('Project', 'fail', 'App Router directory not found', 'NextScope does not support the Pages Router')
+      add('Project', 'fail', 'App Router directory not found', 'StackNext does not support the Pages Router')
     }
 
     try {
       config = await loadConfig(project.dir)
-      add('Project', 'pass', 'nextscope.config.json is valid')
+      add('Project', 'pass', 'stacknext.config.json is valid')
     } catch (error) {
       add(
         'Project',
         'fail',
         'Configuration is invalid',
-        error instanceof NextScopeConfigError
+        error instanceof StackNextConfigError
           ? error.issues.join('; ')
           : error instanceof Error
             ? error.message
@@ -107,7 +108,7 @@ export async function runDoctor(
         'Instrumentation',
         'fail',
         'instrumentation.ts not found',
-        'Run "nextscope init" to create it',
+        'Run "stacknext init" to create it',
       )
     } else {
       const source = await readFile(project.instrumentationPath, 'utf8')
@@ -115,29 +116,29 @@ export async function runDoctor(
         add(
           'Instrumentation',
           'pass',
-          'instrumentation.ts imports @nextscope/next',
+          'instrumentation.ts imports @stacknext/next',
           path.relative(project.dir, project.instrumentationPath),
         )
       } else {
         add(
           'Instrumentation',
           'fail',
-          'instrumentation.ts does not import @nextscope/next',
-          'Add registerNextScope()/onRequestError without removing existing monitoring',
+          'instrumentation.ts does not import @stacknext/next',
+          'Add registerStackNext()/onRequestError without removing existing monitoring',
         )
       }
     }
 
     const declared =
-      project.dependencies['@nextscope/next'] ??
-      project.devDependencies['@nextscope/next']
-    if (declared) add('Instrumentation', 'pass', `@nextscope/next ${declared}`)
+      project.dependencies['@stacknext/next'] ??
+      project.devDependencies['@stacknext/next']
+    if (declared) add('Instrumentation', 'pass', `@stacknext/next ${declared}`)
     else
       add(
         'Instrumentation',
         'warn',
-        '@nextscope/next is not declared',
-        'Install it with the package manager command printed by "nextscope init"',
+        '@stacknext/next is not declared',
+        'Install it with the package manager command printed by "stacknext init"',
       )
 
     if (config) {
@@ -152,7 +153,7 @@ export async function runDoctor(
           'Adapters',
           'warn',
           'Drizzle detected but database.drizzle is false',
-          'Enable it in nextscope.config.json',
+          'Enable it in stacknext.config.json',
         )
       }
       if (project.hasPrisma && !config.database.prisma) {
@@ -160,7 +161,7 @@ export async function runDoctor(
           'Adapters',
           'warn',
           'Prisma detected but database.prisma is false',
-          'Enable it in nextscope.config.json',
+          'Enable it in stacknext.config.json',
         )
       }
       add(
@@ -197,13 +198,13 @@ export async function runDoctor(
 
   const runtime = await readRuntimeState(cwd).catch(() => null)
   if (!runtime) {
-    add('Collector', 'warn', 'NextScope is not running', 'Start it with "nextscope dev"')
+    add('Collector', 'warn', 'StackNext is not running', 'Start it with "stacknext dev"')
   } else if (!isProcessAlive(runtime.pid)) {
     add(
       'Collector',
       'warn',
       'Stale runtime state',
-      `Process ${runtime.pid} is not running; restart with "nextscope dev"`,
+      `Process ${runtime.pid} is not running; restart with "stacknext dev"`,
     )
   } else {
     const mode = await fileMode(runtimeStatePath(cwd))
@@ -257,7 +258,7 @@ export async function runDoctor(
   if (options.json) {
     console.log(JSON.stringify({ projectName, checks, failures, warnings }, null, 2))
   } else {
-    console.log(`${style.bold('NextScope doctor')} — ${projectName}`)
+    console.log(`${style.bold('StackNext doctor')} — ${projectName}`)
     let currentGroup = ''
     for (const check of checks) {
       if (check.group !== currentGroup) {

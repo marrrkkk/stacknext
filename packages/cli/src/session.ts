@@ -16,13 +16,13 @@ export async function requireRunningState(projectDir: string): Promise<RuntimeSt
   const state = await readRuntimeState(projectDir)
   if (!state) {
     throw new NotRunningError(
-      'NextScope is not running for this project. Start it with "nextscope dev".',
+      'StackNext is not running for this project. Start it with "stacknext dev".',
     )
   }
   if (!isProcessAlive(state.pid)) {
     await removeRuntimeState(projectDir)
     throw new NotRunningError(
-      'The recorded NextScope process is no longer running. Start it with "nextscope dev".',
+      'The recorded StackNext process is no longer running. Start it with "stacknext dev".',
     )
   }
   return state

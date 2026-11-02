@@ -1,19 +1,22 @@
 {
-  "name": "nextscope",
-  "version": "0.1.0",
-  "description": "Local-first runtime inspection for Next.js App Router applications",
+  "name": "stacknext",
+  "version": "0.6.0",
+  "description": "Local-first runtime debugging, diagnostics and Playwright regression testing for Next.js",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "nextscope": "./dist/bin.js"
+    "stacknext": "./dist/bin.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -22,13 +25,37 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@nextscope/core": "workspace:*",
-    "@nextscope/dashboard": "workspace:*",
-    "@nextscope/mcp": "workspace:*",
+    "@stacknext/core": "workspace:*",
+    "@stacknext/dashboard": "workspace:*",
+    "@stacknext/diagnostics": "workspace:*",
+    "@stacknext/mcp": "workspace:*",
+    "@stacknext/regression": "workspace:*",
     "commander": "14.0.3",
     "zod": "4.6.7"
   },
   "engines": {
     "node": ">=20.9.0"
+  },
+  "author": "StackNext contributors",
+  "homepage": "https://github.com/marrrkkk/stacknext#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marrrkkk/stacknext.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/marrrkkk/stacknext/issues"
+  },
+  "keywords": [
+    "stacknext",
+    "nextjs",
+    "cli",
+    "opentelemetry",
+    "debugging",
+    "regression-testing",
+    "local-first"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -3,9 +3,9 @@ import Link from 'next/link'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Tasklight — NextScope example',
+  title: 'Tasklight — StackNext example',
   description:
-    'A small task tracker used to demonstrate NextScope request, trace, error and database inspection.',
+    'A small task tracker used to demonstrate StackNext request, trace, error and database inspection.',
 }
 
 export default function RootLayout({
@@ -20,7 +20,7 @@ export default function RootLayout({
               <span className="brand__mark" aria-hidden="true" />
               <span>
                 <span className="brand__name">Tasklight</span>
-                <span className="brand__sub">NextScope example</span>
+                <span className="brand__sub">StackNext example</span>
               </span>
             </Link>
             <nav className="site-nav" aria-label="Demo routes">
@@ -33,7 +33,7 @@ export default function RootLayout({
           <main className="site-main">{children}</main>
           <footer className="site-footer">
             <span>
-              Open <code>http://127.0.0.1:4400</code> to inspect these requests in NextScope.
+              Open <code>http://127.0.0.1:4400</code> to inspect these requests in StackNext.
             </span>
             <span>Node.js runtime · Drizzle + SQLite · local only</span>
           </footer>

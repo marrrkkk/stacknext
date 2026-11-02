@@ -39,6 +39,14 @@ export interface RouteMatch {
     | 'database'
     | 'errors'
     | 'error'
+    | 'diagnostics'
+    | 'diagnostic'
+    | 'runs'
+    | 'run'
+    | 'baselines'
+    | 'baseline'
+    | 'comparisons'
+    | 'comparison'
     | 'settings'
     | 'not-found'
   id?: string
@@ -62,6 +70,26 @@ export function matchRoute(path: string): RouteMatch {
     return segments[1]
       ? { page: 'error', id: decodeURIComponent(segments[1]) }
       : { page: 'errors' }
+  }
+  if (segments[0] === 'diagnostics') {
+    return segments[1]
+      ? { page: 'diagnostic', id: decodeURIComponent(segments[1]) }
+      : { page: 'diagnostics' }
+  }
+  if (segments[0] === 'runs') {
+    return segments[1]
+      ? { page: 'run', id: decodeURIComponent(segments[1]) }
+      : { page: 'runs' }
+  }
+  if (segments[0] === 'baselines') {
+    return segments[1]
+      ? { page: 'baseline', id: decodeURIComponent(segments[1]) }
+      : { page: 'baselines' }
+  }
+  if (segments[0] === 'comparisons') {
+    return segments[1]
+      ? { page: 'comparison', id: decodeURIComponent(segments[1]) }
+      : { page: 'comparisons' }
   }
   if (segments[0] === 'settings') return { page: 'settings' }
   return { page: 'not-found' }

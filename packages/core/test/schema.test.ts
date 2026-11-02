@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   normalizeError,
   normalizeSpan,
-  parseNextScopeConfig,
+  parseStackNextConfig,
   ingestEnvelopeSchema,
 } from '../src/index.js'
-import { envelope, rootSpan, errorEvent } from './fixtures.js'
+import { envelope, rootSpan, errorEvent, databaseQuery } from './fixtures.js'
 
 describe('schema and normalization', () => {
   it('accepts a valid ingest envelope', () => {
@@ -23,6 +23,36 @@ describe('schema and normalization', () => {
 
     const extra = { ...envelope(), something: true }
     expect(ingestEnvelopeSchema.safeParse(extra).success).toBe(false)
+  })
+
+  it('rejects timestamps and durations outside the valid Date range', () => {
+    const badTimestamp = envelope({
+      spans: [rootSpan({ startTime: 1e20 })],
+      errors: [],
+      databaseQueries: [],
+    })
+    expect(ingestEnvelopeSchema.safeParse(badTimestamp).success).toBe(false)
+
+    const badDuration = envelope({
+      spans: [rootSpan({ durationMs: 1e20 })],
+      errors: [],
+      databaseQueries: [],
+    })
+    expect(ingestEnvelopeSchema.safeParse(badDuration).success).toBe(false)
+
+    const badError = envelope({
+      spans: [],
+      errors: [errorEvent({ timestamp: 1e20 })],
+      databaseQueries: [],
+    })
+    expect(ingestEnvelopeSchema.safeParse(badError).success).toBe(false)
+
+    const badQuery = envelope({
+      spans: [],
+      errors: [],
+      databaseQueries: [databaseQuery({ durationMs: 1e20 })],
+    })
+    expect(ingestEnvelopeSchema.safeParse(badQuery).success).toBe(false)
   })
 
   it('derives method, route and status from Next.js attributes', () => {
@@ -76,11 +106,11 @@ describe('schema and normalization', () => {
   })
 
   it('validates configuration with actionable errors', () => {
-    expect(parseNextScopeConfig({}).dashboard.port).toBe(4400)
+    expect(parseStackNextConfig({}).dashboard.port).toBe(4400)
     expect(() =>
-      parseNextScopeConfig({ privacy: { captureRequestBodies: true } }),
+      parseStackNextConfig({ privacy: { captureRequestBodies: true } }),
     ).toThrow(/request bodies are not captured/)
-    expect(() => parseNextScopeConfig({ collector: { maxSpans: 1 } })).toThrow(
+    expect(() => parseStackNextConfig({ collector: { maxSpans: 1 } })).toThrow(
       /collector\.maxSpans/,
     )
   })

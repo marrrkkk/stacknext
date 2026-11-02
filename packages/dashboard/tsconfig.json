@@ -16,8 +16,11 @@
     "allowImportingTsExtensions": true,
     "baseUrl": ".",
     "paths": {
-      "@nextscope/core": [
+      "@stacknext/core": [
         "../core/src/index.ts"
+      ],
+      "@stacknext/regression": [
+        "../regression/src/index.ts"
       ]
     }
   },

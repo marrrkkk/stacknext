@@ -1,15 +1,18 @@
 # AGENTS.md
 
-Repository conventions and invariants for NextScope. Read
+Repository conventions and invariants for StackNext. Read
 [docs/architecture.md](docs/architecture.md) before changing package boundaries.
 
 ## What this is
 
-NextScope is an MIT-licensed, local-first debugging center for Next.js App
+StackNext is an MIT-licensed, local-first debugging center for Next.js App
 Router apps. It collects OpenTelemetry spans plus Drizzle/Prisma query events
 and Next.js errors over loopback, stores them in memory, and exposes a
-dashboard, CLI and read-only MCP server. There is no cloud service, account or
-outbound telemetry.
+dashboard, CLI and read-only MCP server. It also derives deterministic,
+evidence-backed diagnostic findings from the same sample and compares
+Playwright-linked runtime captures against saved baselines stored under
+`.stacknext`. There is no cloud service, account, AI API client or outbound
+telemetry.
 
 ## Commands
 
@@ -17,53 +20,71 @@ Run from the repository root:
 
 ```bash
 pnpm install
+pnpm exec playwright install chromium # required for captured Playwright scenarios
 pnpm build          # topological build; required before e2e/benchmark
 pnpm lint           # eslint over the whole repo
 pnpm typecheck      # per-package tsc --noEmit against source paths
 pnpm test           # vitest unit/integration tests
-pnpm test:e2e       # real CLI + collector + example app + dashboard + MCP
+pnpm test:e2e       # real CLI + collector + example app + dashboard + MCP + regression flow
 pnpm benchmark      # synthetic ingest and read API benchmark (docs/benchmark.md)
+pnpm benchmark:diagnostics # synthetic findings + diagnostics read benchmark
+pnpm benchmark:verbose # real-app verbose-tracing overhead comparison
 ```
 
 Useful scoped commands:
 
 ```bash
-pnpm --filter @nextscope/core build
-pnpm --filter nextscope build
-pnpm --filter @nextscope/example-next-app dev
-pnpm exec nextscope dev --open       # from an app directory after build
-pnpm exec nextscope doctor
+pnpm --filter @stacknext/core build
+pnpm --filter @stacknext/regression build
+pnpm --filter @stacknext/playwright build
+pnpm --filter stacknext build
+pnpm --filter @stacknext/example-next-app dev
+pnpm exec stacknext dev --open       # from an app directory after build
+pnpm exec stacknext doctor
+pnpm exec stacknext coverage [--json]
+pnpm exec stacknext diagnose [--json]
+pnpm exec stacknext capture --name <name> -- pnpm exec playwright test --workers=1
+pnpm exec stacknext runs list
+pnpm exec stacknext baseline list
+pnpm exec stacknext compare <baseline-id> <candidate-run-id>
 ```
 
 The example app listens on `http://127.0.0.1:4402`; the collector/dashboard
-uses `http://127.0.0.1:4400` by default. `nextscope dev` writes
-`<app>/.nextscope/run.json` and cleans it up on exit.
+uses `http://127.0.0.1:4400` by default. `stacknext dev` writes
+`<app>/.stacknext/run.json` and cleans it up on exit.
 
 ## Repository layout
 
 | Path | Responsibility |
 | --- | --- |
-| `packages/core` | Wire types, Zod schemas, redaction, normalization, config, bounded store, async transport. |
+| `packages/core` | Wire types, Zod schemas, redaction, normalization, config, bounded store, async transport, diagnostic wire types. |
+| `packages/diagnostics` | Deterministic fingerprinting, four diagnostic rules, report filtering, overview and detail evidence. |
+| `packages/regression` | Capture/run/baseline/comparison schemas, stable scenario and trace identities, environment snapshots, deterministic comparison, private atomic storage. |
+| `packages/playwright` | Optional Playwright fixture, W3C trace-context propagation, trace probing, correlation submission. |
 | `packages/next` | `instrumentation.ts` registration, OTel provider/exporter, error hook. |
 | `packages/drizzle` | Drizzle `Logger` adapter. |
 | `packages/prisma` | Prisma `$on('query')` adapter. |
-| `packages/cli` | `nextscope` binary, collector HTTP server, dashboard hosting. |
-| `packages/dashboard` | React/Vite static dashboard. |
-| `packages/mcp` | Read-only stdio MCP server. |
-| `apps/example-next-app` | Tasklight demo with Drizzle/better-sqlite3, slow and error routes. |
-| `scripts/` | Real e2e and benchmark scripts. |
+| `packages/cli` | `stacknext` binary, collector HTTP server, regression capture/compare commands, dashboard hosting. |
+| `packages/dashboard` | React/Vite static dashboard, including run/baseline/comparison views. |
+| `packages/mcp` | Read-only stdio MCP server, output schemas, prompts, telemetry and regression metadata. |
+| `skills/stacknext-debugging` | Portable Agent Skill with tool reference and evidence-first workflows. |
+| `apps/example-next-app` | Tasklight demo with Drizzle/better-sqlite3, slow, error, N+1, slow-DB and repeated-fetch routes plus annotated Playwright scenarios. |
+| `scripts/` | Real e2e and benchmark scripts, including the capture → baseline → candidate → compare flow. |
 
-Dependency direction: `core` is the base. `next`, `drizzle`, `prisma`, `mcp`
-and `cli` may depend on `core`; `cli` also depends on `dashboard` and `mcp`.
-Never import CLI, Next.js, React or adapter code from `core`.
+Dependency direction: `core` is the base. `diagnostics`, `next`, `drizzle`,
+`prisma`, `mcp` and `cli` may depend on `core`; `regression` depends on `core`
+and `diagnostics`; `playwright` depends on `regression` and has
+`@playwright/test` as a peer; `cli`, `dashboard` and `mcp` may depend on
+`regression`. `cli` also depends on `dashboard`, `mcp` and `diagnostics`. Never
+import CLI, Next.js, React, Playwright or adapter code from `core`.
 
 ## Architecture invariants
 
 - **Supported surface only.** Next.js 15/16 App Router, Node.js runtime.
   Do not patch undocumented Next.js internals and do not claim Edge or
   production support.
-- **Never overwrite `instrumentation.ts`.** `nextscope init` must preserve an
-  existing file and print manual instructions. `registerNextScope()` must yield
+- **Never overwrite `instrumentation.ts`.** `stacknext init` must preserve an
+  existing file and print manual instructions. `registerStackNext()` must yield
   to an already-registered OpenTelemetry provider instead of replacing it.
 - **Local-only network.** Bind the collector to `127.0.0.1`/`localhost` and
   reject other hosts. Ingestion requires the bearer token; read APIs/SSE accept
@@ -76,8 +97,57 @@ Never import CLI, Next.js, React or adapter code from `core`.
 - **Two-layer redaction.** Redact in the app process before enqueueing and
   again in the collector before storing. A new field is not done until both
   layers and the privacy docs are updated.
+- **Coverage is evidence, not a score.** Coverage statuses come from the current
+  store sample plus collector config/connection state. Never invent a composite
+  percentage or treat `not-observed`/`unknown` as proof that a feature is broken.
+  Keep the sample window and item limitations visible in CLI, dashboard and MCP.
+- **Diagnostics are deterministic evidence.** The four rules are conservative
+  heuristics over the current store sample. Keep finding ids deterministic,
+  evidence bounded and re-sanitized, and expose the same report through CLI,
+  dashboard, export, MCP and the Agent Skill. Never present `possible` or
+  `observed` as a confirmed root cause. No LLM/AI provider, source edits, SQL or
+  EXPLAIN execution, index advice, alerting or long-term anomaly detection.
+- **Regression evidence is proven, not guessed.** A Playwright sample is
+  verified only when the collector finds the injected trace id and a server span
+  parented to the injected span id. Never fall back to a time window, nearest
+  request or synthetic sample. Ambiguous correlation becomes `incomplete` and
+  forces the affected comparison to `inconclusive`.
+- **Regression comparisons are deterministic and report-only.** Match scenarios
+  by stable scenario id and traces/spans by normalized keys, never by ids or
+  timestamps. Use medians and explicit thresholds; never claim statistical
+  significance or causality. Report `improved`, `regressed`, `unchanged` or
+  `inconclusive` with severity separately. `--fail-on` is the only CI gate.
+- **Regression storage is local and immutable.** Write runs, baselines and
+  comparisons under `.stacknext/{runs,baselines,comparisons}` with strict
+  versioned schemas, `0700`/`0600` permissions, atomic writes and a 16 MiB cap.
+  Never auto-delete, never upload, and never overwrite an existing record
+  without an explicit overwrite request. Keep invalid ids and incomplete
+  records visible rather than repairing them.
+- **Playwright stays optional and sequential.** `@stacknext/playwright` must be
+  inert outside an active capture run and must not replace Playwright or change
+  assertions. Use one worker for captured runs until parallel correlation is
+  explicitly verified. Prefer the explicit `stacknext.scenario` annotation for
+  identity; never use time windows to link browser and server activity.
+- **Documented Next.js telemetry only.** Keep the standard span allowlist in
+  `core/framework.ts` aligned with the supported Next.js versions. Preserve
+  documented `next.*` and HTTP attributes and parent ids; retain unknown span
+  types as verbose evidence instead of guessing. `NEXT_OTEL_VERBOSE=1` is the
+  only verbose switch; do not use `NEXT_PRIVATE_*` or patch internals.
+- **Manual helpers stay optional.** `withStackNextSpan`,
+  `withStackNextSpanSync` and `withStackNextAction` use the existing OTel
+  context/provider, preserve return values and errors, sanitize attributes, and
+  must not create a second SDK. Never claim automatic Server Component or
+  Server Action tracing.
 - **Read-only MCP.** All tools stay `readOnlyHint: true`; the API client only
-  performs GETs and refuses non-loopback URLs. stdout is protocol-only.
+  performs GETs and refuses non-loopback URLs. stdout is protocol-only. Prompts
+  and the Agent Skill shape investigations but cannot add capabilities, mutate
+  data or bypass redaction. Keep tool names and arguments stable; response
+  metadata is additive. The six regression tools read runs, baselines and
+  comparisons only; they cannot capture, save, compare, delete or edit.
+- **Portable skill.** `skills/stacknext-debugging` follows the Agent Skills
+  specification. Keep `SKILL.md` concise, put details in `references/`, and do
+  not claim a client is supported without a real end-to-end test recorded in
+  `docs/agent-testing.md`.
 
 ## Privacy and security rules
 
@@ -86,21 +156,25 @@ Never capture, transmit or store:
 - request/response bodies, headers or cookies;
 - URL query values or fragments;
 - SQL bind parameters;
+- Playwright screenshots, videos or trace archives;
 - machine/user identifiers.
 
 URLs keep path only. Sensitive keys become `[redacted]`. Error messages and
-stacks go through text redaction. Resource attributes use an allowlist. If a
-change touches captured data, update `docs/privacy.md`, the config schema and
-the tests that assert secrets do not appear in API/export output.
+stacks go through text redaction. Resource attributes use an allowlist. Capture
+records, baselines and comparisons are redacted local files under `.stacknext`;
+they must never contain a token, raw body/header/query value, SQL bind parameter
+or Playwright artifact. If a change touches captured data, update
+`docs/privacy.md`, the config schema and the tests that assert secrets do not
+appear in API/export/regression output.
 
-Tokens live in `.nextscope/run.json` with mode `0600`. Do not log tokens, put
+Tokens live in `.stacknext/run.json` with mode `0600`. Do not log tokens, put
 them in fixtures, commit runtime state or add a remote transport.
 
 ## Build and typecheck layout
 
 - `tsconfig.base.json` contains strict compiler options only and **no**
   workspace `paths`.
-- Package `tsconfig.json` files map `@nextscope/*` to source for typechecking
+- Package `tsconfig.json` files map `@stacknext/*` to source for typechecking
   before a build exists.
 - Package `tsconfig.build.json` files set `"paths": {}` and emit `src` to
   `dist`. Build-time resolution must use built `dist` types, never source.
@@ -130,17 +204,37 @@ Before declaring a change complete:
 2. `pnpm typecheck`
 3. `pnpm test`
 4. `pnpm build`
-5. `pnpm test:e2e` (after build). It reuses a live runtime if one exists,
-   otherwise it starts and stops the example app itself.
-6. For user-facing changes, exercise `nextscope dev` manually and check the
-   dashboard, request detail, database, errors and MCP.
-7. If captured data changed, verify the example error route still redacts
-   `demo-url-secret`, `super-secret-demo-token` and `hunter2`.
+5. `pnpm test:e2e` (after build, with Playwright Chromium installed). It reuses a
+   live runtime if one exists, otherwise it starts and stops the example app
+   itself. It must cover capture → baseline → candidate → compare, the
+   collector regression APIs, CLI records, MCP regression tools and dashboard
+   deep links.
+6. For user-facing changes, exercise `stacknext dev` manually and check the
+   dashboard Overview coverage and diagnostics cards, request/trace timelines,
+   database, errors, `/diagnostics` and `/diagnostics/:id`, `/runs`, `/runs/:id`,
+   `/baselines`, `/baselines/:id`, `/comparisons`, `/comparisons/:id`, the
+   `/actions-demo`, `/api/custom-work`, `/api/n-plus-one`,
+   `/api/n-plus-one-fixed`, `/api/slow-db` and `/api/repeated-fetch` routes,
+   `stacknext coverage`, `stacknext diagnose`, `stacknext capture`,
+   `stacknext runs`, `stacknext baseline`, `stacknext compare` and the MCP
+   summary/diagnostics/regression tools.
+7. Warm `/`, `/projects/1` and `/api/n-plus-one` before a baseline capture.
+   Cold route-module spans can appear on only one side and make a comparison
+   inconclusive. Use one Playwright worker and at least three samples.
+8. If captured data changed, verify the example error route still redacts
+   `demo-url-secret`, `super-secret-demo-token` and `hunter2`, that action and
+   custom-span attributes do not leak `action-attribute-secret`,
+   `custom-attribute-secret`, `custom-url-secret` or `e2e-url-secret`, and that
+   diagnostic evidence, regression records, comparisons and export output do not
+   contain those values either.
+9. Check explicit `NEXT_OTEL_VERBOSE=0` still overrides
+   `instrumentation.verbose: true`, and that `NEXT_OTEL_VERBOSE=1` is reported
+   with its performance caveat.
 
 Runtime verification in this repository used Node.js 24 and Next.js 16.4.3;
 CI uses Node.js 22. Keep `engines` at Node `>=20.9.0` unless the support policy
 changes.
 
-When stopping a dev server, send SIGINT/SIGTERM to the `nextscope dev`
-process so it can close the collector and remove `.nextscope/run.json`. Check
+When stopping a dev server, send SIGINT/SIGTERM to the `stacknext dev`
+process so it can close the collector and remove `.stacknext/run.json`. Check
 for orphaned `next dev` processes on ports 4400-4425 afterwards.

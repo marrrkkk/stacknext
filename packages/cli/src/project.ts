@@ -109,7 +109,7 @@ export async function detectProject(cwd = process.cwd()): Promise<ProjectInfo> {
   const packageJsonPath = path.join(dir, 'package.json')
   if (!(await exists(packageJsonPath))) {
     throw new ProjectDetectionError(
-      `No package.json found in ${dir}. Run NextScope from a Next.js project root.`,
+      `No package.json found in ${dir}. Run StackNext from a Next.js project root.`,
     )
   }
   const rawPackageJson = await readJson(packageJsonPath)
@@ -155,7 +155,7 @@ export async function detectProject(cwd = process.cwd()): Promise<ProjectInfo> {
     instrumentationPath,
     instrumentationExists: instrumentationPath !== null,
     typescript: allDependencies.typescript !== undefined || (await exists(path.join(dir, 'tsconfig.json'))),
-    configExists: await exists(path.join(dir, 'nextscope.config.json')),
+    configExists: await exists(path.join(dir, 'stacknext.config.json')),
     hasDrizzle: allDependencies['drizzle-orm'] !== undefined,
     hasPrisma: allDependencies['@prisma/client'] !== undefined || allDependencies.prisma !== undefined,
     dependencies,
@@ -197,6 +197,15 @@ export function installCommand(
   }
 }
 
-export function isNextScopeIntegrated(source: string): boolean {
-  return source.includes('@nextscope/next')
+export function isStackNextIntegrated(source: string): boolean {
+  return source.includes('@stacknext/next')
+}
+
+/** True when the project already declares any StackNext package. */
+export function stackNextPackages(project: ProjectInfo): string[] {
+  const names = new Set([
+    ...Object.keys(project.dependencies),
+    ...Object.keys(project.devDependencies),
+  ])
+  return [...names].filter((name) => name === 'stacknext' || name.startsWith('@stacknext/'))
 }

@@ -1,10 +1,10 @@
 import { trace } from '@opentelemetry/api'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { resetGlobalTransportForTests } from '@nextscope/core/transport'
+import { resetGlobalTransportForTests } from '@stacknext/core/transport'
 import {
-  getNextScopeRegistration,
-  registerNextScope,
-  shutdownNextScope,
+  getStackNextRegistration,
+  registerStackNext,
+  shutdownStackNext,
 } from '../src/register.js'
 import { startIngestSink, type IngestSink } from './sink.js'
 
@@ -12,12 +12,12 @@ const TOKEN = 'r'.repeat(32)
 let sink: IngestSink | undefined
 
 function clearEnv(): void {
-  delete process.env.NEXTSCOPE_COLLECTOR_URL
-  delete process.env.NEXTSCOPE_TOKEN
-  delete process.env.NEXTSCOPE_PROJECT_NAME
-  delete process.env.NEXTSCOPE_NEXT_VERSION
+  delete process.env.STACKNEXT_COLLECTOR_URL
+  delete process.env.STACKNEXT_TOKEN
+  delete process.env.STACKNEXT_PROJECT_NAME
+  delete process.env.STACKNEXT_NEXT_VERSION
   delete process.env.NEXT_RUNTIME
-  delete process.env.NEXTSCOPE_DEBUG
+  delete process.env.STACKNEXT_DEBUG
 }
 
 beforeEach(() => {
@@ -26,7 +26,7 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
-  await shutdownNextScope()
+  await shutdownStackNext()
   resetGlobalTransportForTests()
   clearEnv()
   if (sink) {
@@ -35,16 +35,16 @@ afterEach(async () => {
   }
 })
 
-describe('registerNextScope', () => {
+describe('registerStackNext', () => {
   it('stays inert without collector configuration', async () => {
-    expect(await registerNextScope()).toBeNull()
-    expect(getNextScopeRegistration()).toBeUndefined()
+    expect(await registerStackNext()).toBeNull()
+    expect(getStackNextRegistration()).toBeUndefined()
   })
 
   it('does nothing on the Edge runtime', async () => {
     process.env.NEXT_RUNTIME = 'edge'
     expect(
-      await registerNextScope({
+      await registerStackNext({
         transport: {
           collectorUrl: 'http://127.0.0.1:4400',
           token: TOKEN,
@@ -66,12 +66,12 @@ describe('registerNextScope', () => {
       },
       nextVersion: '16.4.3',
     }
-    const first = await registerNextScope(options)
-    const second = await registerNextScope(options)
+    const first = await registerStackNext(options)
+    const second = await registerStackNext(options)
 
     expect(first).not.toBeNull()
     expect(second).toBe(first)
-    expect(getNextScopeRegistration()).toBe(first)
+    expect(getStackNextRegistration()).toBe(first)
 
     const span = trace.getTracer('register-test').startSpan('GET /register')
     span.end()
@@ -84,7 +84,7 @@ describe('registerNextScope', () => {
     expect(envelope?.instance.nextVersion).toBe('16.4.3')
     expect(envelope?.spans[0]?.resource['service.name']).toBe('demo-service')
 
-    await shutdownNextScope()
-    expect(getNextScopeRegistration()).toBeUndefined()
+    await shutdownStackNext()
+    expect(getStackNextRegistration()).toBeUndefined()
   })
 })

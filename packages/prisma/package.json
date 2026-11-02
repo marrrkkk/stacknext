@@ -1,16 +1,19 @@
 {
-  "name": "@nextscope/prisma",
-  "version": "0.1.0",
-  "description": "Prisma client query instrumentation for NextScope",
+  "name": "@stacknext/prisma",
+  "version": "0.6.0",
+  "description": "Prisma Client query instrumentation adapter for StackNext",
   "license": "MIT",
   "type": "module",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -19,7 +22,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@nextscope/core": "workspace:*",
+    "@stacknext/core": "workspace:*",
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
@@ -27,5 +30,33 @@
   },
   "engines": {
     "node": ">=20.9.0"
+  },
+  "author": "StackNext contributors",
+  "homepage": "https://github.com/marrrkkk/stacknext#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marrrkkk/stacknext.git",
+    "directory": "packages/prisma"
+  },
+  "bugs": {
+    "url": "https://github.com/marrrkkk/stacknext/issues"
+  },
+  "keywords": [
+    "stacknext",
+    "nextjs",
+    "prisma",
+    "sql",
+    "observability"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@prisma/client": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@prisma/client": {
+      "optional": true
+    }
   }
 }

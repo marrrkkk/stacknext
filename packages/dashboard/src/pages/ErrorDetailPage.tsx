@@ -1,4 +1,4 @@
-import type { ErrorDetailResponse } from '@nextscope/core'
+import type { ErrorDetailResponse } from '@stacknext/core'
 import { api } from '../api'
 import { useAsync } from '../hooks'
 import {

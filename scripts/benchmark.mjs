@@ -34,7 +34,7 @@ function makeTrace(index, baseTime) {
   const startTime = baseTime + index * 3
   const durationMs = 12 + (index % 11) * 28
   const endTime = startTime + durationMs
-  const serviceName = 'nextscope-benchmark'
+  const serviceName = 'stacknext-benchmark'
   const route = index % 3 === 0 ? '/bench/slow' : '/bench/[id]'
   const root = {
     traceId: trace,
@@ -132,9 +132,9 @@ async function main() {
       version: 1,
       instance: {
         instanceId: 'benchmark-instance',
-        serviceName: 'nextscope-benchmark',
-        projectName: 'nextscope-benchmark',
-        sdkVersion: '0.1.0',
+        serviceName: 'stacknext-benchmark',
+        projectName: 'stacknext-benchmark',
+        sdkVersion: '0.6.0',
         runtime: 'nodejs',
       },
       spans,
@@ -147,7 +147,7 @@ async function main() {
     port: 0,
     autoPort: false,
     token: TOKEN,
-    projectName: 'nextscope-benchmark',
+    projectName: 'stacknext-benchmark',
     config: DEFAULT_CONFIG,
     dashboardDir: null,
   })
@@ -161,7 +161,7 @@ async function main() {
     const ingestStarted = performance.now()
     for (const batch of batches) {
       const started = performance.now()
-      const response = await fetch(`${collector.url}/__nextscope/v1/ingest`, {
+      const response = await fetch(`${collector.url}/__stacknext/v1/ingest`, {
         method: 'POST',
         headers,
         body: JSON.stringify(batch),
@@ -186,7 +186,7 @@ async function main() {
       ['/api/export', 'export'],
     ]
 
-    console.log('NextScope collector benchmark')
+    console.log('StackNext collector benchmark')
     console.log(
       `Node ${process.versions.node} · ${process.platform}/${process.arch} · ${new Date().toISOString()}`,
     )

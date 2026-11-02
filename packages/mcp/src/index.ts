@@ -1,10 +1,10 @@
 export {
-  NextScopeApiClient,
-  NextScopeApiError,
-  type NextScopeApiClientOptions,
+  StackNextApiClient,
+  StackNextApiError,
+  type StackNextApiClientOptions,
 } from './client.js'
 export {
-  createNextScopeMcpServer,
+  createStackNextMcpServer,
   startMcpServer,
   type StartMcpServerOptions,
 } from './server.js'

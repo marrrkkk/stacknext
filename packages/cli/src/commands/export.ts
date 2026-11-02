@@ -1,7 +1,7 @@
 import { access, mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { Command } from 'commander'
-import type { ExportResponse } from '@nextscope/core'
+import type { ExportResponse } from '@stacknext/core'
 import { collectorJson } from '../http.js'
 import { printCheck, printSection, style } from '../output.js'
 import { requireRunningState } from '../session.js'
@@ -48,7 +48,7 @@ export async function runExport(
   const file = path.resolve(
     cwd,
     options.output ??
-      `nextscope-export-${state.projectName.replace(/[^a-z0-9_-]+/gi, '-')}-${timestamp()}.json`,
+      `stacknext-export-${state.projectName.replace(/[^a-z0-9_-]+/gi, '-')}-${timestamp()}.json`,
   )
   if (!options.force && (await exists(file))) {
     throw new Error(`${file} already exists. Choose another --output or pass --force.`)
@@ -56,7 +56,7 @@ export async function runExport(
   await mkdir(path.dirname(file), { recursive: true })
   await writeFile(file, json, { mode: 0o600 })
 
-  printSection('NextScope export')
+  printSection('StackNext export')
   printCheck('pass', `Wrote ${file}`)
   printCheck(
     'pass',

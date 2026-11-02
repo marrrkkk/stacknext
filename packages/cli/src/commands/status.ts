@@ -1,5 +1,5 @@
 import type { Command } from 'commander'
-import type { HealthResponse } from '@nextscope/core'
+import type { HealthResponse } from '@stacknext/core'
 import { collectorJson } from '../http.js'
 import { style } from '../output.js'
 import { formatDuration, formatRelativeTime } from '../output.js'
@@ -34,7 +34,7 @@ export async function runStatus(
     console.log(
       JSON.stringify(
         {
-          runtime: state,
+          runtime: { ...state, token: '[redacted]' },
           health,
         },
         null,
@@ -45,7 +45,7 @@ export async function runStatus(
   }
 
   const connected = health.connections.filter((connection) => connection.connected)
-  console.log(`${style.bold('NextScope')} ${style.dim(`v${health.version}`)} — ${health.projectName}`)
+  console.log(`${style.bold('StackNext')} ${style.dim(`v${health.version}`)} — ${health.projectName}`)
   console.log(`Dashboard   ${style.cyan(health.dashboardUrl)}`)
   console.log(
     `Collector   ${state.collectorUrl} ${style.dim(`(pid ${state.pid}, up ${formatDuration(health.uptimeMs)})`)}`,
@@ -68,6 +68,16 @@ export async function runStatus(
   )
   console.log(
     `Telemetry   ${health.counts.spans} spans, ${health.counts.errors} errors, ${health.counts.databaseQueries} database queries`,
+  )
+  const verbose = health.instrumentation.nextOtelVerbose
+  console.log(
+    `Next.js spans ${
+      verbose.enabled
+        ? style.cyan(`verbose (${verbose.source})`)
+        : verbose.source === 'unknown'
+          ? style.yellow('NEXT_OTEL_VERBOSE has an unrecognized value')
+          : style.dim(`standard (${verbose.source})`)
+    }`,
   )
   const drops =
     health.store.dropped.capacity +

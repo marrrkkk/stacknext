@@ -1,16 +1,16 @@
 export {
-  NextScopeSpanExporter,
+  StackNextSpanExporter,
   readableSpanToInput,
   spanAttributes,
-  type NextScopeSpanExporterOptions,
+  type StackNextSpanExporterOptions,
 } from './exporter.js'
 export {
-  getNextScopeRegistration,
+  getStackNextRegistration,
   register,
-  registerNextScope,
-  shutdownNextScope,
-  type NextScopeRegisterOptions,
-  type NextScopeRegistration,
+  registerStackNext,
+  shutdownStackNext,
+  type StackNextRegisterOptions,
+  type StackNextRegistration,
 } from './register.js'
 export {
   createRequestErrorHandler,
@@ -20,7 +20,8 @@ export {
   type NextRequestInfo,
 } from './error.js'
 export {
-  withNextScopeSpan,
-  withNextScopeSpanSync,
-  type NextScopeManualSpanOptions,
+  withStackNextSpan,
+  withStackNextSpanSync,
+  withStackNextAction,
+  type StackNextManualSpanOptions,
 } from './manual.js'

@@ -1,4 +1,4 @@
-import type { HealthResponse } from '@nextscope/core'
+import type { HealthResponse } from '@stacknext/core'
 import { api, type ConfigResponse } from '../api'
 import { useAsync, type Theme } from '../hooks'
 import {
@@ -21,8 +21,8 @@ interface SettingsData {
 
 const MCP_CONFIG = `{
   "mcpServers": {
-    "nextscope": {
-      "command": "nextscope",
+    "stacknext": {
+      "command": "stacknext",
       "args": ["mcp"],
       "cwd": "/absolute/path/to/your/next-app"
     }
@@ -30,14 +30,14 @@ const MCP_CONFIG = `{
 }`
 
 const DRIZZLE_SNIPPET = `import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { createNextScopeDrizzleLogger } from '@nextscope/drizzle'
+import { createStackNextDrizzleLogger } from '@stacknext/drizzle'
 
 export const db = drizzle(client, {
-  logger: createNextScopeDrizzleLogger({ databaseSystem: 'sqlite' }),
+  logger: createStackNextDrizzleLogger({ databaseSystem: 'sqlite' }),
 })`
 
 const PRISMA_SNIPPET = `import { PrismaClient } from '@prisma/client'
-import { instrumentPrismaClient } from '@nextscope/prisma'
+import { instrumentPrismaClient } from '@stacknext/prisma'
 
 const prisma = new PrismaClient()
 instrumentPrismaClient(prisma, { databaseSystem: 'sqlite' })
@@ -83,6 +83,7 @@ export function SettingsPage({
 
   const { config, health } = state.data
   const connected = health.connections.filter((connection) => connection.connected)
+  const verbose = health.instrumentation.nextOtelVerbose
 
   return (
     <>
@@ -101,13 +102,15 @@ export function SettingsPage({
           }
         >
           <p className="prose">
-            NextScope exposes nine read-only tools: project summary, requests, traces, errors,
-            database queries and slow-request search. No tool can mutate your app or telemetry.
+            StackNext exposes seventeen read-only tools: project summary, requests, traces, errors,
+            database queries, slow-request search, deterministic diagnostics and saved regression
+            runs, baselines and comparisons. No tool can mutate your app, telemetry or regression
+            records.
           </p>
           <pre className="code-block code-block--scroll">{MCP_CONFIG}</pre>
           <p className="muted small">
-            Start the collector with <code>nextscope dev</code> first. The MCP server reads the
-            bearer token from <code>.nextscope/run.json</code>; the token never leaves loopback.
+            Start the collector with <code>stacknext dev</code> first. The MCP server reads the
+            bearer token from <code>.stacknext/run.json</code>; the token never leaves loopback.
           </p>
         </Card>
 
@@ -133,6 +136,10 @@ export function SettingsPage({
               <Icon name="shield" size={16} />
               <span>Stack traces and redacted SQL are stored in memory</span>
             </div>
+            <div className="safety-item safety-item--warn">
+              <Icon name="shield" size={16} />
+              <span>Runs, baselines and comparisons are redacted files under .stacknext</span>
+            </div>
           </div>
           <div className="button-row">
             <a className="button button--primary" href="/api/export" download>
@@ -155,7 +162,7 @@ export function SettingsPage({
               { label: 'Dashboard', value: <span className="mono">{health.dashboardUrl}</span> },
               {
                 label: 'Ingestion',
-                value: <span className="mono">{`${health.dashboardUrl}/__nextscope/v1/ingest`}</span>,
+                value: <span className="mono">{`${health.dashboardUrl}/__stacknext/v1/ingest`}</span>,
               },
               { label: 'Version', value: health.version },
               { label: 'Uptime', value: formatDuration(health.uptimeMs) },
@@ -175,7 +182,7 @@ export function SettingsPage({
           />
         </Card>
 
-        <Card title="Configuration" subtitle="Read from nextscope.config.json">
+        <Card title="Configuration" subtitle="Read from stacknext.config.json">
           <KeyValue
             entries={[
               { label: 'Dashboard port', value: config.config.dashboard.port },
@@ -189,6 +196,14 @@ export function SettingsPage({
               {
                 label: 'Capture errors',
                 value: config.config.instrumentation.captureErrors ? 'enabled' : 'disabled',
+              },
+              {
+                label: 'Next.js spans',
+                value: verbose.enabled
+                  ? `verbose (${verbose.source})`
+                  : verbose.source === 'unknown'
+                    ? 'NEXT_OTEL_VERBOSE has an unrecognized value'
+                    : `standard (${verbose.source})`,
               },
               {
                 label: 'Adapters',
@@ -235,7 +250,7 @@ export function SettingsPage({
               compact
               icon="server"
               title="No app heartbeat"
-              description="Start Next.js with the NextScope instrumentation registered."
+              description="Start Next.js with the StackNext instrumentation registered."
             />
           ) : (
             <div className="stack stack--tight">
@@ -278,7 +293,7 @@ export function SettingsPage({
         </Card>
       </div>
 
-      <Card title="Limitations" subtitle="Honest boundaries of NextScope 0.1">
+      <Card title="Limitations" subtitle="Honest boundaries of StackNext 0.6">
         <ul className="limitations">
           {config.limitations.map((limitation) => (
             <li key={limitation}>

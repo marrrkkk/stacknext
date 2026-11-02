@@ -1,7 +1,7 @@
 node_modules/
 dist/
 .next/
-.nextscope/
+.stacknext/
 coverage/
 *.tsbuildinfo
 *.log
@@ -13,3 +13,4 @@ apps/example-next-app/next-env.d.ts
 docs/screenshots/*.tmp.png
 playwright-report/
 test-results/
+release/

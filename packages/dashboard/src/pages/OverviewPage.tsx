@@ -1,4 +1,11 @@
-import type { OverviewResponse, PageResult, RequestSummary } from '@nextscope/core'
+import type {
+  CoverageItem,
+  CoverageReport,
+  CoverageStatus,
+  OverviewResponse,
+  PageResult,
+  RequestSummary,
+} from '@stacknext/core'
 import { api } from '../api'
 import { useAsync } from '../hooks'
 import {
@@ -25,6 +32,71 @@ import {
 interface OverviewData {
   overview: OverviewResponse
   requests: PageResult<RequestSummary>
+  coverage: CoverageReport
+}
+
+const COVERAGE_TONE: Record<CoverageStatus, 'good' | 'warn' | 'bad' | 'muted' | 'accent'> = {
+  observed: 'good',
+  active: 'accent',
+  configured: 'muted',
+  'not-observed': 'warn',
+  unknown: 'warn',
+  unsupported: 'muted',
+}
+
+const DIAGNOSTIC_SEVERITY_TONE = {
+  error: 'bad',
+  warning: 'warn',
+  info: 'accent',
+} as const
+
+function CoverageSummary({ report }: { report: CoverageReport }): React.ReactElement {
+  const visible = report.items.filter((item) => item.id !== 'next.verbose-spans')
+  return (
+    <div className="coverage-summary">
+      <div className="coverage-summary__statuses">
+        {(
+          [
+            'observed',
+            'active',
+            'configured',
+            'not-observed',
+            'unknown',
+            'unsupported',
+          ] as CoverageStatus[]
+        )
+          .filter((status) => report.statusCounts[status] > 0)
+          .map((status) => (
+            <Badge key={status} tone={COVERAGE_TONE[status]}>
+              {report.statusCounts[status]} {status}
+            </Badge>
+          ))}
+        <span className="coverage-summary__sample">
+          {formatNumber(report.sample.requests)} requests · {formatNumber(report.sample.spans)} spans
+          {' · '}
+          {report.sample.connected ? 'app connected' : 'no app connected'}
+        </span>
+      </div>
+      <ul className="coverage-summary__items">
+        {visible.map((item: CoverageItem) => (
+          <li key={item.id} title={item.limitations.join(' ')}>
+            <Badge tone={COVERAGE_TONE[item.status]}>{item.status}</Badge>
+            <span className="coverage-summary__label">{item.label}</span>
+            <span className="coverage-summary__evidence">
+              {item.evidence.count > 0
+                ? `${formatNumber(item.evidence.count)} · ${formatRelative(item.evidence.lastSeen)}`
+                : item.category}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="muted coverage-summary__note">
+        Evidence from the current retention window, not a score or percentage. Empty samples
+        do not prove that a feature is broken. Run <code>stacknext coverage</code> for
+        limitations.
+      </p>
+    </div>
+  )
 }
 
 export function OverviewPage({
@@ -36,11 +108,12 @@ export function OverviewPage({
 }): React.ReactElement {
   const state = useAsync<OverviewData>(
     async (signal) => {
-      const [overview, requests] = await Promise.all([
+      const [overview, requests, coverage] = await Promise.all([
         api.overview(signal),
         api.requests({ limit: 24, sort: 'recent' }, signal),
+        api.coverage(signal),
       ])
-      return { overview, requests }
+      return { overview, requests, coverage }
     },
     'overview',
     refreshKey,
@@ -65,7 +138,7 @@ export function OverviewPage({
   }
   if (!state.data) return <Loading />
 
-  const { overview, requests } = state.data
+  const { overview, requests, coverage } = state.data
   const { health, summary } = overview
   const connected = health.connections.filter((connection) => connection.connected)
   const maxDuration = Math.max(
@@ -124,6 +197,69 @@ export function OverviewPage({
         />
       </div>
 
+      <Card
+        title="Instrumentation coverage"
+        subtitle="What the current sample proves — not a score"
+        actions={
+          <Badge tone={coverage.sample.connected ? 'good' : 'muted'}>
+            {coverage.sample.connected ? 'connected' : 'listening'}
+          </Badge>
+        }
+      >
+        <CoverageSummary report={coverage} />
+      </Card>
+
+      {overview.diagnosticOverview && (
+        <Card
+          title="Diagnostic findings"
+          subtitle="Deterministic evidence from the current sample — not confirmed root causes"
+          actions={
+            <button type="button" className="link" onClick={() => onNavigate('/diagnostics')}>
+              View all <Icon name="arrow-right" size={14} />
+            </button>
+          }
+        >
+          <div className="badge-row">
+            <Badge tone={overview.diagnosticOverview.counts.bySeverity.error > 0 ? 'bad' : 'good'}>
+              {overview.diagnosticOverview.counts.bySeverity.error} error
+            </Badge>
+            <Badge
+              tone={overview.diagnosticOverview.counts.bySeverity.warning > 0 ? 'warn' : 'muted'}
+            >
+              {overview.diagnosticOverview.counts.bySeverity.warning} warning
+            </Badge>
+            <Badge tone="muted">
+              {overview.diagnosticOverview.counts.total} total · rule set v
+              {overview.diagnosticOverview.ruleSetVersion}
+            </Badge>
+          </div>
+          {overview.diagnosticOverview.topFindings.length === 0 ? (
+            <EmptyState
+              compact
+              icon="shield"
+              title="No diagnostic findings"
+              description="No configured rule crossed its threshold in this sample. This is not proof that the app has no problems."
+            />
+          ) : (
+            <ul className="diagnostic-overview">
+              {overview.diagnosticOverview.topFindings.map((finding) => (
+                <li key={finding.id}>
+                  <button type="button" onClick={() => onNavigate(`/diagnostics/${finding.id}`)}>
+                    <Badge tone={DIAGNOSTIC_SEVERITY_TONE[finding.severity]}>
+                      {finding.severity}
+                    </Badge>
+                    <span className="diagnostic-overview__title">{finding.title}</span>
+                    <span className="diagnostic-overview__meta">
+                      {finding.route ?? 'no route'} · {formatRelative(finding.lastSeen)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
+
       {summary.totalRequests === 0 ? (
         <Card>
           <EmptyState
@@ -131,7 +267,7 @@ export function OverviewPage({
             title="No requests captured yet"
             description={
               <>
-                NextScope is listening on <code>127.0.0.1:{health.dashboardUrl.split(':').pop()}</code>.
+                StackNext is listening on <code>127.0.0.1:{health.dashboardUrl.split(':').pop()}</code>.
                 Make a request to your Next.js app and the timeline will appear here automatically.
               </>
             }
@@ -139,11 +275,11 @@ export function OverviewPage({
               <div className="empty-steps">
                 <div>
                   <span className="empty-steps__number">1</span>
-                  <code>nextscope init</code> configures instrumentation
+                  <code>stacknext init</code> configures instrumentation
                 </div>
                 <div>
                   <span className="empty-steps__number">2</span>
-                  <code>nextscope dev</code> starts Next.js and the collector
+                  <code>stacknext dev</code> starts Next.js and the collector
                 </div>
                 <div>
                   <span className="empty-steps__number">3</span>
@@ -197,7 +333,7 @@ export function OverviewPage({
                 compact
                 icon="server"
                 title="Waiting for an app"
-                description="Start Next.js with the NextScope instrumentation registered. The collector accepts only loopback traffic."
+                description="Start Next.js with the StackNext instrumentation registered. The collector accepts only loopback traffic."
               />
             ) : (
               <div className="connections">

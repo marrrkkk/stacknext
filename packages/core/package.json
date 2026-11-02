@@ -1,20 +1,29 @@
 {
-  "name": "@nextscope/core",
-  "version": "0.1.0",
-  "description": "Core telemetry schema, redaction and bounded storage for NextScope",
+  "name": "@stacknext/core",
+  "version": "0.6.0",
+  "description": "Core telemetry schema, redaction, configuration and bounded storage for StackNext",
   "license": "MIT",
   "type": "module",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./transport": {
       "types": "./dist/transport.d.ts",
-      "import": "./dist/transport.js"
+      "import": "./dist/transport.js",
+      "default": "./dist/transport.js"
+    },
+    "./config-file": {
+      "types": "./dist/config-file.d.ts",
+      "import": "./dist/config-file.js",
+      "default": "./dist/config-file.js"
     },
     "./package.json": "./package.json"
   },
@@ -28,5 +37,26 @@
   },
   "engines": {
     "node": ">=20.9.0"
+  },
+  "author": "StackNext contributors",
+  "homepage": "https://github.com/marrrkkk/stacknext#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marrrkkk/stacknext.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/marrrkkk/stacknext/issues"
+  },
+  "keywords": [
+    "stacknext",
+    "nextjs",
+    "opentelemetry",
+    "observability",
+    "debugging",
+    "local-first"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

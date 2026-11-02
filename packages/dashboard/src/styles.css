@@ -1,4 +1,4 @@
-/* NextScope dashboard — local-first telemetry UI. */
+/* StackNext dashboard — local-first telemetry UI. */
 
 :root {
   --font-sans:
@@ -2349,6 +2349,534 @@ h3 {
 }
 
 /* ---------- Responsive ---------- */
+
+/* ---------- Coverage summary ---------- */
+
+.coverage-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.coverage-summary__statuses {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.coverage-summary__sample {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.coverage-summary__items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.coverage-summary__items li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 4px 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+  font-size: 11.5px;
+}
+
+.coverage-summary__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coverage-summary__evidence {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.coverage-summary__note {
+  font-size: 10.5px;
+}
+
+/* ---------- Diagnostics ---------- */
+
+.diagnostic-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.diagnostic-row {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.diagnostic-row:hover {
+  background: var(--surface-2);
+}
+
+.diagnostic-row__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.diagnostic-row__rule {
+  color: var(--text-faint);
+  font-size: 10.5px;
+}
+
+.diagnostic-row__time {
+  margin-left: auto;
+  font-size: 10.5px;
+}
+
+.diagnostic-row__title {
+  margin-top: 7px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.diagnostic-row__summary {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.diagnostic-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 7px;
+  color: var(--text-faint);
+  font-size: 10.5px;
+}
+
+.diagnostic-overview {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.diagnostic-overview li + li {
+  border-top: 1px solid var(--border);
+}
+
+.diagnostic-overview button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.diagnostic-overview__title {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diagnostic-overview__meta {
+  color: var(--text-faint);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.diagnostic-callout {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in oklab, var(--accent) 28%, var(--border));
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.evidence-block {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.evidence-block:last-child {
+  border-bottom: 0;
+}
+
+.evidence-block__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.evidence-block__top .muted {
+  font-size: 10.5px;
+}
+
+.verification-list,
+.notes-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+/* ---------- Regression testing ---------- */
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.dashboard-note {
+  margin: 14px 0 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.regression-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--text-faint);
+  font-size: 10.5px;
+}
+
+.regression-counts__regressed {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+.regression-scenarios {
+  display: flex;
+  flex-direction: column;
+}
+
+.regression-scenario {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.regression-scenario:last-child {
+  border-bottom: 0;
+}
+
+.regression-scenario__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.regression-scenario__header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.regression-scenario__header p {
+  margin: 3px 0 0;
+  font-size: 10.5px;
+}
+
+.regression-samples {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.regression-sample {
+  border-bottom: 1px solid var(--border);
+}
+
+.regression-sample:last-child {
+  border-bottom: 0;
+}
+
+.regression-sample > summary,
+.regression-trace > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 11.5px;
+}
+
+.regression-sample > summary::-webkit-details-marker,
+.regression-trace > summary::-webkit-details-marker {
+  display: none;
+}
+
+.regression-sample > summary::before,
+.regression-trace > summary::before {
+  content: '▸';
+  color: var(--text-faint);
+  font-size: 10px;
+  transition: transform var(--transition);
+}
+
+.regression-sample[open] > summary::before,
+.regression-trace[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.regression-sample > summary:hover,
+.regression-trace > summary:hover {
+  background: var(--surface-2);
+}
+
+.regression-sample__time {
+  margin-left: auto;
+  font-size: 10.5px;
+}
+
+.regression-sample__body {
+  padding: 4px 12px 12px 30px;
+  background: var(--surface-2);
+}
+
+.regression-trace {
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.regression-trace__body {
+  padding: 4px 10px 12px 28px;
+  border-top: 1px solid var(--border);
+}
+
+.regression-trace__body > p {
+  margin: 8px 0;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.regression-trace__queries h4,
+.regression-scenario__findings h4,
+.regression-scenario__notes h4,
+.regression-reasons h4,
+.regression-metrics h4 {
+  margin: 14px 0 6px;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.regression-scenario__findings,
+.regression-scenario__notes {
+  margin-top: 4px;
+}
+
+.regression-scenario__notes {
+  color: var(--text-faint);
+}
+
+.regression-scenario__sides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.regression-scenario__sides > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: 11.5px;
+}
+
+.regression-scenario__sides strong {
+  font-weight: 600;
+}
+
+.regression-reasons,
+.regression-metrics {
+  margin-top: 10px;
+}
+
+.regression-metrics__all {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.regression-metrics__all > summary {
+  color: var(--text-muted);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.regression-metrics__all .table-scroll {
+  margin-top: 8px;
+}
+
+@media (max-width: 760px) {
+  .regression-scenario__header {
+    flex-direction: column;
+  }
+
+  .regression-scenario__sides {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .regression-sample__body {
+    padding-left: 12px;
+  }
+}
+
+/* ---------- Trace evidence warnings ---------- */
+
+.trace-warnings {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in oklab, var(--warn) 35%, var(--border));
+  border-radius: var(--radius-md);
+  background: var(--warn-soft);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.trace-warnings__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: var(--text);
+  font-weight: 550;
+}
+
+.trace-warnings ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.trace-warnings li + li {
+  margin-top: 3px;
+}
+
+.trace-warnings strong {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.timeline__category {
+  flex: none;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 8.5px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: var(--muted-soft);
+  color: var(--text-faint);
+}
+
+.timeline__category--framework {
+  color: var(--accent);
+}
+
+.timeline__category--app {
+  color: var(--warn);
+}
+
+.timeline__category--database {
+  color: var(--good);
+}
+
+.timeline__verbose {
+  flex: none;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 8.5px;
+  text-transform: uppercase;
+}
+
+.timeline__toggle {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-faint);
+  font-size: 9px;
+  line-height: 14px;
+  cursor: pointer;
+}
+
+.timeline__toggle:hover {
+  color: var(--text);
+}
+
+.timeline__bar--framework {
+  background: var(--accent);
+}
+
+.timeline__bar--app {
+  background: var(--warn);
+}
+
+.timeline__bar--database {
+  background: var(--good);
+}
+
+.timeline__note {
+  margin-top: 8px;
+  font-size: 10px;
+}
+
+.span-detail__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.span-detail__actions {
+  margin-bottom: 10px;
+}
 
 @media (max-width: 1120px) {
   .grid--2-1 {

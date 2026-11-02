@@ -1,5 +1,5 @@
 {
-  "projectName": "nextscope-example",
+  "projectName": "stacknext-example",
   "dashboard": { "port": 4400 },
   "collector": { "maxSpans": 5000, "retentionMs": 900000 },
   "instrumentation": { "verbose": false, "captureFetch": true, "captureErrors": true },

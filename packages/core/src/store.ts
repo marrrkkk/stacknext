@@ -1,14 +1,24 @@
 import { normalizeDatabaseQuery, normalizeError, normalizeSpan } from './normalize.js'
+import {
+  RENDER_SPAN_TYPES,
+  REQUEST_ROOT_SPAN_TYPES,
+  ROUTE_HANDLER_SPAN_TYPES,
+  classifySpanCategory,
+  isStandardNextSpanType,
+  type StackNextSpanCategory,
+} from './framework.js'
+import type { CoverageEvidence } from './coverage.js'
+import type { DiagnosticSnapshot } from './diagnostics.js'
 import type {
   DatabaseFilters,
   DatabaseQueryListItem,
   ErrorFilters,
   ErrorGroup,
   ErrorListItem,
-  NextScopeDatabaseQuery,
-  NextScopeError,
-  NextScopeIngestEnvelope,
-  NextScopeSpan,
+  StackNextDatabaseQuery,
+  StackNextError,
+  StackNextIngestEnvelope,
+  StackNextSpan,
   PageResult,
   RequestFilters,
   RequestStatusClass,
@@ -43,9 +53,9 @@ export interface StoreStats {
 
 interface TraceBucket {
   traceId: string
-  spans: NextScopeSpan[]
-  errors: NextScopeError[]
-  queries: NextScopeDatabaseQuery[]
+  spans: StackNextSpan[]
+  errors: StackNextError[]
+  queries: StackNextDatabaseQuery[]
   request: RequestSummary | null
 }
 
@@ -67,11 +77,11 @@ function includesText(haystack: string | null | undefined, needle: string): bool
   return haystack?.toLowerCase().includes(needle) === true
 }
 
-function byStartAscending(a: NextScopeSpan, b: NextScopeSpan): number {
+function byStartAscending(a: StackNextSpan, b: StackNextSpan): number {
   return a.startTime - b.startTime || a.spanId.localeCompare(b.spanId)
 }
 
-function findRequestRoot(spans: NextScopeSpan[]): NextScopeSpan | undefined {
+function findRequestRoot(spans: StackNextSpan[]): StackNextSpan | undefined {
   return spans
     .filter(
       (span) =>
@@ -88,11 +98,11 @@ export class TelemetryStore {
   readonly retentionMs: number
 
   private readonly now: () => number
-  private readonly spans = new Map<string, NextScopeSpan>()
+  private readonly spans = new Map<string, StackNextSpan>()
   private readonly spanOrder: string[] = []
-  private readonly errors = new Map<string, NextScopeError>()
+  private readonly errors = new Map<string, StackNextError>()
   private readonly errorOrder: string[] = []
-  private readonly queries = new Map<string, NextScopeDatabaseQuery>()
+  private readonly queries = new Map<string, StackNextDatabaseQuery>()
   private readonly queryOrder: string[] = []
 
   private spansReceived = 0
@@ -100,6 +110,7 @@ export class TelemetryStore {
   private databaseQueriesReceived = 0
   private droppedCapacity = 0
   private droppedRetention = 0
+  private revision = 0
 
   constructor(options: TelemetryStoreOptions = {}) {
     this.maxSpans = options.maxSpans ?? 5_000
@@ -109,7 +120,7 @@ export class TelemetryStore {
     this.now = options.now ?? Date.now
   }
 
-  ingest(envelope: NextScopeIngestEnvelope, receivedAt = this.now()): void {
+  ingest(envelope: StackNextIngestEnvelope, receivedAt = this.now()): void {
     this.prune(receivedAt)
     for (const span of envelope.spans) {
       this.insertSpan(normalizeSpan(span, receivedAt))
@@ -123,38 +134,57 @@ export class TelemetryStore {
       this.insertQuery(normalizeDatabaseQuery(query, receivedAt))
       this.databaseQueriesReceived += 1
     }
-    this.enforceCapacity()
+    const removed = this.enforceCapacity()
+    if (
+      removed > 0 ||
+      envelope.spans.length > 0 ||
+      envelope.errors.length > 0 ||
+      envelope.databaseQueries.length > 0
+    ) {
+      this.revision += 1
+    }
   }
 
-  private insertSpan(span: NextScopeSpan): void {
+  private insertSpan(span: StackNextSpan): void {
     const key = `${span.traceId}:${span.spanId}`
     const existing = this.spans.has(key)
+    if (existing) {
+      const index = this.spanOrder.indexOf(key)
+      if (index >= 0) this.spanOrder.splice(index, 1)
+    }
     this.spans.set(key, span)
-    if (!existing) this.spanOrder.push(key)
+    this.spanOrder.push(key)
   }
 
-  private insertError(error: NextScopeError): void {
+  private insertError(error: StackNextError): void {
     if (this.errors.has(error.id)) return
     this.errors.set(error.id, error)
     this.errorOrder.push(error.id)
   }
 
-  private insertQuery(query: NextScopeDatabaseQuery): void {
+  private insertQuery(query: StackNextDatabaseQuery): void {
     if (this.queries.has(query.id)) return
     this.queries.set(query.id, query)
     this.queryOrder.push(query.id)
   }
 
+  /** Monotonic counter that changes whenever stored telemetry changes. */
+  get storeRevision(): number {
+    return this.revision
+  }
+
   prune(now = this.now()): void {
     const cutoff = now - this.retentionMs
-    this.trimExpired(this.spanOrder, this.spans, (span) => span.receivedAt, cutoff)
-    this.trimExpired(this.errorOrder, this.errors, (error) => error.receivedAt, cutoff)
-    this.trimExpired(
+    let removed = 0
+    removed += this.trimExpired(this.spanOrder, this.spans, (span) => span.receivedAt, cutoff)
+    removed += this.trimExpired(this.errorOrder, this.errors, (error) => error.receivedAt, cutoff)
+    removed += this.trimExpired(
       this.queryOrder,
       this.queries,
       (query) => query.receivedAt,
       cutoff,
     )
+    if (removed > 0) this.revision += 1
   }
 
   private trimExpired<T>(
@@ -162,7 +192,8 @@ export class TelemetryStore {
     map: Map<string, T>,
     receivedAt: (value: T) => number,
     cutoff: number,
-  ): void {
+  ): number {
+    let removed = 0
     while (order.length > 0) {
       const key = order[0]
       if (key === undefined) break
@@ -175,15 +206,19 @@ export class TelemetryStore {
       order.shift()
       map.delete(key)
       this.droppedRetention += 1
+      removed += 1
     }
+    return removed
   }
 
-  private enforceCapacity(): void {
+  private enforceCapacity(): number {
+    let removed = 0
     while (this.spans.size > this.maxSpans && this.spanOrder.length > 0) {
       const key = this.spanOrder.shift()
       if (key !== undefined) {
         this.spans.delete(key)
         this.droppedCapacity += 1
+        removed += 1
       }
     }
     while (this.errors.size > this.maxErrors && this.errorOrder.length > 0) {
@@ -191,6 +226,7 @@ export class TelemetryStore {
       if (key !== undefined) {
         this.errors.delete(key)
         this.droppedCapacity += 1
+        removed += 1
       }
     }
     while (
@@ -201,8 +237,10 @@ export class TelemetryStore {
       if (key !== undefined) {
         this.queries.delete(key)
         this.droppedCapacity += 1
+        removed += 1
       }
     }
+    return removed
   }
 
   getStats(): StoreStats {
@@ -235,8 +273,8 @@ export class TelemetryStore {
     return this.queries.size
   }
 
-  private spansByTrace(): Map<string, NextScopeSpan[]> {
-    const map = new Map<string, NextScopeSpan[]>()
+  private spansByTrace(): Map<string, StackNextSpan[]> {
+    const map = new Map<string, StackNextSpan[]>()
     for (const span of this.spans.values()) {
       const list = map.get(span.traceId)
       if (list) list.push(span)
@@ -246,8 +284,8 @@ export class TelemetryStore {
     return map
   }
 
-  private errorsByTrace(): Map<string, NextScopeError[]> {
-    const map = new Map<string, NextScopeError[]>()
+  private errorsByTrace(): Map<string, StackNextError[]> {
+    const map = new Map<string, StackNextError[]>()
     for (const error of this.errors.values()) {
       if (!error.traceId) continue
       const list = map.get(error.traceId)
@@ -257,8 +295,8 @@ export class TelemetryStore {
     return map
   }
 
-  private queriesByTrace(): Map<string, NextScopeDatabaseQuery[]> {
-    const map = new Map<string, NextScopeDatabaseQuery[]>()
+  private queriesByTrace(): Map<string, StackNextDatabaseQuery[]> {
+    const map = new Map<string, StackNextDatabaseQuery[]>()
     for (const query of this.queries.values()) {
       if (!query.traceId) continue
       const list = map.get(query.traceId)
@@ -270,9 +308,9 @@ export class TelemetryStore {
 
   private buildRequest(
     traceId: string,
-    spans: NextScopeSpan[],
-    errors: NextScopeError[],
-    queries: NextScopeDatabaseQuery[],
+    spans: StackNextSpan[],
+    errors: StackNextError[],
+    queries: StackNextDatabaseQuery[],
     slowRequestMs: number,
   ): RequestSummary | null {
     const root = findRequestRoot(spans)
@@ -311,9 +349,9 @@ export class TelemetryStore {
   }
 
   private resolveErrorTrace(
-    error: NextScopeError,
+    error: StackNextError,
     requests: Map<string, RequestSummary>,
-    spansByTrace: Map<string, NextScopeSpan[]>,
+    spansByTrace: Map<string, StackNextSpan[]>,
   ): string | null {
     if (error.traceId) return error.traceId
     const target = error.requestPath ?? error.route
@@ -521,6 +559,28 @@ export class TelemetryStore {
     ]
     const startTime = spans[0]?.startTime ?? errors[0]?.timestamp ?? 0
     const endTime = spans.reduce((max, span) => Math.max(max, span.endTime), startTime)
+    const warnings: TraceDetail['warnings'] = []
+    for (const parentSpanId of missingParentSpanIds) {
+      warnings.push({
+        code: 'missing-parent',
+        message: `Parent span ${parentSpanId} is not in this trace. The span may have been dropped, exported late, or originated in another process.`,
+        spanId: spans.find((span) => span.parentSpanId === parentSpanId)?.spanId,
+      })
+    }
+    if (queries.some((query) => query.durationMs === null)) {
+      warnings.push({
+        code: 'unmeasured-query-duration',
+        message:
+          'One or more database queries have no measured duration. Null durations are never treated as zero.',
+      })
+    }
+    if (request === null && spans.length > 0) {
+      warnings.push({
+        code: 'no-request-root',
+        message:
+          'No request-root span was found. Span durations and overlaps do not describe total request time.',
+      })
+    }
     return {
       traceId,
       request,
@@ -531,6 +591,7 @@ export class TelemetryStore {
       endTime,
       durationMs: Math.max(0, endTime - startTime),
       missingParentSpanIds,
+      warnings,
     }
   }
 
@@ -724,10 +785,200 @@ export class TelemetryStore {
     return result.groups
   }
 
+  /**
+   * Aggregates evidence for instrumentation coverage. This deliberately reads
+   * only the current in-memory retention window and never invents features.
+   */
+  getCoverageEvidence(): CoverageEvidence {
+    this.prune()
+    const { requests } = this.traceIndex(500)
+    const spanTypes = Object.create(null) as CoverageEvidence['spanTypes']
+    const categoryCounts: Record<StackNextSpanCategory, number> = {
+      framework: 0,
+      app: 0,
+      database: 0,
+      fetch: 0,
+    }
+    const querySources: CoverageEvidence['querySources'] = {
+      drizzle: 0,
+      prisma: 0,
+      manual: 0,
+    }
+    const querySourceLastSeen: CoverageEvidence['querySourceLastSeen'] = {
+      drizzle: null,
+      prisma: null,
+      manual: null,
+    }
+    const verboseTypes = new Set<string>()
+    let firstEventTime: number | null = null
+    let lastEventTime: number | null = null
+    let spanCount = 0
+    let requestRootSpans = 0
+    let renderSpans = 0
+    let routeHandlerSpans = 0
+    let fetchSpans = 0
+    let databaseSpans = 0
+    let customSpans = 0
+    let actionSpans = 0
+    let fetchLastSeen: number | null = null
+    let customLastSeen: number | null = null
+    let actionLastSeen: number | null = null
+
+    const trackTime = (time: number): void => {
+      if (firstEventTime === null || time < firstEventTime) firstEventTime = time
+      if (lastEventTime === null || time > lastEventTime) lastEventTime = time
+    }
+
+    for (const span of this.spans.values()) {
+      spanCount += 1
+      trackTime(span.startTime)
+      const type = span.nextSpanType
+      if (type !== undefined && type !== '') {
+        const existing = Object.hasOwn(spanTypes, type) ? spanTypes[type] : undefined
+        if (existing) {
+          existing.count += 1
+          existing.lastSeen =
+            existing.lastSeen === null
+              ? span.startTime
+              : Math.max(existing.lastSeen, span.startTime)
+        } else {
+          spanTypes[type] = { count: 1, lastSeen: span.startTime }
+        }
+        if (!isStandardNextSpanType(type)) verboseTypes.add(type)
+        if (REQUEST_ROOT_SPAN_TYPES.has(type)) requestRootSpans += 1
+        if (RENDER_SPAN_TYPES.has(type)) renderSpans += 1
+        if (ROUTE_HANDLER_SPAN_TYPES.has(type)) routeHandlerSpans += 1
+      }
+      const category = classifySpanCategory(span)
+      categoryCounts[category] += 1
+      if (category === 'fetch') {
+        fetchSpans += 1
+        fetchLastSeen =
+          fetchLastSeen === null
+            ? span.startTime
+            : Math.max(fetchLastSeen, span.startTime)
+      }
+      if (category === 'database') databaseSpans += 1
+      const manualKind = span.attributes['stacknext.span.kind']
+      const isAction = manualKind === 'action'
+      const isCustom =
+        manualKind === 'custom' || span.attributes['stacknext.manual'] === true
+      if (isAction) {
+        actionSpans += 1
+        actionLastSeen =
+          actionLastSeen === null
+            ? span.startTime
+            : Math.max(actionLastSeen, span.startTime)
+      } else if (isCustom) {
+        customSpans += 1
+        customLastSeen =
+          customLastSeen === null
+            ? span.startTime
+            : Math.max(customLastSeen, span.startTime)
+      }
+    }
+
+    let errorLastSeen: number | null = null
+    for (const error of this.errors.values()) {
+      trackTime(error.timestamp)
+      errorLastSeen =
+        errorLastSeen === null
+          ? error.timestamp
+          : Math.max(errorLastSeen, error.timestamp)
+    }
+
+    let queryLastSeen: number | null = null
+    for (const query of this.queries.values()) {
+      trackTime(query.timestamp)
+      querySources[query.source] += 1
+      const previous = querySourceLastSeen[query.source]
+      querySourceLastSeen[query.source] =
+        previous === null ? query.timestamp : Math.max(previous, query.timestamp)
+      queryLastSeen =
+        queryLastSeen === null
+          ? query.timestamp
+          : Math.max(queryLastSeen, query.timestamp)
+    }
+
+    return {
+      sample: {
+        firstEventTime,
+        lastEventTime,
+        spanCount,
+        errorCount: this.errors.size,
+        databaseQueryCount: this.queries.size,
+        requestCount: requests.size,
+        retentionMs: this.retentionMs,
+        errorLastSeen,
+        queryLastSeen,
+      },
+      spanTypes,
+      categoryCounts,
+      requestRootSpans,
+      renderSpans,
+      routeHandlerSpans,
+      fetchSpans,
+      databaseSpans,
+      customSpans,
+      actionSpans,
+      fetchLastSeen,
+      customLastSeen,
+      actionLastSeen,
+      verboseSpanTypes: [...verboseTypes].sort(),
+      querySources,
+      querySourceLastSeen,
+    }
+  }
+
+  /**
+   * Returns a consistent, read-only view for the diagnostics engine. The
+   * revision lets the collector cache reports without recomputing them on
+   * every dashboard poll.
+   */
+  getDiagnosticSnapshot(slowRequestMs = 500): DiagnosticSnapshot {
+    this.prune()
+    const { requests, buckets } = this.traceIndex(slowRequestMs)
+    const spansByTrace = new Map(
+      [...buckets.entries()].map(([traceId, bucket]) => [traceId, bucket.spans]),
+    )
+    const errors: ErrorListItem[] = []
+    for (const error of this.errors.values()) {
+      errors.push({
+        ...error,
+        resolvedTraceId: this.resolveErrorTrace(error, requests, spansByTrace),
+      })
+    }
+    const queries: DatabaseQueryListItem[] = [...this.queries.values()].map((query) => {
+      const resolvedTraceId = query.traceId ?? null
+      const request = resolvedTraceId ? requests.get(resolvedTraceId) : undefined
+      return {
+        ...query,
+        resolvedTraceId,
+        route: request?.route ?? null,
+      }
+    })
+    const spans = [...this.spans.values()].sort(byStartAscending)
+    const eventTimes = [
+      ...spans.map((span) => span.startTime),
+      ...errors.map((error) => error.timestamp),
+      ...queries.map((query) => query.timestamp),
+    ]
+    return {
+      revision: this.revision,
+      spans,
+      errors: errors.sort((a, b) => a.timestamp - b.timestamp),
+      databaseQueries: queries.sort((a, b) => a.timestamp - b.timestamp),
+      requests: [...requests.values()].sort((a, b) => a.timestamp - b.timestamp),
+      firstEventTime: eventTimes.length > 0 ? Math.min(...eventTimes) : null,
+      lastEventTime: eventTimes.length > 0 ? Math.max(...eventTimes) : null,
+      retentionMs: this.retentionMs,
+    }
+  }
+
   exportAll(): {
-    spans: NextScopeSpan[]
-    errors: NextScopeError[]
-    databaseQueries: NextScopeDatabaseQuery[]
+    spans: StackNextSpan[]
+    errors: StackNextError[]
+    databaseQueries: StackNextDatabaseQuery[]
     stats: StoreStats
   } {
     this.prune()
@@ -740,11 +991,14 @@ export class TelemetryStore {
   }
 
   clear(): void {
+    const hadData =
+      this.spans.size > 0 || this.errors.size > 0 || this.queries.size > 0
     this.spans.clear()
     this.spanOrder.length = 0
     this.errors.clear()
     this.errorOrder.length = 0
     this.queries.clear()
     this.queryOrder.length = 0
+    if (hadData) this.revision += 1
   }
 }

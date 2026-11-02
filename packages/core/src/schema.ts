@@ -13,7 +13,11 @@ const idSchema = (length: number) =>
 export const traceIdSchema = idSchema(32)
 export const spanIdSchema = idSchema(16)
 
-const timestampSchema = z.number().finite().nonnegative()
+const MAX_TIMESTAMP = 8_640_000_000_000_000
+const MAX_DURATION_MS = 86_400_000
+
+const timestampSchema = z.number().finite().nonnegative().max(MAX_TIMESTAMP)
+const durationSchema = z.number().finite().nonnegative().max(MAX_DURATION_MS)
 const longTextSchema = (max: number) => z.string().max(max)
 const jsonRecordSchema = z.record(z.string(), z.unknown())
 
@@ -34,7 +38,7 @@ export const ingestSpanSchema = z
     kind: z.enum(SPAN_KINDS),
     startTime: timestampSchema,
     endTime: timestampSchema,
-    durationMs: z.number().finite().nonnegative(),
+    durationMs: durationSchema,
     status: z.enum(SPAN_STATUSES),
     statusMessage: longTextSchema(8_000).optional(),
     serviceName: z.string().min(1).max(200),
@@ -42,6 +46,11 @@ export const ingestSpanSchema = z
     method: z.string().max(32).optional(),
     statusCode: z.number().int().min(100).max(999).optional(),
     nextSpanType: z.string().max(200).optional(),
+    nextSpanName: z.string().max(512).optional(),
+    nextRoute: z.string().max(2_000).optional(),
+    nextPage: z.string().max(2_000).optional(),
+    nextSegment: z.string().max(2_000).optional(),
+    nextRsc: z.boolean().optional(),
     attributes: jsonRecordSchema,
     events: z.array(spanEventSchema).max(100),
     resource: jsonRecordSchema,
@@ -74,7 +83,7 @@ export const ingestDatabaseQuerySchema = z
     traceId: traceIdSchema.optional(),
     spanId: spanIdSchema.optional(),
     timestamp: timestampSchema,
-    durationMs: z.number().finite().nonnegative().nullable(),
+    durationMs: durationSchema.nullable(),
     sql: z.string().min(1).max(20_000),
     databaseSystem: z.string().min(1).max(100),
     operation: z.string().max(200).optional(),
@@ -104,6 +113,7 @@ export const instanceSchema = z
     serviceName: z.string().min(1).max(200),
     projectName: z.string().max(200).optional(),
     nextVersion: z.string().max(100).optional(),
+    runtimeVersion: z.string().max(100).optional(),
     sdkVersion: z.string().min(1).max(100),
     runtime: z.literal('nodejs'),
   })

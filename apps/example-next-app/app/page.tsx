@@ -20,7 +20,7 @@ export default function HomePage(): React.ReactElement {
           <h1>Small app, real telemetry.</h1>
           <p className="lede">
             Tasklight is a tiny task tracker backed by Drizzle and SQLite. Every page render,
-            query, slow request and failure on this app is available in your local NextScope
+            query, slow request and failure on this app is available in your local StackNext
             dashboard.
           </p>
           <div className="button-row">
@@ -32,6 +32,21 @@ export default function HomePage(): React.ReactElement {
             </Link>
             <Link className="button button--danger" href="/api/error?token=demo-url-secret">
               Trigger an error
+            </Link>
+            <Link className="button" href="/actions-demo">
+              Server Actions demo
+            </Link>
+            <Link className="button" href="/api/custom-work">
+              Custom span demo
+            </Link>
+            <Link className="button" href="/api/n-plus-one">
+              N+1 query demo
+            </Link>
+            <Link className="button" href="/api/slow-db">
+              Slow DB span
+            </Link>
+            <Link className="button" href="/api/repeated-fetch">
+              Repeated fetch demo
             </Link>
           </div>
         </div>
@@ -117,7 +132,10 @@ export default function HomePage(): React.ReactElement {
             <li>Visit a project, hit a JSON endpoint or run a slow request.</li>
             <li>Watch traces, database queries and errors fill in live.</li>
             <li>
-              Ask an MCP client for <code>find_slow_requests</code>.
+              Open <strong>Diagnostics</strong> or run <code>stacknext diagnose</code>.
+            </li>
+            <li>
+              Ask an MCP client for <code>stacknext_list_diagnostics</code>.
             </li>
           </ol>
           <p className="hint">

@@ -6,13 +6,17 @@ const root = fileURLToPath(new URL('.', import.meta.url))
 export default defineConfig({
   resolve: {
     alias: {
-      '@nextscope/core/transport': `${root}packages/core/src/transport.ts`,
-      '@nextscope/core': `${root}packages/core/src/index.ts`,
-      '@nextscope/next': `${root}packages/next/src/index.ts`,
-      '@nextscope/mcp': `${root}packages/mcp/src/index.ts`,
-      '@nextscope/drizzle': `${root}packages/drizzle/src/index.ts`,
-      '@nextscope/prisma': `${root}packages/prisma/src/index.ts`,
-      nextscope: `${root}packages/cli/src/index.ts`,
+      '@stacknext/core/transport': `${root}packages/core/src/transport.ts`,
+      '@stacknext/core/config-file': `${root}packages/core/src/config-file.ts`,
+      '@stacknext/core': `${root}packages/core/src/index.ts`,
+      '@stacknext/diagnostics': `${root}packages/diagnostics/src/index.ts`,
+      '@stacknext/regression': `${root}packages/regression/src/index.ts`,
+      '@stacknext/playwright': `${root}packages/playwright/src/index.ts`,
+      '@stacknext/next': `${root}packages/next/src/index.ts`,
+      '@stacknext/mcp': `${root}packages/mcp/src/index.ts`,
+      '@stacknext/drizzle': `${root}packages/drizzle/src/index.ts`,
+      '@stacknext/prisma': `${root}packages/prisma/src/index.ts`,
+      stacknext: `${root}packages/cli/src/index.ts`,
     },
   },
   test: {

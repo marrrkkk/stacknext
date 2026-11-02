@@ -3,7 +3,7 @@ import { chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { z } from 'zod'
 
-export const RUNTIME_DIR_NAME = '.nextscope'
+export const RUNTIME_DIR_NAME = '.stacknext'
 export const RUNTIME_FILE_NAME = 'run.json'
 
 export const runtimeStateSchema = z
@@ -29,7 +29,7 @@ export function runtimeDir(projectDir: string): string {
 }
 
 export function runtimeStatePath(projectDir: string): string {
-  const override = process.env.NEXTSCOPE_RUNTIME_FILE
+  const override = process.env.STACKNEXT_RUNTIME_FILE
   if (override) return path.isAbsolute(override) ? override : path.resolve(projectDir, override)
   return path.join(runtimeDir(projectDir), RUNTIME_FILE_NAME)
 }
@@ -51,12 +51,12 @@ export async function readRuntimeState(projectDir: string): Promise<RuntimeState
   try {
     parsed = JSON.parse(contents)
   } catch {
-    throw new Error(`Cannot parse ${file}. Remove it and restart "nextscope dev".`)
+    throw new Error(`Cannot parse ${file}. Remove it and restart "stacknext dev".`)
   }
   const result = runtimeStateSchema.safeParse(parsed)
   if (!result.success) {
     throw new Error(
-      `Invalid runtime state in ${file}. Remove it and restart "nextscope dev".`,
+      `Invalid runtime state in ${file}. Remove it and restart "stacknext dev".`,
     )
   }
   return result.data

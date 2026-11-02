@@ -1,7 +1,7 @@
 import { context, trace } from '@opentelemetry/api'
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import type { NextScopeDatabaseQueryInput } from '@nextscope/core'
+import type { StackNextDatabaseQueryInput } from '@stacknext/core'
 import {
   instrumentPrismaClient,
   type PrismaQueryEventLike,
@@ -43,7 +43,7 @@ afterAll(async () => {
 
 describe('instrumentPrismaClient', () => {
   it('captures duration and SQL without params', () => {
-    const queries: NextScopeDatabaseQueryInput[] = []
+    const queries: StackNextDatabaseQueryInput[] = []
     const client = new FakePrismaClient()
     instrumentPrismaClient(client, {
       databaseSystem: 'sqlite',
@@ -64,10 +64,10 @@ describe('instrumentPrismaClient', () => {
   })
 
   it('is idempotent for the same client', () => {
-    const queries: NextScopeDatabaseQueryInput[] = []
+    const queries: StackNextDatabaseQueryInput[] = []
     const client = new FakePrismaClient()
     const options = {
-      transport: { enqueueDatabaseQuery: (query: NextScopeDatabaseQueryInput) => queries.push(query) },
+      transport: { enqueueDatabaseQuery: (query: StackNextDatabaseQueryInput) => queries.push(query) },
     }
     instrumentPrismaClient(client, options)
     instrumentPrismaClient(client, options)
@@ -76,7 +76,7 @@ describe('instrumentPrismaClient', () => {
   })
 
   it('correlates queries with the active trace', () => {
-    const queries: NextScopeDatabaseQueryInput[] = []
+    const queries: StackNextDatabaseQueryInput[] = []
     const client = new FakePrismaClient()
     instrumentPrismaClient(client, {
       transport: { enqueueDatabaseQuery: (query) => queries.push(query) },
@@ -92,7 +92,7 @@ describe('instrumentPrismaClient', () => {
   })
 
   it('stops recording after cleanup', () => {
-    const queries: NextScopeDatabaseQueryInput[] = []
+    const queries: StackNextDatabaseQueryInput[] = []
     const client = new FakePrismaClient()
     const cleanup = instrumentPrismaClient(client, {
       transport: { enqueueDatabaseQuery: (query) => queries.push(query) },

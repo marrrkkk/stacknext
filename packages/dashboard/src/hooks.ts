@@ -136,7 +136,7 @@ export type Theme = 'dark' | 'light' | 'system'
 
 export function useTheme(): { theme: Theme; resolved: 'dark' | 'light'; setTheme: (theme: Theme) => void } {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const stored = localStorage.getItem('nextscope-theme')
+    const stored = localStorage.getItem('stacknext-theme')
     return stored === 'dark' || stored === 'light' || stored === 'system' ? stored : 'system'
   })
   const [systemDark, setSystemDark] = useState(() =>
@@ -154,7 +154,7 @@ export function useTheme(): { theme: Theme; resolved: 'dark' | 'light'; setTheme
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolved
-    localStorage.setItem('nextscope-theme', theme)
+    localStorage.setItem('stacknext-theme', theme)
   }, [theme, resolved])
 
   return {

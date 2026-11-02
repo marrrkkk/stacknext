@@ -6,9 +6,9 @@ import {
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import {
-  getNextScopeTransport,
+  getStackNextTransport,
   resetGlobalTransportForTests,
-} from '@nextscope/core/transport'
+} from '@stacknext/core/transport'
 import { onRequestError, requestErrorToInput } from '../src/error.js'
 import { startIngestSink, type IngestSink } from './sink.js'
 
@@ -18,11 +18,11 @@ let sink: IngestSink | undefined
 let provider: NodeTracerProvider
 
 function clearEnv(): void {
-  delete process.env.NEXTSCOPE_COLLECTOR_URL
-  delete process.env.NEXTSCOPE_TOKEN
-  delete process.env.NEXTSCOPE_PROJECT_NAME
+  delete process.env.STACKNEXT_COLLECTOR_URL
+  delete process.env.STACKNEXT_TOKEN
+  delete process.env.STACKNEXT_PROJECT_NAME
   delete process.env.NEXT_RUNTIME
-  delete process.env.NEXTSCOPE_CAPTURE_ERRORS
+  delete process.env.STACKNEXT_CAPTURE_ERRORS
 }
 
 beforeAll(() => {
@@ -42,7 +42,7 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
-  const transport = getNextScopeTransport()
+  const transport = getStackNextTransport()
   if (transport) await transport.shutdown(250)
   resetGlobalTransportForTests()
   clearEnv()
@@ -122,9 +122,9 @@ describe('onRequestError', () => {
 
   it('does not capture errors when captureErrors is disabled', async () => {
     sink = await startIngestSink()
-    process.env.NEXTSCOPE_COLLECTOR_URL = sink.url
-    process.env.NEXTSCOPE_TOKEN = AUTH_TOKEN
-    process.env.NEXTSCOPE_CAPTURE_ERRORS = '0'
+    process.env.STACKNEXT_COLLECTOR_URL = sink.url
+    process.env.STACKNEXT_TOKEN = AUTH_TOKEN
+    process.env.STACKNEXT_CAPTURE_ERRORS = '0'
 
     onRequestError(new Error('ignored'), { path: '/', method: 'GET' }, {})
     await new Promise((resolve) => setTimeout(resolve, 500))
@@ -134,9 +134,9 @@ describe('onRequestError', () => {
 
   it('links the error to the active trace over the real ingest transport', async () => {
     sink = await startIngestSink()
-    process.env.NEXTSCOPE_COLLECTOR_URL = sink.url
-    process.env.NEXTSCOPE_TOKEN = AUTH_TOKEN
-    process.env.NEXTSCOPE_PROJECT_NAME = 'demo-app'
+    process.env.STACKNEXT_COLLECTOR_URL = sink.url
+    process.env.STACKNEXT_TOKEN = AUTH_TOKEN
+    process.env.STACKNEXT_PROJECT_NAME = 'demo-app'
 
     const spanContext = {
       traceId: 'a'.repeat(32),

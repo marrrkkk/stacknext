@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@stacknext/regression": ["../regression/src/index.ts"],
+      "@stacknext/core": ["../core/src/index.ts"],
+      "@stacknext/diagnostics": ["../diagnostics/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

@@ -6,30 +6,71 @@ import { randomBytes, createHash, timingSafeEqual } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import {
+  DIAGNOSTIC_CATEGORIES,
+  DIAGNOSTIC_RULE_IDS,
+  DIAGNOSTIC_SEVERITIES,
+  DIAGNOSTIC_STATUSES,
   TelemetryStore,
+  computeCoverage,
+  diagnosticReference,
   ingestEnvelopeSchema,
+  nextOtelVerboseStatus,
   type ApiErrorResponse,
   type ConnectionInfo,
+  type CoverageReport,
+  type DiagnosticCategory,
+  type DiagnosticFilters,
+  type DiagnosticReport,
+  type DiagnosticRuleId,
+  type DiagnosticSeverity,
+  type DiagnosticSnapshot,
+  type DiagnosticStatus,
   type ErrorListResponse,
   type ErrorDetailResponse,
   type ExportResponse,
   type HealthResponse,
-  type NextScopeConfig,
-  type NextScopeIngestEnvelope,
-  type NextScopeInstance,
+  type NextOtelVerboseStatus,
+  type StackNextConfig,
+  type StackNextIngestEnvelope,
+  type StackNextInstance,
   type OverviewResponse,
   type PageResult,
   type RequestFilters,
   type DatabaseFilters,
   type ErrorFilters,
   type DatabaseQueryListItem,
+  type TraceDetail,
   type TraceListResult,
-  type NextScopeExporterDiagnostics,
-} from '@nextscope/core'
+  type StackNextExporterDiagnostics,
+} from '@stacknext/core'
+import {
+  diagnosticOverview as buildDiagnosticOverview,
+  generateDiagnosticReport,
+  getDiagnosticDetail,
+  listDiagnosticFindings,
+} from '@stacknext/diagnostics'
+import {
+  completeRunRequestSchema,
+  createRunRequestSchema,
+  listAllBaselines,
+  listAllComparisons,
+  listAllRuns,
+  loadBaseline,
+  loadComparison,
+  loadRun,
+  RegressionStorageError,
+  submitSampleRequestSchema,
+  type BaselineSummary,
+  type ComparisonSummaryItem,
+  type RunSummary,
+  type StoredRecords,
+} from '@stacknext/regression'
+import { TestRunRegistry } from './test-runs.js'
+import { CLI_VERSION } from '../version.js'
 
-const VERSION = '0.1.0'
+const VERSION = CLI_VERSION
 const MAX_BODY_BYTES = 2 * 1024 * 1024
-const SESSION_COOKIE = 'nextscope_session'
+const SESSION_COOKIE = 'stacknext_session'
 const SESSION_TTL_MS = 24 * 60 * 60 * 1_000
 const CONNECTION_STALE_MS = 20_000
 const CONNECTION_RETENTION_MS = 10 * 60 * 1_000
@@ -41,13 +82,17 @@ export interface StartCollectorOptions {
   port: number
   token: string
   projectName: string
-  config: NextScopeConfig
+  config: StackNextConfig
   dashboardDir: string | null
   version?: string
   host?: string
   log?: (message: string) => void
   autoPort?: boolean
   sseHeartbeatMs?: number
+  /** Project whose saved runs, baselines and comparisons are served read-only. */
+  projectDir?: string
+  /** Overrides environment/config inference, mainly for tests and `stacknext dev`. */
+  nextOtelVerbose?: NextOtelVerboseStatus
 }
 
 export interface CollectorHandle {
@@ -245,6 +290,57 @@ function errorFiltersFromSearch(searchParams: URLSearchParams): ErrorFilters {
   }
 }
 
+function oneOf<T extends string>(
+  value: string | null,
+  allowed: readonly T[],
+): T | undefined {
+  if (!value) return undefined
+  return allowed.includes(value as T) ? (value as T) : undefined
+}
+
+function diagnosticFiltersFromSearch(searchParams: URLSearchParams): {
+  filters: DiagnosticFilters
+  error?: string
+} {
+  const categoryValue = searchParams.get('category')
+  const severityValue = searchParams.get('severity')
+  const statusValue = searchParams.get('status')
+  const ruleValue = searchParams.get('ruleId')
+  const category = oneOf<DiagnosticCategory>(categoryValue, DIAGNOSTIC_CATEGORIES)
+  const severity = oneOf<DiagnosticSeverity>(severityValue, DIAGNOSTIC_SEVERITIES)
+  const status = oneOf<DiagnosticStatus>(statusValue, DIAGNOSTIC_STATUSES)
+  const ruleId = oneOf<DiagnosticRuleId>(ruleValue, DIAGNOSTIC_RULE_IDS)
+  if (categoryValue && !category) return { filters: {}, error: 'Invalid diagnostic category' }
+  if (severityValue && !severity) return { filters: {}, error: 'Invalid diagnostic severity' }
+  if (statusValue && !status) return { filters: {}, error: 'Invalid diagnostic status' }
+  if (ruleValue && !ruleId) return { filters: {}, error: 'Invalid diagnostic rule id' }
+  return {
+    filters: {
+      ...(queryNumber(searchParams.get('limit')) !== undefined
+        ? { limit: queryNumber(searchParams.get('limit')) }
+        : {}),
+      ...(queryNumber(searchParams.get('offset')) !== undefined
+        ? { offset: queryNumber(searchParams.get('offset')) }
+        : {}),
+      ...(category ? { category } : {}),
+      ...(severity ? { severity } : {}),
+      ...(status ? { status } : {}),
+      ...(ruleId ? { ruleId } : {}),
+      ...(searchParams.get('route') ? { route: searchParams.get('route') ?? undefined } : {}),
+      ...(searchParams.get('traceId')
+        ? { traceId: searchParams.get('traceId') ?? undefined }
+        : {}),
+      ...(searchParams.get('q') ? { q: searchParams.get('q') ?? undefined } : {}),
+      ...(queryNumber(searchParams.get('since')) !== undefined
+        ? { since: queryNumber(searchParams.get('since')) }
+        : {}),
+      ...(queryNumber(searchParams.get('until')) !== undefined
+        ? { until: queryNumber(searchParams.get('until')) }
+        : {}),
+    },
+  }
+}
+
 async function readBody(
   request: IncomingMessage,
   limit: number,
@@ -300,12 +396,12 @@ function contentTypeFor(file: string): string {
 
 export async function resolveDashboardDir(): Promise<string> {
   const candidates: string[] = []
-  if (process.env.NEXTSCOPE_DASHBOARD_DIR) {
-    candidates.push(path.resolve(process.env.NEXTSCOPE_DASHBOARD_DIR))
+  if (process.env.STACKNEXT_DASHBOARD_DIR) {
+    candidates.push(path.resolve(process.env.STACKNEXT_DASHBOARD_DIR))
   }
   try {
     const require = createRequire(import.meta.url)
-    const packageJsonPath = require.resolve('@nextscope/dashboard/package.json')
+    const packageJsonPath = require.resolve('@stacknext/dashboard/package.json')
     candidates.push(path.join(path.dirname(packageJsonPath), 'dist'))
   } catch {
     // Workspace fallback below.
@@ -323,7 +419,7 @@ export async function resolveDashboardDir(): Promise<string> {
     }
   }
   throw new Error(
-    'Dashboard build not found. Run "pnpm build" (or "pnpm --filter @nextscope/dashboard build") before starting NextScope.',
+    'Dashboard build not found. Run "pnpm build" (or "pnpm --filter @stacknext/dashboard build") before starting StackNext.',
   )
 }
 
@@ -348,7 +444,7 @@ function listen(server: Server, port: number, host: string): Promise<number> {
 export async function startCollector(options: StartCollectorOptions): Promise<CollectorHandle> {
   const host = options.host ?? '127.0.0.1'
   if (host !== '127.0.0.1' && host !== 'localhost') {
-    throw new Error('NextScope collector may only bind to a loopback address')
+    throw new Error('StackNext collector may only bind to a loopback address')
   }
   if (options.token.length < 16) {
     throw new Error('Collector token must be at least 16 characters')
@@ -358,6 +454,12 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     maxSpans: options.config.collector.maxSpans,
     retentionMs: options.config.collector.retentionMs,
   })
+  const verboseStatus =
+    options.nextOtelVerbose ??
+    nextOtelVerboseStatus(
+      options.config.instrumentation.verbose,
+      process.env.NEXT_OTEL_VERBOSE,
+    )
   const startedAt = Date.now()
   const sessions = new Map<string, number>()
   const connections = new Map<string, ConnectionRecord>()
@@ -370,6 +472,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
   let sequence = 0
   let port = options.port
   let dashboardUrl = `http://${host}:${port}`
+  let diagnosticCache: { revision: number; report: DiagnosticReport } | null = null
 
   const getConnections = (now: number): ConnectionInfo[] => {
     const output: ConnectionInfo[] = []
@@ -393,7 +496,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     const connectionList = getConnections(now)
     const diagnostics = connectionList
       .map((connection) => connection.diagnostics)
-      .filter((entry): entry is NextScopeExporterDiagnostics => entry !== undefined)
+      .filter((entry): entry is StackNextExporterDiagnostics => entry !== undefined)
     const lastError =
       diagnostics
         .map((entry) => entry.lastError)
@@ -402,7 +505,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
         .at(-1) ?? null
     return {
       status: 'ok',
-      name: 'nextscope',
+      name: 'stacknext',
       version: options.version ?? VERSION,
       projectName: options.projectName,
       dashboardUrl,
@@ -411,6 +514,9 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
       time: now,
       connected: connectionList.some((connection) => connection.connected),
       connections: connectionList,
+      instrumentation: {
+        nextOtelVerbose: verboseStatus,
+      },
       counts: {
         requests: summary.totalRequests,
         failedRequests: summary.failedRequests,
@@ -433,9 +539,75 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     }
   }
 
+  const getCoverage = (): CoverageReport => {
+    const now = Date.now()
+    return computeCoverage({
+      projectName: options.projectName,
+      collectorVersion: options.version ?? VERSION,
+      now,
+      config: options.config,
+      connections: getConnections(now),
+      verbose: verboseStatus,
+      evidence: store.getCoverageEvidence(),
+    })
+  }
+
+  const getDiagnosticState = (): {
+    report: DiagnosticReport
+    snapshot: DiagnosticSnapshot
+  } => {
+    const now = Date.now()
+    const snapshot = store.getDiagnosticSnapshot(options.config.slowRequestMs)
+    const connectionList = getConnections(now)
+    if (!diagnosticCache || diagnosticCache.revision !== snapshot.revision) {
+      diagnosticCache = {
+        revision: snapshot.revision,
+        report: generateDiagnosticReport(snapshot, {
+          projectName: options.projectName,
+          collectorVersion: options.version ?? VERSION,
+          config: options.config.diagnostics,
+          generatedAt: now,
+          connected: connectionList.some((connection) => connection.connected),
+          connectedInstances: connectionList.filter((connection) => connection.connected).length,
+        }),
+      }
+    }
+    const cached = diagnosticCache.report
+    return {
+      snapshot,
+      report: {
+        ...cached,
+        generatedAt: now,
+        sample: {
+          ...cached.sample,
+          connected: connectionList.some((connection) => connection.connected),
+          connectedInstances: connectionList.filter((connection) => connection.connected).length,
+        },
+      },
+    }
+  }
+
+  const getDiagnosticReport = (): DiagnosticReport => getDiagnosticState().report
+
+  const testRuns = new TestRunRegistry({
+    slowRequestMs: options.config.slowRequestMs,
+    isConnected: () => getConnections(Date.now()).some((connection) => connection.connected),
+    getDiagnosticReport,
+    lookupTrace: (traceId) =>
+      store.getTrace(traceId, options.config.slowRequestMs) ?? null,
+  })
+
+  const traceWithDiagnostics = (detail: TraceDetail): TraceDetail => {
+    const references = listDiagnosticFindings(getDiagnosticReport(), {
+      traceId: detail.traceId,
+      limit: 200,
+    }).items.map(diagnosticReference)
+    return { ...detail, diagnostics: references }
+  }
+
   const recordConnection = (
-    instance: NextScopeInstance,
-    diagnostics: NextScopeExporterDiagnostics | undefined,
+    instance: StackNextInstance,
+    diagnostics: StackNextExporterDiagnostics | undefined,
     now: number,
   ): void => {
     const existing = connections.get(instance.instanceId)
@@ -447,6 +619,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
           ? { projectName: instance.projectName ?? options.projectName }
           : {}),
         ...(instance.nextVersion ? { nextVersion: instance.nextVersion } : {}),
+        ...(instance.runtimeVersion ? { runtimeVersion: instance.runtimeVersion } : {}),
         sdkVersion: instance.sdkVersion,
         lastSeen: now,
         ...(diagnostics ? { diagnostics } : existing?.info.diagnostics
@@ -530,7 +703,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
   const serveIndex = async (response: ServerResponse, cookies: boolean): Promise<void> => {
     if (!options.dashboardDir) {
       const html =
-        '<!doctype html><html><head><meta charset="utf-8"><title>NextScope</title></head><body style="font-family:system-ui;background:#0b0d10;color:#e6e8eb;padding:3rem"><h1>Dashboard build not found</h1><p>Run <code>pnpm build</code>, then restart <code>nextscope dev</code>.</p></body></html>'
+        '<!doctype html><html><head><meta charset="utf-8"><title>StackNext</title></head><body style="font-family:system-ui;background:#0b0d10;color:#e6e8eb;padding:3rem"><h1>Dashboard build not found</h1><p>Run <code>pnpm build</code>, then restart <code>stacknext dev</code>.</p></body></html>'
       response.writeHead(503, {
         ...securityHeaders(),
         'content-type': 'text/html; charset=utf-8',
@@ -647,7 +820,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
       )
       return
     }
-    const envelope = result.data as NextScopeIngestEnvelope
+    const envelope = result.data as StackNextIngestEnvelope
     const now = Date.now()
     store.ingest(envelope, now)
     recordConnection(envelope.instance, envelope.diagnostics, now)
@@ -669,8 +842,115 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
       response,
       202,
       { ok: true, accepted, serverTime: now },
-      { 'x-nextscope-sequence': String(sequence) },
+      { 'x-stacknext-sequence': String(sequence) },
     )
+  }
+
+  const handleTestRunWrite = async (
+    request: IncomingMessage,
+    response: ServerResponse,
+    url: URL,
+  ): Promise<void> => {
+    if (!isIngestAuthorized(request)) {
+      serverStats.rejectedRequests += 1
+      sendError(response, 401, 'Unauthorized')
+      return
+    }
+    const contentType = String(request.headers['content-type'] ?? '')
+    if (!contentType.toLowerCase().includes('application/json')) {
+      serverStats.rejectedRequests += 1
+      sendError(response, 415, 'Content-Type must be application/json')
+      return
+    }
+    const body = await readBody(request, MAX_BODY_BYTES)
+    if (!body.ok) {
+      serverStats.rejectedRequests += 1
+      serverStats.droppedPayload += 1
+      sendError(response, 413, `Payload exceeds ${MAX_BODY_BYTES} bytes`)
+      return
+    }
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(body.body)
+    } catch {
+      serverStats.rejectedRequests += 1
+      serverStats.droppedMalformed += 1
+      sendError(response, 400, 'Malformed JSON payload')
+      return
+    }
+
+    if (url.pathname === '/api/test-runs') {
+      const result = createRunRequestSchema.safeParse(parsed)
+      if (!result.success) {
+        sendError(
+          response,
+          422,
+          'Test run payload failed validation',
+          result.error.issues.map((issue) => issue.path.join('.') || '(root)'),
+        )
+        return
+      }
+      const run = testRuns.create(result.data)
+      sendJson(response, 201, { run })
+      return
+    }
+
+    const sampleMatch = /^\/api\/test-runs\/(run-[0-9a-f]{16})\/samples$/.exec(
+      url.pathname,
+    )
+    if (sampleMatch?.[1]) {
+      const result = submitSampleRequestSchema.safeParse(parsed)
+      if (!result.success) {
+        sendError(
+          response,
+          422,
+          'Captured sample payload failed validation',
+          result.error.issues.map((issue) => issue.path.join('.') || '(root)'),
+        )
+        return
+      }
+      const submitted = testRuns.submit(sampleMatch[1], result.data)
+      if (!submitted.ok) {
+        if (submitted.code === 'not-found') {
+          sendError(response, 404, 'Test run not found')
+        } else if (submitted.code === 'duplicate-sample') {
+          sendError(response, 409, 'Sample id already exists for this scenario')
+        } else {
+          sendError(response, 409, 'Test run is no longer accepting samples')
+        }
+        return
+      }
+      sendJson(response, 200, {
+        sample: submitted.sample,
+        run: submitted.run,
+      })
+      return
+    }
+
+    const completeMatch = /^\/api\/test-runs\/(run-[0-9a-f]{16})\/complete$/.exec(
+      url.pathname,
+    )
+    if (completeMatch?.[1]) {
+      const result = completeRunRequestSchema.safeParse(parsed)
+      if (!result.success) {
+        sendError(
+          response,
+          422,
+          'Test run completion payload failed validation',
+          result.error.issues.map((issue) => issue.path.join('.') || '(root)'),
+        )
+        return
+      }
+      const run = testRuns.complete(completeMatch[1], result.data)
+      if (!run) {
+        sendError(response, 404, 'Test run not found')
+        return
+      }
+      sendJson(response, 200, { run })
+      return
+    }
+
+    sendError(response, 404, 'Not found')
   }
 
   const handleSse = (request: IncomingMessage, response: ServerResponse): void => {
@@ -695,6 +975,63 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     })
   }
 
+  const pageItems = <T>(items: T[], searchParams: URLSearchParams, invalid = 0): {
+    items: T[]
+    total: number
+    limit: number
+    offset: number
+    invalid: number
+  } => {
+    const limit = Math.min(Math.max(queryNumber(searchParams.get('limit')) ?? 50, 1), 200)
+    const offset = Math.max(queryNumber(searchParams.get('offset')) ?? 0, 0)
+    return {
+      items: items.slice(offset, offset + limit),
+      total: items.length,
+      limit,
+      offset,
+      invalid,
+    }
+  }
+
+  const savedRuns = async (): Promise<StoredRecords<RunSummary>> => {
+    if (!options.projectDir) return { items: [], invalid: 0 }
+    try {
+      return await listAllRuns(options.projectDir)
+    } catch (error) {
+      log(`could not list saved test runs: ${error instanceof Error ? error.message : String(error)}`)
+      return { items: [], invalid: 0 }
+    }
+  }
+
+  const savedBaselines = async (): Promise<StoredRecords<BaselineSummary>> => {
+    if (!options.projectDir) return { items: [], invalid: 0 }
+    return listAllBaselines(options.projectDir)
+  }
+
+  const savedComparisons = async (): Promise<StoredRecords<ComparisonSummaryItem>> => {
+    if (!options.projectDir) return { items: [], invalid: 0 }
+    return listAllComparisons(options.projectDir)
+  }
+
+  const sendStorageError = (
+    response: ServerResponse,
+    error: unknown,
+    label: string,
+  ): void => {
+    if (error instanceof RegressionStorageError) {
+      if (error.code === 'not-found') {
+        sendError(response, 404, `${label} not found`)
+        return
+      }
+      sendError(response, 422, error.message)
+      return
+    }
+    log(
+      `could not read ${label.toLowerCase()}: ${error instanceof Error ? error.message : String(error)}`,
+    )
+    sendError(response, 500, `Could not read ${label.toLowerCase()}`)
+  }
+
   const handleApi = async (
     request: IncomingMessage,
     response: ServerResponse,
@@ -704,7 +1041,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     if (pathname === '/api/ping') {
       sendJson(response, 200, {
         ok: true,
-        name: 'nextscope',
+        name: 'stacknext',
         version: options.version ?? VERSION,
       })
       return
@@ -731,8 +1068,137 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
       const payload: OverviewResponse = {
         health: getHealth(),
         summary: store.summary(options.config.slowRequestMs),
+        coverage: getCoverage(),
+        diagnosticOverview: buildDiagnosticOverview(getDiagnosticReport()),
       }
       sendJson(response, 200, payload)
+      return
+    }
+    if (pathname === '/api/coverage') {
+      sendJson(response, 200, getCoverage())
+      return
+    }
+    if (pathname === '/api/test-runs') {
+      try {
+        const live = testRuns.list()
+        const seen = new Set(live.map((run) => run.id))
+        const disk = await savedRuns()
+        const all = [...live, ...disk.items.filter((run) => !seen.has(run.id))].sort(
+          (left, right) =>
+            right.createdAt - left.createdAt ||
+            (left.id < right.id ? -1 : left.id > right.id ? 1 : 0),
+        )
+        sendJson(response, 200, pageItems(all, url.searchParams, disk.invalid))
+      } catch (error) {
+        sendStorageError(response, error, 'Test runs')
+      }
+      return
+    }
+    if (pathname.startsWith('/api/test-runs/')) {
+      const id = decodeURIComponent(pathname.slice('/api/test-runs/'.length))
+      if (!/^run-[0-9a-f]{16}$/.test(id)) {
+        sendError(response, 400, 'Invalid test run id')
+        return
+      }
+      const live = testRuns.get(id)
+      if (live) {
+        sendJson(response, 200, live)
+        return
+      }
+      if (!options.projectDir) {
+        sendError(response, 404, 'Test run not found')
+        return
+      }
+      try {
+        sendJson(response, 200, await loadRun(options.projectDir, id))
+      } catch (error) {
+        sendStorageError(response, error, 'Test run')
+      }
+      return
+    }
+    if (pathname === '/api/baselines') {
+      if (!options.projectDir) {
+        sendJson(response, 200, pageItems<BaselineSummary>([], url.searchParams))
+        return
+      }
+      try {
+        const records = await savedBaselines()
+        sendJson(response, 200, pageItems(records.items, url.searchParams, records.invalid))
+      } catch (error) {
+        sendStorageError(response, error, 'Baselines')
+      }
+      return
+    }
+    if (pathname.startsWith('/api/baselines/')) {
+      const id = decodeURIComponent(pathname.slice('/api/baselines/'.length))
+      if (!/^base-[0-9a-f]{16}$/.test(id)) {
+        sendError(response, 400, 'Invalid baseline id')
+        return
+      }
+      if (!options.projectDir) {
+        sendError(response, 404, 'Baseline not found')
+        return
+      }
+      try {
+        sendJson(response, 200, await loadBaseline(options.projectDir, id))
+      } catch (error) {
+        sendStorageError(response, error, 'Baseline')
+      }
+      return
+    }
+    if (pathname === '/api/comparisons') {
+      if (!options.projectDir) {
+        sendJson(response, 200, pageItems<ComparisonSummaryItem>([], url.searchParams))
+        return
+      }
+      try {
+        const records = await savedComparisons()
+        sendJson(response, 200, pageItems(records.items, url.searchParams, records.invalid))
+      } catch (error) {
+        sendStorageError(response, error, 'Comparisons')
+      }
+      return
+    }
+    if (pathname.startsWith('/api/comparisons/')) {
+      const id = decodeURIComponent(pathname.slice('/api/comparisons/'.length))
+      if (!/^cmp-[0-9a-f]{16}$/.test(id)) {
+        sendError(response, 400, 'Invalid comparison id')
+        return
+      }
+      if (!options.projectDir) {
+        sendError(response, 404, 'Comparison not found')
+        return
+      }
+      try {
+        sendJson(response, 200, await loadComparison(options.projectDir, id))
+      } catch (error) {
+        sendStorageError(response, error, 'Comparison')
+      }
+      return
+    }
+    if (pathname === '/api/diagnostics') {
+      const parsed = diagnosticFiltersFromSearch(url.searchParams)
+      if (parsed.error) {
+        sendError(response, 400, parsed.error)
+        return
+      }
+      const state = getDiagnosticState()
+      sendJson(response, 200, listDiagnosticFindings(state.report, parsed.filters))
+      return
+    }
+    if (pathname.startsWith('/api/diagnostics/')) {
+      const id = decodeURIComponent(pathname.slice('/api/diagnostics/'.length))
+      if (!/^diag-[0-9a-f]{8}-[0-9a-f]{8}$/.test(id)) {
+        sendError(response, 400, 'Invalid diagnostic id')
+        return
+      }
+      const state = getDiagnosticState()
+      const detail = getDiagnosticDetail(state.report, id, state.snapshot)
+      if (!detail) {
+        sendError(response, 404, 'Diagnostic not found')
+        return
+      }
+      sendJson(response, 200, detail)
       return
     }
     if (pathname === '/api/config') {
@@ -740,12 +1206,15 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
         config: options.config,
         projectName: options.projectName,
         version: options.version ?? VERSION,
+        instrumentation: {
+          nextOtelVerbose: verboseStatus,
+        },
         limitations: [
           'Next.js built-in spans are limited to the operations Next.js exposes through OpenTelemetry.',
           'Server Components are not individually traced; route render spans are captured instead.',
-          'Server Actions are not automatically identified by name.',
+          'Server Actions are not automatically identified by name. Use withStackNextAction() for successful actions.',
           'Drizzle Logger does not expose query duration; durations are null for Drizzle queries.',
-          'Edge Runtime and production deployments are not supported in v0.1.',
+          'Edge Runtime and production deployments are not supported.',
         ],
       })
       return
@@ -769,7 +1238,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
         sendError(response, 404, 'Request not found')
         return
       }
-      sendJson(response, 200, detail)
+      sendJson(response, 200, traceWithDiagnostics(detail))
       return
     }
     if (pathname === '/api/traces') {
@@ -791,7 +1260,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
         sendError(response, 404, 'Trace not found')
         return
       }
-      sendJson(response, 200, detail)
+      sendJson(response, 200, traceWithDiagnostics(detail))
       return
     }
     if (pathname === '/api/errors') {
@@ -831,7 +1300,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     if (pathname === '/api/export') {
       const data = store.exportAll()
       const payload: ExportResponse = {
-        format: 'nextscope-export',
+        format: 'stacknext-export',
         version: 1,
         exportedAt: Date.now(),
         projectName: options.projectName,
@@ -846,14 +1315,15 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
           databaseQueries: data.databaseQueries.length,
           spans: data.spans.length,
         },
+        diagnostics: getDiagnosticReport(),
         limitations: [
           'Bodies, headers, cookies and SQL bind parameters are not stored.',
           'Drizzle Logger does not expose query duration.',
-          'Edge Runtime is not supported in v0.1.',
+          'Edge Runtime is not supported.',
         ],
       }
       sendJson(response, 200, payload, {
-        'content-disposition': `attachment; filename="nextscope-${options.projectName.replace(/[^a-z0-9_-]+/gi, '-')}-${Date.now()}.json"`,
+        'content-disposition': `attachment; filename="stacknext-${options.projectName.replace(/[^a-z0-9_-]+/gi, '-')}-${Date.now()}.json"`,
       })
       return
     }
@@ -864,7 +1334,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     request: IncomingMessage,
     response: ServerResponse,
   ): Promise<void> => {
-    response.setHeader('x-nextscope', options.version ?? VERSION)
+    response.setHeader('x-stacknext', options.version ?? VERSION)
     if (!hostAllowed(request.headers.host)) {
       serverStats.rejectedRequests += 1
       sendError(response, 403, 'Invalid Host header')
@@ -883,7 +1353,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     }
     const url = new URL(request.url ?? '/', `http://${host}:${port}`)
     try {
-      if (url.pathname === '/__nextscope/v1/ingest') {
+      if (url.pathname === '/__stacknext/v1/ingest') {
         if (request.method !== 'POST') {
           response.setHeader('allow', 'POST')
           sendError(response, 405, 'Method not allowed')
@@ -893,8 +1363,18 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
         return
       }
       if (url.pathname.startsWith('/api/')) {
+        const testRunWrite =
+          url.pathname === '/api/test-runs' ||
+          url.pathname.startsWith('/api/test-runs/')
+        if (request.method === 'POST' && testRunWrite) {
+          await handleTestRunWrite(request, response, url)
+          return
+        }
         if (request.method !== 'GET' && request.method !== 'HEAD') {
-          response.setHeader('allow', 'GET, HEAD')
+          response.setHeader(
+            'allow',
+            testRunWrite ? 'GET, HEAD, POST' : 'GET, HEAD',
+          )
           sendError(response, 405, 'Method not allowed')
           return
         }

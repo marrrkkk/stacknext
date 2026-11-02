@@ -1,15 +1,30 @@
 import type {
+  CoverageReport,
   DatabaseQueryListItem,
+  DiagnosticCategory,
+  DiagnosticDetailResponse,
+  DiagnosticListResponse,
+  DiagnosticRuleId,
+  DiagnosticSeverity,
+  DiagnosticStatus,
   ErrorDetailResponse,
   ErrorListResponse,
   HealthResponse,
-  NextScopeConfig,
+  StackNextConfig,
   OverviewResponse,
   PageResult,
   RequestSummary,
   TraceDetail,
   TraceListResult,
-} from '@nextscope/core'
+} from '@stacknext/core'
+import type {
+  Baseline,
+  BaselineSummary,
+  Comparison,
+  ComparisonSummaryItem,
+  RunSummary,
+  TestRun,
+} from '@stacknext/regression'
 
 export class ApiError extends Error {
   readonly status: number
@@ -22,7 +37,7 @@ export class ApiError extends Error {
 }
 
 export interface ConfigResponse {
-  config: NextScopeConfig
+  config: StackNextConfig
   projectName: string
   version: string
   limitations: string[]
@@ -54,6 +69,20 @@ export interface DatabaseQuery {
   minDuration?: number
   traceId?: string
   databaseSystem?: string
+}
+
+export interface DiagnosticQuery {
+  limit?: number
+  offset?: number
+  q?: string
+  category?: DiagnosticCategory
+  severity?: DiagnosticSeverity
+  status?: DiagnosticStatus
+  ruleId?: DiagnosticRuleId
+  route?: string
+  traceId?: string
+  since?: number
+  until?: number
 }
 
 function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
@@ -91,6 +120,9 @@ export const api = {
   },
   overview(signal?: AbortSignal): Promise<OverviewResponse> {
     return getJson<OverviewResponse>('/api/summary', signal)
+  },
+  coverage(signal?: AbortSignal): Promise<CoverageReport> {
+    return getJson<CoverageReport>('/api/coverage', signal)
   },
   requests(query: RequestQuery = {}, signal?: AbortSignal): Promise<PageResult<RequestSummary>> {
     return getJson<PageResult<RequestSummary>>(
@@ -154,6 +186,69 @@ export const api = {
       })}`,
       signal,
     )
+  },
+  diagnostics(
+    query: DiagnosticQuery = {},
+    signal?: AbortSignal,
+  ): Promise<DiagnosticListResponse> {
+    return getJson<DiagnosticListResponse>(
+      `/api/diagnostics${buildQuery({
+        limit: query.limit,
+        offset: query.offset,
+        q: query.q,
+        category: query.category,
+        severity: query.severity,
+        status: query.status,
+        ruleId: query.ruleId,
+        route: query.route,
+        traceId: query.traceId,
+        since: query.since,
+        until: query.until,
+      })}`,
+      signal,
+    )
+  },
+  diagnostic(id: string, signal?: AbortSignal): Promise<DiagnosticDetailResponse> {
+    return getJson<DiagnosticDetailResponse>(
+      `/api/diagnostics/${encodeURIComponent(id)}`,
+      signal,
+    )
+  },
+  testRuns(
+    query: { limit?: number; offset?: number } = {},
+    signal?: AbortSignal,
+  ): Promise<PageResult<RunSummary>> {
+    return getJson<PageResult<RunSummary>>(
+      `/api/test-runs${buildQuery({ limit: query.limit, offset: query.offset })}`,
+      signal,
+    )
+  },
+  testRun(id: string, signal?: AbortSignal): Promise<TestRun> {
+    return getJson<TestRun>(`/api/test-runs/${encodeURIComponent(id)}`, signal)
+  },
+  baselines(
+    query: { limit?: number; offset?: number } = {},
+    signal?: AbortSignal,
+  ): Promise<PageResult<BaselineSummary>> {
+    return getJson<PageResult<BaselineSummary>>(
+      `/api/baselines${buildQuery({ limit: query.limit, offset: query.offset })}`,
+      signal,
+    )
+  },
+  baseline(id: string, signal?: AbortSignal): Promise<Baseline> {
+    return getJson<Baseline>(`/api/baselines/${encodeURIComponent(id)}`, signal)
+  },
+  comparisons(
+    query: { limit?: number; offset?: number } = {},
+    signal?: AbortSignal,
+  ): Promise<PageResult<ComparisonSummaryItem>> {
+    return getJson<PageResult<ComparisonSummaryItem>>(
+      `/api/comparisons${buildQuery({ limit: query.limit, offset: query.offset })}`,
+      signal,
+    )
+  },
+  comparison(id: string, signal?: AbortSignal): Promise<Comparison> {
+    return getJson<Comparison>(`/api/comparisons/${encodeURIComponent(id)}`, signal)
   },
   config(signal?: AbortSignal): Promise<ConfigResponse> {
     return getJson<ConfigResponse>('/api/config', signal)

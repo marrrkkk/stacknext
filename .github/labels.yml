@@ -1,0 +1,55 @@
+# Label catalog. Apply with the GitHub CLI or your label-sync tool.
+- name: bug
+  color: d73a4a
+  description: Something is broken or produces incorrect evidence.
+- name: enhancement
+  color: a2eeef
+  description: A new capability or workflow.
+- name: documentation
+  color: 0075ca
+  description: Documentation, examples or screenshots.
+- name: security
+  color: b60205
+  description: Security hardening. Never contains vulnerability details.
+- name: packaging
+  color: 5319e7
+  description: Package metadata, archives, exports or distribution.
+- name: regression
+  color: fbca04
+  description: Capture, baseline or comparison behavior.
+- name: diagnostics
+  color: 1d76db
+  description: Deterministic findings and evidence rules.
+- name: mcp
+  color: 006b75
+  description: Read-only MCP server, tools and prompts.
+- name: dashboard
+  color: c2e0c6
+  description: React/Vite dashboard and routes.
+- name: cli
+  color: f9d0c4
+  description: stacknext binary, commands and collector.
+- name: compatibility
+  color: fef2c0
+  description: Node.js, Next.js, OS or package-manager support.
+- name: needs-triage
+  color: ededed
+  description: Awaiting maintainer triage.
+- name: needs-reproduction
+  color: ffc7c7
+  description: Cannot proceed without a minimal reproduction.
+- name: needs-tests
+  color: fbca04
+  description: Behavior change needs a failing test or verification.
+- name: good first issue
+  color: 7057ff
+  description: Suitable for a first contribution.
+- name: help wanted
+  color: 008672
+  description: Maintainers welcome a community contribution.
+- name: blocked
+  color: 000000
+  description: Waiting on another change, decision or external dependency.
+- name: release
+  color: 0e8a16
+  description: Release preparation and verification.

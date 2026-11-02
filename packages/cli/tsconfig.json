@@ -7,10 +7,19 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@nextscope/core": [
+      "@stacknext/core": [
         "../core/src/index.ts"
       ],
-      "@nextscope/mcp": [
+      "@stacknext/core/config-file": [
+        "../core/src/config-file.ts"
+      ],
+      "@stacknext/diagnostics": [
+        "../diagnostics/src/index.ts"
+      ],
+      "@stacknext/regression": [
+        "../regression/src/index.ts"
+      ],
+      "@stacknext/mcp": [
         "../mcp/src/index.ts"
       ]
     }

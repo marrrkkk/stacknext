@@ -1,22 +1,23 @@
-import { randomUUID } from 'node:crypto'
-import { request as httpRequest } from 'node:http'
-import { request as httpsRequest } from 'node:https'
+import { randomUUID } from 'crypto'
+import { request as httpRequest } from 'http'
+import { request as httpsRequest } from 'https'
 import {
-  NEXTSCOPE_SCHEMA_VERSION,
-  NEXTSCOPE_SDK_VERSION,
-  type NextScopeDatabaseQueryInput,
-  type NextScopeErrorInput,
-  type NextScopeExporterDiagnostics,
-  type NextScopeIngestEnvelope,
-  type NextScopeSpanInput,
+  STACKNEXT_SCHEMA_VERSION,
+  STACKNEXT_SDK_VERSION,
+  type StackNextDatabaseQueryInput,
+  type StackNextErrorInput,
+  type StackNextExporterDiagnostics,
+  type StackNextIngestEnvelope,
+  type StackNextSpanInput,
 } from './types.js'
 
-const INGEST_PATH = '/__nextscope/v1/ingest'
+const INGEST_PATH = '/__stacknext/v1/ingest'
 const DEFAULT_MAX_QUEUE = 5_000
 const DEFAULT_BATCH_SIZE = 250
 const HEARTBEAT_INTERVAL_MS = 10_000
+const MAX_BATCH_BYTES = 1_500_000
 
-export interface NextScopeTransportOptions {
+export interface StackNextTransportOptions {
   collectorUrl: string
   token: string
   serviceName?: string
@@ -43,9 +44,11 @@ export interface TransportSnapshot {
   instanceId: string
 }
 
+type PostResult = 'ok' | 'retry' | 'too-large'
+
 interface TransportGlobalState {
-  __nextscopeTransport?: NextScopeTransport
-  __nextscopeTransportKey?: string
+  __stacknextTransport?: StackNextTransport
+  __stacknextTransportKey?: string
 }
 
 function globalState(): TransportGlobalState {
@@ -70,26 +73,26 @@ export function isLoopbackUrl(value: string): boolean {
 
 export function transportOptionsFromEnv(
   env: NodeJS.ProcessEnv = process.env,
-): { options: NextScopeTransportOptions } | { error: string } {
-  const collectorUrl = env.NEXTSCOPE_COLLECTOR_URL?.trim()
-  const token = env.NEXTSCOPE_TOKEN?.trim()
+): { options: StackNextTransportOptions } | { error: string } {
+  const collectorUrl = env.STACKNEXT_COLLECTOR_URL?.trim()
+  const token = env.STACKNEXT_TOKEN?.trim()
   if (!collectorUrl && !token) {
-    return { error: 'NEXTSCOPE_COLLECTOR_URL and NEXTSCOPE_TOKEN are not set' }
+    return { error: 'STACKNEXT_COLLECTOR_URL and STACKNEXT_TOKEN are not set' }
   }
-  if (!collectorUrl) return { error: 'NEXTSCOPE_COLLECTOR_URL is not set' }
-  if (!token) return { error: 'NEXTSCOPE_TOKEN is not set' }
-  if (token.length < 16) return { error: 'NEXTSCOPE_TOKEN is too short' }
+  if (!collectorUrl) return { error: 'STACKNEXT_COLLECTOR_URL is not set' }
+  if (!token) return { error: 'STACKNEXT_TOKEN is not set' }
+  if (token.length < 16) return { error: 'STACKNEXT_TOKEN is too short' }
   if (!isLoopbackUrl(collectorUrl)) {
-    return { error: 'NEXTSCOPE_COLLECTOR_URL must point to a loopback address' }
+    return { error: 'STACKNEXT_COLLECTOR_URL must point to a loopback address' }
   }
   return {
     options: {
       collectorUrl,
       token,
-      ...(env.NEXTSCOPE_PROJECT_NAME ? { projectName: env.NEXTSCOPE_PROJECT_NAME } : {}),
-      ...(env.NEXTSCOPE_SERVICE_NAME ? { serviceName: env.NEXTSCOPE_SERVICE_NAME } : {}),
-      ...(env.NEXTSCOPE_NEXT_VERSION ? { nextVersion: env.NEXTSCOPE_NEXT_VERSION } : {}),
-      debug: env.NEXTSCOPE_DEBUG === '1',
+      ...(env.STACKNEXT_PROJECT_NAME ? { projectName: env.STACKNEXT_PROJECT_NAME } : {}),
+      ...(env.STACKNEXT_SERVICE_NAME ? { serviceName: env.STACKNEXT_SERVICE_NAME } : {}),
+      ...(env.STACKNEXT_NEXT_VERSION ? { nextVersion: env.STACKNEXT_NEXT_VERSION } : {}),
+      debug: env.STACKNEXT_DEBUG === '1',
     },
   }
 }
@@ -98,9 +101,9 @@ export function transportOptionsFromEnv(
  * Returns the process-wide transport. Adapters and the OTel exporter share one
  * bounded queue so instrumentation cannot create multiple competing buffers.
  */
-export function getNextScopeTransport(
-  options?: NextScopeTransportOptions,
-): NextScopeTransport | null {
+export function getStackNextTransport(
+  options?: StackNextTransportOptions,
+): StackNextTransport | null {
   const resolved = options ?? (() => {
     const fromEnv = transportOptionsFromEnv()
     return 'options' in fromEnv ? fromEnv.options : null
@@ -108,35 +111,35 @@ export function getNextScopeTransport(
   if (!resolved) return null
   const state = globalState()
   const key = `${resolved.collectorUrl}|${resolved.token}|${resolved.serviceName ?? ''}`
-  if (state.__nextscopeTransport && state.__nextscopeTransportKey === key) {
-    return state.__nextscopeTransport
+  if (state.__stacknextTransport && state.__stacknextTransportKey === key) {
+    return state.__stacknextTransport
   }
-  if (state.__nextscopeTransport) {
-    void state.__nextscopeTransport.shutdown(1_000)
+  if (state.__stacknextTransport) {
+    void state.__stacknextTransport.shutdown(1_000)
   }
-  const transport = new NextScopeTransport(resolved)
-  state.__nextscopeTransport = transport
-  state.__nextscopeTransportKey = key
+  const transport = new StackNextTransport(resolved)
+  state.__stacknextTransport = transport
+  state.__stacknextTransportKey = key
   return transport
 }
 
 /** Test helper: detaches the global transport without exporting queued data. */
 export function resetGlobalTransportForTests(): void {
   const state = globalState()
-  state.__nextscopeTransport?.stopTimers()
-  state.__nextscopeTransport = undefined
-  state.__nextscopeTransportKey = undefined
+  state.__stacknextTransport?.stopTimers()
+  state.__stacknextTransport = undefined
+  state.__stacknextTransportKey = undefined
 }
 
 /**
  * Bounded, asynchronous event forwarder. Application requests only enqueue
  * plain objects; network I/O always happens on timers and never blocks them.
  */
-export class NextScopeTransport {
+export class StackNextTransport {
   readonly instanceId: string
   readonly options: Required<
     Pick<
-      NextScopeTransportOptions,
+      StackNextTransportOptions,
       | 'collectorUrl'
       | 'token'
       | 'maxQueueSize'
@@ -146,11 +149,11 @@ export class NextScopeTransport {
       | 'heartbeatIntervalMs'
     >
   > &
-    NextScopeTransportOptions
+    StackNextTransportOptions
 
-  private readonly spanQueue: NextScopeSpanInput[] = []
-  private readonly errorQueue: NextScopeErrorInput[] = []
-  private readonly queryQueue: NextScopeDatabaseQueryInput[] = []
+  private readonly spanQueue: StackNextSpanInput[] = []
+  private readonly errorQueue: StackNextErrorInput[] = []
+  private readonly queryQueue: StackNextDatabaseQueryInput[] = []
   private exportedSpans = 0
   private droppedSpans = 0
   private exportedEvents = 0
@@ -164,9 +167,9 @@ export class NextScopeTransport {
   private closed = false
   private stopping = false
 
-  constructor(options: NextScopeTransportOptions) {
+  constructor(options: StackNextTransportOptions) {
     if (!isLoopbackUrl(options.collectorUrl)) {
-      throw new Error('NextScope transport only accepts loopback collector URLs')
+      throw new Error('StackNext transport only accepts loopback collector URLs')
     }
     this.instanceId = options.instanceId ?? randomUUID()
     this.options = {
@@ -189,21 +192,21 @@ export class NextScopeTransport {
     this.heartbeatTimer.unref?.()
   }
 
-  enqueueSpan(span: NextScopeSpanInput): void {
+  enqueueSpan(span: StackNextSpanInput): void {
     if (this.closed) return
     this.spanQueue.push(span)
     this.trimQueues()
     this.scheduleFlush()
   }
 
-  enqueueError(error: NextScopeErrorInput): void {
+  enqueueError(error: StackNextErrorInput): void {
     if (this.closed) return
     this.errorQueue.push(error)
     this.trimQueues()
     this.scheduleFlush()
   }
 
-  enqueueDatabaseQuery(query: NextScopeDatabaseQueryInput): void {
+  enqueueDatabaseQuery(query: StackNextDatabaseQueryInput): void {
     if (this.closed) return
     this.queryQueue.push(query)
     this.trimQueues()
@@ -245,31 +248,57 @@ export class NextScopeTransport {
     this.heartbeatTimer = null
   }
 
-  private buildBatch(): NextScopeIngestEnvelope | null {
-    const spans = this.spanQueue.slice(0, Math.min(500, this.options.batchSize))
-    const errors = this.errorQueue.slice(0, Math.min(25, this.options.batchSize))
-    const queries = this.queryQueue.slice(0, Math.min(100, this.options.batchSize))
-    if (spans.length === 0 && errors.length === 0 && queries.length === 0) {
-      return null
-    }
-    return {
-      version: NEXTSCOPE_SCHEMA_VERSION,
-      instance: {
-        instanceId: this.instanceId,
-        serviceName: this.options.serviceName ?? this.options.projectName ?? 'next-app',
-        ...(this.options.projectName ? { projectName: this.options.projectName } : {}),
-        ...(this.options.nextVersion ? { nextVersion: this.options.nextVersion } : {}),
-        sdkVersion: NEXTSCOPE_SDK_VERSION,
-        runtime: 'nodejs',
-      },
-      spans,
-      errors,
-      databaseQueries: queries,
-      diagnostics: this.diagnosticsSnapshot(),
+  private buildBatch(): { envelope: StackNextIngestEnvelope; body: string } | null {
+    let spanLimit = Math.min(500, this.options.batchSize)
+    let errorLimit = Math.min(25, this.options.batchSize)
+    let queryLimit = Math.min(100, this.options.batchSize)
+    for (;;) {
+      const spans = this.spanQueue.slice(0, spanLimit)
+      const errors = this.errorQueue.slice(0, errorLimit)
+      const queries = this.queryQueue.slice(0, queryLimit)
+      if (spans.length === 0 && errors.length === 0 && queries.length === 0) {
+        return null
+      }
+      const envelope: StackNextIngestEnvelope = {
+        version: STACKNEXT_SCHEMA_VERSION,
+        instance: {
+          instanceId: this.instanceId,
+          serviceName: this.options.serviceName ?? this.options.projectName ?? 'next-app',
+          ...(this.options.projectName ? { projectName: this.options.projectName } : {}),
+          ...(this.options.nextVersion ? { nextVersion: this.options.nextVersion } : {}),
+          runtimeVersion: process.version,
+          sdkVersion: STACKNEXT_SDK_VERSION,
+          runtime: 'nodejs',
+        },
+        spans,
+        errors,
+        databaseQueries: queries,
+        diagnostics: this.diagnosticsSnapshot(),
+      }
+      const body = JSON.stringify(envelope)
+      if (Buffer.byteLength(body, 'utf8') <= MAX_BATCH_BYTES) {
+        return { envelope, body }
+      }
+      if (spanLimit <= 1 && errorLimit <= 1 && queryLimit <= 1) {
+        // A single schema-valid item is already below the collector's hard
+        // limit. Return it so the collector can surface a real error.
+        return { envelope, body }
+      }
+      if (spanLimit >= errorLimit && spanLimit >= queryLimit && spanLimit > 1) {
+        spanLimit = Math.max(1, Math.floor(spanLimit / 2))
+      } else if (errorLimit >= queryLimit && errorLimit > 1) {
+        errorLimit = Math.max(1, Math.floor(errorLimit / 2))
+      } else if (queryLimit > 1) {
+        queryLimit = Math.max(1, Math.floor(queryLimit / 2))
+      } else if (spanLimit > 1) {
+        spanLimit = Math.max(1, Math.floor(spanLimit / 2))
+      } else {
+        errorLimit = Math.max(1, Math.floor(errorLimit / 2))
+      }
     }
   }
 
-  private diagnosticsSnapshot(): NextScopeExporterDiagnostics {
+  private diagnosticsSnapshot(): StackNextExporterDiagnostics {
     return {
       instanceId: this.instanceId,
       exportedSpans: this.exportedSpans,
@@ -297,17 +326,38 @@ export class NextScopeTransport {
         }
         return true
       }
-      const accepted = await this.post(batch)
-      if (!accepted) {
+      const accepted = await this.post(batch.envelope, batch.body)
+      if (accepted === 'too-large') {
+        const droppedSpans = this.removeSent(this.spanQueue, batch.envelope.spans)
+        const droppedErrors = this.removeSent(this.errorQueue, batch.envelope.errors)
+        const droppedQueries = this.removeSent(
+          this.queryQueue,
+          batch.envelope.databaseQueries,
+        )
+        this.droppedSpans += droppedSpans
+        this.droppedEvents += droppedErrors + droppedQueries
+        this.lastError = 'collector rejected the batch as too large (HTTP 413); dropped it'
+        this.retryDelayMs = 0
+        if (
+          this.spanQueue.length + this.errorQueue.length + this.queryQueue.length > 0
+        ) {
+          this.scheduleFlush()
+        }
+        return true
+      }
+      if (accepted !== 'ok') {
         this.retryDelayMs = Math.min(10_000, Math.max(500, this.retryDelayMs * 2 || 500))
         return false
       }
       this.retryDelayMs = 0
-      this.spanQueue.splice(0, batch.spans.length)
-      this.errorQueue.splice(0, batch.errors.length)
-      this.queryQueue.splice(0, batch.databaseQueries.length)
-      this.exportedSpans += batch.spans.length
-      this.exportedEvents += batch.errors.length + batch.databaseQueries.length
+      const removedSpans = this.removeSent(this.spanQueue, batch.envelope.spans)
+      const removedErrors = this.removeSent(this.errorQueue, batch.envelope.errors)
+      const removedQueries = this.removeSent(
+        this.queryQueue,
+        batch.envelope.databaseQueries,
+      )
+      this.exportedSpans += removedSpans
+      this.exportedEvents += removedErrors + removedQueries
       if (
         this.spanQueue.length + this.errorQueue.length + this.queryQueue.length > 0
       ) {
@@ -317,6 +367,26 @@ export class NextScopeTransport {
     } finally {
       this.flushing = false
     }
+  }
+
+  /**
+   * Removes only the exact queue entries that were acknowledged. Queue trims
+   * can run while a request is in flight, so count-based splicing could delete
+   * newer telemetry that was never sent.
+   */
+  private removeSent<T>(queue: T[], sent: T[]): number {
+    if (sent.length === 0) return 0
+    const acknowledged = new Set(sent)
+    let write = 0
+    for (let read = 0; read < queue.length; read += 1) {
+      const item = queue[read]
+      if (item !== undefined && acknowledged.has(item)) continue
+      queue[write] = item as T
+      write += 1
+    }
+    const removed = queue.length - write
+    queue.length = write
+    return removed
   }
 
   private async sendHeartbeat(): Promise<void> {
@@ -329,15 +399,16 @@ export class NextScopeTransport {
     }
   }
 
-  private emptyEnvelope(): NextScopeIngestEnvelope {
+  private emptyEnvelope(): StackNextIngestEnvelope {
     return {
-      version: NEXTSCOPE_SCHEMA_VERSION,
+      version: STACKNEXT_SCHEMA_VERSION,
       instance: {
         instanceId: this.instanceId,
         serviceName: this.options.serviceName ?? this.options.projectName ?? 'next-app',
         ...(this.options.projectName ? { projectName: this.options.projectName } : {}),
         ...(this.options.nextVersion ? { nextVersion: this.options.nextVersion } : {}),
-        sdkVersion: NEXTSCOPE_SDK_VERSION,
+        runtimeVersion: process.version,
+        sdkVersion: STACKNEXT_SDK_VERSION,
         runtime: 'nodejs',
       },
       spans: [],
@@ -347,16 +418,15 @@ export class NextScopeTransport {
     }
   }
 
-  private post(envelope: NextScopeIngestEnvelope): Promise<boolean> {
+  private post(envelope: StackNextIngestEnvelope, body = JSON.stringify(envelope)): Promise<PostResult> {
     const url = new URL(INGEST_PATH, this.options.collectorUrl)
-    const body = JSON.stringify(envelope)
     const requestFn = url.protocol === 'https:' ? httpsRequest : httpRequest
     return new Promise((resolve) => {
       let settled = false
-      const finish = (success: boolean): void => {
+      const finish = (result: PostResult): void => {
         if (settled) return
         settled = true
-        resolve(success)
+        resolve(result)
       }
       const request = requestFn(
         {
@@ -369,7 +439,7 @@ export class NextScopeTransport {
             authorization: `Bearer ${this.options.token}`,
             'content-type': 'application/json',
             'content-length': Buffer.byteLength(body),
-            'user-agent': `nextscope-sdk/${NEXTSCOPE_SDK_VERSION}`,
+            'user-agent': `stacknext-sdk/${STACKNEXT_SDK_VERSION}`,
           },
           timeout: this.options.requestTimeoutMs,
         },
@@ -378,10 +448,13 @@ export class NextScopeTransport {
           response.on('end', () => {
             if (response.statusCode && response.statusCode >= 200 && response.statusCode < 300) {
               this.lastError = null
-              finish(true)
+              finish('ok')
+            } else if (response.statusCode === 413) {
+              this.lastError = 'collector rejected the batch with HTTP 413'
+              finish('too-large')
             } else {
               this.lastError = `collector responded with HTTP ${response.statusCode ?? 'unknown'}`
-              finish(false)
+              finish('retry')
             }
           })
         },
@@ -393,9 +466,9 @@ export class NextScopeTransport {
       request.on('error', (error) => {
         this.lastError = error.message.slice(0, 500)
         if (this.options.debug) {
-          console.error(`[nextscope] export failed: ${this.lastError}`)
+          console.error(`[stacknext] export failed: ${this.lastError}`)
         }
-        finish(false)
+        finish('retry')
       })
       request.end(body)
     })

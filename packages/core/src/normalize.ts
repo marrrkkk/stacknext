@@ -7,19 +7,33 @@ import {
   sanitizeResource,
   stripUrlQuery,
 } from './redact.js'
+import {
+  frameworkSpanFields,
+  safeFrameworkText,
+} from './framework.js'
 import type {
-  NextScopeDatabaseQuery,
-  NextScopeError,
-  NextScopeSpan,
-  NextScopeSpanInput,
-  NextScopeDatabaseQueryInput,
-  NextScopeErrorInput,
+  StackNextDatabaseQuery,
+  StackNextError,
+  StackNextSpan,
+  StackNextSpanInput,
+  StackNextDatabaseQueryInput,
+  StackNextErrorInput,
 } from './types.js'
 
+const ABSOLUTE_URL_IN_TEXT =
+  /\b([a-z][a-z0-9+.-]*:\/\/[^\s?#"'`<>)}]*)(?:[?#][^\s"'`<>)}]*)?/gi
+const PATH_IN_TEXT =
+  /(^|[\s"'`(=:,\[])(\/[^\s?#"'`<>)}]*)(?:[?#][^\s"'`<>)}]*)?/g
+
+/**
+ * Removes query strings and fragments from URLs embedded in free text,
+ * including quoted relative paths, non-HTTP schemes and HTTP basic-auth
+ * userinfo. Credentials are handled first by redactText.
+ */
 export function stripUrlQueryInText(value: string): string {
   return value
-    .replace(/(https?:\/\/[^\s?#]+)\?[^\s#]*/gi, '$1')
-    .replace(/(https?:\/\/[^\s?#]+)#[^\s]*/gi, '$1')
+    .replace(ABSOLUTE_URL_IN_TEXT, '$1')
+    .replace(PATH_IN_TEXT, '$1$2')
 }
 
 function readStringAttribute(
@@ -55,14 +69,25 @@ function routeFromName(name: string): string | undefined {
 }
 
 /** Sanitizes and normalizes a span received from an application process. */
-export function normalizeSpan(input: NextScopeSpanInput, receivedAt: number): NextScopeSpan {
+export function normalizeSpan(input: StackNextSpanInput, receivedAt: number): StackNextSpan {
   const attributes = sanitizeAttributes(input.attributes)
+  const framework = frameworkSpanFields(attributes)
   const nextSpanType =
     input.nextSpanType ??
-    readStringAttribute(attributes, 'next.span_type', 'next.span_name')
+    readStringAttribute(attributes, 'next.span_type')
   const method = input.method ?? readStringAttribute(attributes, 'http.method', 'http.request.method')
+  const nextSpanName =
+    safeFrameworkText(input.nextSpanName, 512) ?? framework.nextSpanName
+  const nextRoute =
+    safeFrameworkText(input.nextRoute) ?? framework.nextRoute
+  const nextPage =
+    safeFrameworkText(input.nextPage) ?? framework.nextPage
+  const nextSegment =
+    safeFrameworkText(input.nextSegment) ?? framework.nextSegment
+  const nextRsc = input.nextRsc ?? framework.nextRsc
   const routeValue =
     input.route ??
+    nextRoute ??
     readStringAttribute(
       attributes,
       'next.route',
@@ -101,6 +126,11 @@ export function normalizeSpan(input: NextScopeSpanInput, receivedAt: number): Ne
       ? { statusCode: Math.trunc(statusCode) }
       : {}),
     ...(nextSpanType ? { nextSpanType: redactText(nextSpanType, 200) } : {}),
+    ...(nextSpanName ? { nextSpanName } : {}),
+    ...(nextRoute ? { nextRoute } : {}),
+    ...(nextPage ? { nextPage } : {}),
+    ...(nextSegment ? { nextSegment } : {}),
+    ...(nextRsc !== undefined ? { nextRsc } : {}),
     attributes,
     events: input.events.slice(0, 100).map((event) => ({
       name: stripUrlQueryInText(redactText(event.name, 512)),
@@ -112,7 +142,7 @@ export function normalizeSpan(input: NextScopeSpanInput, receivedAt: number): Ne
   }
 }
 
-export function normalizeError(input: NextScopeErrorInput, receivedAt: number): NextScopeError {
+export function normalizeError(input: StackNextErrorInput, receivedAt: number): StackNextError {
   const attributes = sanitizeAttributes(input.attributes)
   const routerKind = input.routerKind ?? readStringAttribute(attributes, 'routerKind')
   const routeType = input.routeType ?? readStringAttribute(attributes, 'routeType')
@@ -152,9 +182,9 @@ export function normalizeError(input: NextScopeErrorInput, receivedAt: number): 
 }
 
 export function normalizeDatabaseQuery(
-  input: NextScopeDatabaseQueryInput,
+  input: StackNextDatabaseQueryInput,
   receivedAt: number,
-): NextScopeDatabaseQuery {
+): StackNextDatabaseQuery {
   return {
     id: input.id,
     ...(input.traceId ? { traceId: input.traceId } : {}),

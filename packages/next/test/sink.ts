@@ -1,10 +1,10 @@
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
-import type { NextScopeIngestEnvelope } from '@nextscope/core'
+import type { StackNextIngestEnvelope } from '@stacknext/core'
 
 export interface IngestSink {
   url: string
-  envelopes: NextScopeIngestEnvelope[]
+  envelopes: StackNextIngestEnvelope[]
   waitForEnvelopes(count: number, timeoutMs?: number): Promise<void>
   close(): Promise<void>
 }
@@ -14,14 +14,14 @@ export interface IngestSink {
  * the wire. It intentionally performs no normalization.
  */
 export async function startIngestSink(): Promise<IngestSink> {
-  const envelopes: NextScopeIngestEnvelope[] = []
+  const envelopes: StackNextIngestEnvelope[] = []
   const waiters: Array<() => void> = []
   const server = createServer((request, response) => {
     const chunks: Buffer[] = []
     request.on('data', (chunk: Buffer) => chunks.push(chunk))
     request.on('end', () => {
       try {
-        const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8')) as NextScopeIngestEnvelope
+        const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8')) as StackNextIngestEnvelope
         envelopes.push(parsed)
         for (const notify of waiters.splice(0)) notify()
       } catch {

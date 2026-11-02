@@ -1,5 +1,8 @@
-import { spawn, type ChildProcess } from 'node:child_process'
-import { loadConfig } from '@nextscope/core'
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
+import { rmSync } from 'node:fs'
+import path from 'node:path'
+import { nextOtelVerboseStatus } from '@stacknext/core'
+import { loadConfig } from '@stacknext/core/config-file'
 import type { Command } from 'commander'
 import {
   detectProject,
@@ -17,6 +20,7 @@ import {
   type RuntimeState,
 } from '../runtime.js'
 import { resolveDashboardDir, startCollector } from '../collector/server.js'
+import { CLI_VERSION } from '../version.js'
 
 export interface DevOptions {
   open?: boolean
@@ -48,16 +52,24 @@ export function buildDevEnvironment(
   debug = false,
   instrumentation?: { captureFetch: boolean; captureErrors: boolean; verbose: boolean },
 ): NodeJS.ProcessEnv {
+  const inheritedVerbose = base.NEXT_OTEL_VERBOSE
+  const verboseEnv =
+    inheritedVerbose !== undefined && inheritedVerbose.trim() !== ''
+      ? inheritedVerbose
+      : instrumentation?.verbose === true
+        ? '1'
+        : undefined
   return {
     ...base,
-    NEXTSCOPE_COLLECTOR_URL: collectorUrl,
-    NEXTSCOPE_TOKEN: token,
-    NEXTSCOPE_PROJECT_NAME: projectName,
-    NEXTSCOPE_SERVICE_NAME: projectName,
-    NEXTSCOPE_DEBUG: debug || instrumentation?.verbose === true ? '1' : '0',
-    NEXTSCOPE_CAPTURE_FETCH: instrumentation?.captureFetch === false ? '0' : '1',
-    NEXTSCOPE_CAPTURE_ERRORS: instrumentation?.captureErrors === false ? '0' : '1',
-    ...(nextVersion ? { NEXTSCOPE_NEXT_VERSION: nextVersion } : {}),
+    STACKNEXT_COLLECTOR_URL: collectorUrl,
+    STACKNEXT_TOKEN: token,
+    STACKNEXT_PROJECT_NAME: projectName,
+    STACKNEXT_SERVICE_NAME: projectName,
+    STACKNEXT_DEBUG: debug || instrumentation?.verbose === true ? '1' : '0',
+    STACKNEXT_CAPTURE_FETCH: instrumentation?.captureFetch === false ? '0' : '1',
+    STACKNEXT_CAPTURE_ERRORS: instrumentation?.captureErrors === false ? '0' : '1',
+    ...(verboseEnv !== undefined ? { NEXT_OTEL_VERBOSE: verboseEnv } : {}),
+    ...(nextVersion ? { STACKNEXT_NEXT_VERSION: nextVersion } : {}),
   }
 }
 
@@ -78,7 +90,7 @@ async function assertNotAlreadyRunning(projectDir: string): Promise<void> {
   if (!existing) return
   if (isProcessAlive(existing.pid)) {
     throw new Error(
-      `NextScope is already running for this project at ${existing.dashboardUrl} (pid ${existing.pid}).`,
+      `StackNext is already running for this project at ${existing.dashboardUrl} (pid ${existing.pid}).`,
     )
   }
   await removeRuntimeState(projectDir)
@@ -104,8 +116,12 @@ export async function runDev(
   const token = options.token ?? generateToken()
   const projectName = config.projectName ?? project.name
   const startedAt = Date.now()
+  const nextOtelVerbose = nextOtelVerboseStatus(
+    config.instrumentation.verbose,
+    process.env.NEXT_OTEL_VERBOSE,
+  )
 
-  printBanner('0.1.0')
+  printBanner(CLI_VERSION)
   printSection(`Starting collector for ${projectName}`)
   const collector = await startCollector({
     port: config.dashboard.port,
@@ -113,7 +129,9 @@ export async function runDev(
     projectName,
     config,
     dashboardDir,
+    projectDir: project.dir,
     autoPort: true,
+    nextOtelVerbose,
     log: (message) => console.error(style.dim(message)),
   })
 
@@ -136,18 +154,37 @@ export async function runDev(
   printCheck('pass', `Dashboard ${collector.url}`)
   printCheck(
     'pass',
-    `Ingestion ${collectorUrl}/__nextscope/v1/ingest`,
-    'bearer token stored in .nextscope/run.json',
+    `Ingestion ${collectorUrl}/__stacknext/v1/ingest`,
+    'bearer token stored in .stacknext/run.json',
   )
   if (project.nextVersion) printCheck('pass', `Next.js ${project.nextVersion}`)
-  if (!project.instrumentationExists) {
+  if (nextOtelVerbose.enabled) {
+    printCheck(
+      'pass',
+      `Verbose Next.js spans enabled (${nextOtelVerbose.source})`,
+      'NEXT_OTEL_VERBOSE=1 increases span volume and dev-server overhead',
+    )
+  } else if (nextOtelVerbose.source === 'unknown') {
     printCheck(
       'warn',
-      'No instrumentation.ts found',
-      'Run "nextscope init" so the app exports spans.',
+      'NEXT_OTEL_VERBOSE has an unrecognized value',
+      'Next.js only enables verbose spans for the literal value "1"',
     )
   } else {
-    printCheck('pass', 'instrumentation.ts detected')
+    printCheck(
+      'pass',
+      'Standard Next.js span set',
+      'set instrumentation.verbose or NEXT_OTEL_VERBOSE=1 for expanded spans',
+    )
+  }
+  if (!project.instrumentationPath) {
+    printCheck(
+      'warn',
+      'No instrumentation file found',
+      'Run "stacknext init" so the app exports spans.',
+    )
+  } else {
+    printCheck('pass', `${path.relative(project.dir, project.instrumentationPath)} detected`)
   }
 
   if (options.open) openBrowser(collector.url)
@@ -159,7 +196,7 @@ export async function runDev(
     token,
     projectName,
     project.nextVersion,
-    process.env.NEXTSCOPE_DEBUG === '1',
+    process.env.STACKNEXT_DEBUG === '1',
     config.instrumentation,
   )
 
@@ -173,20 +210,7 @@ export async function runDev(
   const shutdown = async (exitCode: number): Promise<void> => {
     if (shuttingDown) return
     shuttingDown = true
-    if (child && child.exitCode === null && child.signalCode === null) {
-      child.kill('SIGTERM')
-      await new Promise<void>((resolve) => {
-        const timer = setTimeout(() => {
-          child?.kill('SIGKILL')
-          resolve()
-        }, 3_000)
-        timer.unref()
-        child?.once('exit', () => {
-          clearTimeout(timer)
-          resolve()
-        })
-      })
-    }
+    await terminateChild(child)
     await collector.close()
     await removeRuntimeState(project.dir)
     resolveExit?.(exitCode)
@@ -207,6 +231,23 @@ export async function runDev(
     env,
     stdio: 'inherit',
     shell: process.platform === 'win32',
+    // On Unix, put the app in its own process group so shutdown also stops
+    // Next.js worker processes. Windows uses taskkill /T below.
+    detached: process.platform !== 'win32',
+  })
+
+  const activeChild = child
+  process.once('exit', () => {
+    // Last-resort synchronous cleanup for unexpected exits. SIGKILL cannot be
+    // intercepted; the next `stacknext dev` removes stale runtime state.
+    if (activeChild.pid && processGroupAlive(activeChild.pid)) {
+      terminateChildSync(activeChild)
+    }
+    try {
+      rmSync(runtimeStatePath(project.dir), { force: true })
+    } catch {
+      // Best effort during process exit.
+    }
   })
 
   child.once('error', (error) => {
@@ -219,10 +260,84 @@ export async function runDev(
 
   const exitCode = await finished
   if (!options.quiet) {
-    printSection('NextScope stopped')
+    printSection('StackNext stopped')
     console.log(style.dim(`Runtime state removed (${runtimeStatePath(project.dir)})`))
   }
   return exitCode
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function processGroupAlive(pid: number): boolean {
+  try {
+    process.kill(-pid, 0)
+    return true
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'EPERM'
+  }
+}
+
+async function terminateChild(child: ChildProcess | null): Promise<void> {
+  if (!child) return
+  if (process.platform === 'win32') {
+    if (child.pid) {
+      spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
+        stdio: 'ignore',
+        windowsHide: true,
+      })
+    }
+    return
+  }
+  const pid = child.pid
+  if (!pid) {
+    child.kill('SIGTERM')
+    return
+  }
+  const signalGroup = (signal: NodeJS.Signals): boolean => {
+    try {
+      process.kill(-pid, signal)
+      return true
+    } catch {
+      return false
+    }
+  }
+  if (!signalGroup('SIGTERM') && child.exitCode === null && child.signalCode === null) {
+    child.kill('SIGTERM')
+  }
+  const stillRunning = (): boolean =>
+    processGroupAlive(pid) || (child.exitCode === null && child.signalCode === null)
+  const deadline = Date.now() + 3_000
+  while (stillRunning() && Date.now() < deadline) {
+    await delay(50)
+  }
+  if (stillRunning()) {
+    signalGroup('SIGKILL')
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL')
+    const killDeadline = Date.now() + 500
+    while (stillRunning() && Date.now() < killDeadline) {
+      await delay(25)
+    }
+  }
+}
+
+function terminateChildSync(child: ChildProcess): void {
+  if (!child.pid) return
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], {
+      stdio: 'ignore',
+      windowsHide: true,
+    })
+    return
+  }
+  try {
+    process.kill(-child.pid, 'SIGKILL')
+  } catch {
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill('SIGKILL')
+    }
+  }
 }
 
 export function registerDevCommand(program: Command, cwd: string): void {

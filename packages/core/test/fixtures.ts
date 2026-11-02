@@ -1,9 +1,9 @@
 import type {
-  NextScopeDatabaseQueryInput,
-  NextScopeErrorInput,
-  NextScopeIngestEnvelope,
-  NextScopeInstance,
-  NextScopeSpanInput,
+  StackNextDatabaseQueryInput,
+  StackNextErrorInput,
+  StackNextIngestEnvelope,
+  StackNextInstance,
+  StackNextSpanInput,
 } from '../src/index.js'
 
 export const TRACE_ID = '0123456789abcdef0123456789abcdef'
@@ -11,15 +11,15 @@ export const ROOT_SPAN_ID = '1111111111111111'
 export const CHILD_SPAN_ID = '2222222222222222'
 export const DB_SPAN_ID = '3333333333333333'
 
-export const instance: NextScopeInstance = {
+export const instance: StackNextInstance = {
   instanceId: 'test-instance',
   serviceName: 'test-app',
   projectName: 'test-project',
-  sdkVersion: '0.1.0',
+  sdkVersion: '0.6.0',
   runtime: 'nodejs',
 }
 
-export function rootSpan(overrides: Partial<NextScopeSpanInput> = {}): NextScopeSpanInput {
+export function rootSpan(overrides: Partial<StackNextSpanInput> = {}): StackNextSpanInput {
   return {
     traceId: TRACE_ID,
     spanId: ROOT_SPAN_ID,
@@ -47,7 +47,7 @@ export function rootSpan(overrides: Partial<NextScopeSpanInput> = {}): NextScope
   }
 }
 
-export function fetchSpan(overrides: Partial<NextScopeSpanInput> = {}): NextScopeSpanInput {
+export function fetchSpan(overrides: Partial<StackNextSpanInput> = {}): StackNextSpanInput {
   return {
     traceId: TRACE_ID,
     spanId: CHILD_SPAN_ID,
@@ -71,8 +71,8 @@ export function fetchSpan(overrides: Partial<NextScopeSpanInput> = {}): NextScop
 }
 
 export function databaseQuery(
-  overrides: Partial<NextScopeDatabaseQueryInput> = {},
-): NextScopeDatabaseQueryInput {
+  overrides: Partial<StackNextDatabaseQueryInput> = {},
+): StackNextDatabaseQueryInput {
   return {
     id: 'query-1',
     traceId: TRACE_ID,
@@ -88,7 +88,7 @@ export function databaseQuery(
   }
 }
 
-export function errorEvent(overrides: Partial<NextScopeErrorInput> = {}): NextScopeErrorInput {
+export function errorEvent(overrides: Partial<StackNextErrorInput> = {}): StackNextErrorInput {
   return {
     id: 'error-1',
     message: 'Database connection failed for postgres://user:hunter2@db.test/app',
@@ -108,8 +108,8 @@ export function errorEvent(overrides: Partial<NextScopeErrorInput> = {}): NextSc
 }
 
 export function envelope(
-  overrides: Partial<NextScopeIngestEnvelope> = {},
-): NextScopeIngestEnvelope {
+  overrides: Partial<StackNextIngestEnvelope> = {},
+): StackNextIngestEnvelope {
   return {
     version: 1,
     instance,

@@ -166,6 +166,9 @@ importers:
 
   .:
     devDependencies:
+      '@playwright/test':
+        specifier: 1.58.2
+        version: 1.58.2
       '@types/node':
         specifier: 24.10.1
         version: 24.10.1
@@ -190,10 +193,10 @@ importers:
 
   apps/example-next-app:
     dependencies:
-      '@nextscope/drizzle':
+      '@stacknext/drizzle':
         specifier: workspace:*
         version: link:../../packages/drizzle
-      '@nextscope/next':
+      '@stacknext/next':
         specifier: workspace:*
         version: link:../../packages/next
       better-sqlite3:
@@ -201,10 +204,10 @@ importers:
         version: 13.0.3
       drizzle-orm:
         specifier: 0.45.4
-        version: 0.45.4(@opentelemetry/api@1.9.0)(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3)
+        version: 0.45.4(@opentelemetry/api@1.9.0)(@prisma/client@7.10.1(typescript@5.9.3))(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3)
       next:
         specifier: 16.4.3
-        version: 16.4.3(@babel/core@7.29.7(supports-color@7.2.0))(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 16.4.3(@babel/core@7.29.7(supports-color@7.2.0))(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(@types/node@24.10.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -212,6 +215,12 @@ importers:
         specifier: 19.3.1
         version: 19.3.1(react@19.3.1)
     devDependencies:
+      '@playwright/test':
+        specifier: 1.58.2
+        version: 1.58.2
+      '@stacknext/playwright':
+        specifier: workspace:*
+        version: link:../../packages/playwright
       '@types/better-sqlite3':
         specifier: 9.6.0
         version: 9.6.0
@@ -224,7 +233,7 @@ importers:
       '@types/react-dom':
         specifier: 19.3.0
         version: 19.3.0(@types/react@19.3.0)
-      nextscope:
+      stacknext:
         specifier: workspace:*
         version: link:../../packages/cli
       typescript:
@@ -233,15 +242,21 @@ importers:
 
   packages/cli:
     dependencies:
-      '@nextscope/core':
+      '@stacknext/core':
         specifier: workspace:*
         version: link:../core
-      '@nextscope/dashboard':
+      '@stacknext/dashboard':
         specifier: workspace:*
         version: link:../dashboard
-      '@nextscope/mcp':
+      '@stacknext/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
+      '@stacknext/mcp':
         specifier: workspace:*
         version: link:../mcp
+      '@stacknext/regression':
+        specifier: workspace:*
+        version: link:../regression
       commander:
         specifier: 14.0.3
         version: 14.0.3
@@ -259,17 +274,13 @@ importers:
         version: 4.6.7
 
   packages/dashboard:
-    dependencies:
-      '@nextscope/core':
+    devDependencies:
+      '@stacknext/core':
         specifier: workspace:*
         version: link:../core
-      react:
-        specifier: 19.3.1
-        version: 19.3.1
-      react-dom:
-        specifier: 19.3.1
-        version: 19.3.1(react@19.3.1)
-    devDependencies:
+      '@stacknext/regression':
+        specifier: workspace:*
+        version: link:../regression
       '@types/react':
         specifier: 19.3.0
         version: 19.3.0
@@ -279,18 +290,33 @@ importers:
       '@vitejs/plugin-react':
         specifier: 5.2.0
         version: 5.2.0(supports-color@7.2.0)(vite@7.3.7(@types/node@24.10.1))
+      react:
+        specifier: 19.3.1
+        version: 19.3.1
+      react-dom:
+        specifier: 19.3.1
+        version: 19.3.1(react@19.3.1)
       vite:
         specifier: 7.3.7
         version: 7.3.7(@types/node@24.10.1)
 
-  packages/drizzle:
+  packages/diagnostics:
     dependencies:
-      '@nextscope/core':
+      '@stacknext/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/drizzle:
+    dependencies:
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
+      '@stacknext/core':
+        specifier: workspace:*
+        version: link:../core
+      drizzle-orm:
+        specifier: '>=0.30.0'
+        version: 0.45.4(@opentelemetry/api@1.9.0)(@prisma/client@7.10.1(typescript@5.9.3))(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3)
     devDependencies:
       '@opentelemetry/sdk-trace-node':
         specifier: 2.12.0
@@ -301,22 +327,25 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 1.32.2
         version: 1.32.2(supports-color@7.2.0)(zod@4.6.7)
-      '@nextscope/core':
+      '@stacknext/core':
         specifier: workspace:*
         version: link:../core
+      '@stacknext/regression':
+        specifier: workspace:*
+        version: link:../regression
       zod:
         specifier: 4.6.7
         version: 4.6.7
 
   packages/next:
     dependencies:
-      '@nextscope/core':
-        specifier: workspace:*
-        version: link:../core
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
       '@opentelemetry/context-async-hooks':
+        specifier: 2.12.0
+        version: 2.12.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/core':
         specifier: 2.12.0
         version: 2.12.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/resources':
@@ -331,19 +360,50 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: 1.39.0
         version: 1.39.0
+      '@stacknext/core':
+        specifier: workspace:*
+        version: link:../core
+      next:
+        specifier: '>=15.0.0 <17'
+        version: 16.4.3(@babel/core@7.29.7(supports-color@7.2.0))(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(@types/node@24.10.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+
+  packages/playwright:
+    dependencies:
+      '@stacknext/regression':
+        specifier: workspace:*
+        version: link:../regression
+    devDependencies:
+      '@playwright/test':
+        specifier: 1.58.2
+        version: 1.58.2
 
   packages/prisma:
     dependencies:
-      '@nextscope/core':
-        specifier: workspace:*
-        version: link:../core
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
+      '@prisma/client':
+        specifier: '>=5.0.0'
+        version: 7.10.1(typescript@5.9.3)
+      '@stacknext/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@opentelemetry/sdk-trace-node':
         specifier: 2.12.0
         version: 2.12.0(@opentelemetry/api@1.9.0)
+
+  packages/regression:
+    dependencies:
+      '@stacknext/core':
+        specifier: workspace:*
+        version: link:../core
+      '@stacknext/diagnostics':
+        specifier: workspace:*
+        version: link:../diagnostics
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
 
 packages:
 
@@ -948,6 +1008,26 @@ packages:
   '@opentelemetry/semantic-conventions@1.39.0':
     resolution: {integrity: sha512-R5R9tb2AXs2IRLNKLBJDynhkfmx7mX0vi8NkhZb3gUkPWHn6HXk5J8iQ/dql0U3ApfWym4kXXmBDRGO+oeOfjg==}
     engines: {node: '>=14'}
+
+  '@playwright/test@1.58.2':
+    resolution: {integrity: sha512-akea+6bHYBBfA9uQqSYmlJXn61cTa+jbO87xVLCWbTqbWadRVmhxlXATaOjOgcBaWU4ePo0wB41KMFv3o35IXA==}
+    engines: {node: '>=18'}
+    hasBin: true
+
+  '@prisma/client-runtime-utils@7.10.1':
+    resolution: {integrity: sha512-AzoATVIgmO3lcZfM443+9SI7+cyLMW2+Psw4op8WQHpHvHCX//CKxv8fwhiL0yGWF8DjdQrFewxrZo5McBdB8g==}
+
+  '@prisma/client@7.10.1':
+    resolution: {integrity: sha512-5tgAbFGh//zVOC6WPNVgziOErJHYkUE+wmqCwbIyq6IrTXUYtv9y2iBFGh/Owo99Mx0+cr0j1FOrxkYBMuyhaQ==}
+    engines: {node: ^20.19 || ^22.12 || >=24.0}
+    peerDependencies:
+      prisma: '*'
+      typescript: '>=5.4.0'
+    peerDependenciesMeta:
+      prisma:
+        optional: true
+      typescript:
+        optional: true
 
   '@rolldown/pluginutils@1.0.0-rc.3':
     resolution: {integrity: sha512-eybk3TjzzzV97Dlj5c+XrBFW57eTNhzod66y9HrBlzJ6NsCrWCp/2kaPS3K9wJmurBC0Tdw4yPjXKZqlznim3Q==}
@@ -1681,6 +1761,11 @@ packages:
     resolution: {integrity: sha512-Rx/WycZ60HOaqLKAi6cHRKKI7zxWbJ31MhntmtwMoaTeF7XFH9hhBp8vITaMidfljRQ6eYWCKkaTK+ykVJHP2A==}
     engines: {node: '>= 0.8'}
 
+  fsevents@2.3.2:
+    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
+    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
+    os: [darwin]
+
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
@@ -1983,6 +2068,16 @@ packages:
   pkce-challenge@5.0.1:
     resolution: {integrity: sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ==}
     engines: {node: '>=16.20.0'}
+
+  playwright-core@1.58.2:
+    resolution: {integrity: sha512-yZkEtftgwS8CsfYo7nm0KE8jsvm6i/PTgVtB8DL726wNf6H2IMsDuxCpJj59KDaxCtSnrWan2AeDqM7JBaultg==}
+    engines: {node: '>=18'}
+    hasBin: true
+
+  playwright@1.58.2:
+    resolution: {integrity: sha512-vA30H8Nvkq/cPBnNw4Q8TWz1EJyqgpuinBcHET0YVJVFldr8JDNiU9LaWAE1KqSkRYazuaBhTpB5ZzShOezQ6A==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   postcss@8.5.23:
     resolution: {integrity: sha512-g50586zr4bZmwFiTlflMu8E0bDTb5I5gertgwAKmsdUlTQIhZtunzUlD1WSzwcVWPoAVpsrA6vlfCD7oXvRwgg==}
@@ -2813,6 +2908,18 @@ snapshots:
 
   '@opentelemetry/semantic-conventions@1.39.0': {}
 
+  '@playwright/test@1.58.2':
+    dependencies:
+      playwright: 1.58.2
+
+  '@prisma/client-runtime-utils@7.10.1': {}
+
+  '@prisma/client@7.10.1(typescript@5.9.3)':
+    dependencies:
+      '@prisma/client-runtime-utils': 7.10.1
+    optionalDependencies:
+      typescript: 5.9.3
+
   '@rolldown/pluginutils@1.0.0-rc.3': {}
 
   '@rollup/rollup-android-arm-eabi@4.67.2':
@@ -3253,9 +3360,10 @@ snapshots:
   detect-libc@2.1.2:
     optional: true
 
-  drizzle-orm@0.45.4(@opentelemetry/api@1.9.0)(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3):
+  drizzle-orm@0.45.4(@opentelemetry/api@1.9.0)(@prisma/client@7.10.1(typescript@5.9.3))(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3):
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
+      '@prisma/client': 7.10.1(typescript@5.9.3)
       '@types/better-sqlite3': 9.6.0
       better-sqlite3: 13.0.3
 
@@ -3493,6 +3601,9 @@ snapshots:
 
   fresh@2.0.0: {}
 
+  fsevents@2.3.2:
+    optional: true
+
   fsevents@2.3.3:
     optional: true
 
@@ -3662,7 +3773,7 @@ snapshots:
     dependencies:
       content-type: 2.1.0
 
-  next@16.4.3(@babel/core@7.29.7(supports-color@7.2.0))(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  next@16.4.3(@babel/core@7.29.7(supports-color@7.2.0))(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(@types/node@24.10.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@next/env': 16.4.3
       '@swc/helpers': 0.5.23
@@ -3682,6 +3793,7 @@ snapshots:
       '@next/swc-win32-arm64-msvc': 16.4.3
       '@next/swc-win32-x64-msvc': 16.4.3
       '@opentelemetry/api': 1.9.0
+      '@playwright/test': 1.58.2
       sharp: 0.35.5(@types/node@24.10.1)
     transitivePeerDependencies:
       - '@babel/core'
@@ -3742,6 +3854,14 @@ snapshots:
   picomatch@4.0.7: {}
 
   pkce-challenge@5.0.1: {}
+
+  playwright-core@1.58.2: {}
+
+  playwright@1.58.2:
+    dependencies:
+      playwright-core: 1.58.2
+    optionalDependencies:
+      fsevents: 2.3.2
 
   postcss@8.5.23:
     dependencies:

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { HealthResponse } from '@nextscope/core'
+import type { HealthResponse } from '@stacknext/core'
 import { api } from './api'
 import { useAsync, useLiveTelemetry, useTheme, type Theme } from './hooks'
 import { matchRoute } from './router'
@@ -13,6 +13,14 @@ import { TracesPage } from './pages/TracesPage'
 import { DatabasePage } from './pages/DatabasePage'
 import { ErrorsPage } from './pages/ErrorsPage'
 import { ErrorDetailPage } from './pages/ErrorDetailPage'
+import { DiagnosticsPage } from './pages/DiagnosticsPage'
+import { DiagnosticDetailPage } from './pages/DiagnosticDetailPage'
+import { RunsPage } from './pages/RunsPage'
+import { RunDetailPage } from './pages/RunDetailPage'
+import { BaselinesPage } from './pages/BaselinesPage'
+import { BaselineDetailPage } from './pages/BaselineDetailPage'
+import { ComparisonsPage } from './pages/ComparisonsPage'
+import { ComparisonDetailPage } from './pages/ComparisonDetailPage'
 import { SettingsPage } from './pages/SettingsPage'
 
 interface NavItem {
@@ -54,6 +62,21 @@ const NAV: NavItem[] = [
     match: (path) => path.startsWith('/errors'),
   },
   {
+    label: 'Diagnostics',
+    path: '/diagnostics',
+    icon: 'pulse',
+    match: (path) => path.startsWith('/diagnostics'),
+  },
+  {
+    label: 'Testing',
+    path: '/runs',
+    icon: 'terminal',
+    match: (path) =>
+      path.startsWith('/runs') ||
+      path.startsWith('/baselines') ||
+      path.startsWith('/comparisons'),
+  },
+  {
     label: 'MCP & settings',
     path: '/settings',
     icon: 'settings',
@@ -77,7 +100,8 @@ function NotFound({ onNavigate }: { onNavigate: (path: string) => void }): React
       <div className="not-found__code">404</div>
       <h1>This view does not exist</h1>
       <p className="muted">
-        The dashboard only has Overview, Requests, Traces, Database, Errors and MCP & settings.
+        The dashboard only has Overview, Requests, Traces, Database, Errors, Diagnostics,
+        Testing and MCP &amp; settings.
       </p>
       <button type="button" className="button button--primary" onClick={() => onNavigate('/')}>
         Back to overview
@@ -165,7 +189,7 @@ export function App(): React.ReactElement {
             type="button"
             className="sidebar__logo"
             onClick={() => navigate('/')}
-            aria-label="NextScope overview"
+            aria-label="StackNext overview"
           >
             <span className="logo-mark">
               <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true">
@@ -181,7 +205,7 @@ export function App(): React.ReactElement {
               </svg>
             </span>
             <span className="sidebar__brand-text">
-              <span className="sidebar__brand-name">NextScope</span>
+              <span className="sidebar__brand-name">StackNext</span>
               <span className="sidebar__brand-sub">{pageHealth?.projectName ?? 'local-first'}</span>
             </span>
           </button>
@@ -237,7 +261,7 @@ export function App(): React.ReactElement {
 
         <div className="sidebar__footer">
           <div className="sidebar__footer-row">
-            <span className="mono">v{pageHealth?.version ?? '0.1.0'}</span>
+            <span className="mono">v{pageHealth?.version ?? '0.6.0'}</span>
             <div className="sidebar__footer-actions">
               <button
                 type="button"
@@ -250,10 +274,10 @@ export function App(): React.ReactElement {
               </button>
               <a
                 className="button button--ghost button--icon"
-                href="https://github.com/nextscope/nextscope"
+                href="https://github.com/marrrkkk/stacknext"
                 target="_blank"
                 rel="noreferrer"
-                aria-label="NextScope on GitHub"
+                aria-label="StackNext on GitHub"
                 title="Docs and source"
               >
                 <Icon name="code" size={15} />
@@ -282,7 +306,7 @@ export function App(): React.ReactElement {
           >
             <Icon name="overview" size={17} />
           </button>
-          <div className="topbar__project">{pageHealth?.projectName ?? 'NextScope'}</div>
+          <div className="topbar__project">{pageHealth?.projectName ?? 'StackNext'}</div>
           <div className="topbar__status">
             <span className={cx('pill', pageHealth?.connected ? 'pill--good' : 'pill--muted')}>
               <StatusDot status={pageHealth?.connected ? 'live' : 'connecting'} />
@@ -335,6 +359,49 @@ export function App(): React.ReactElement {
               onNavigate={navigate}
             />
           )}
+          {pathname === 'diagnostics' && (
+            <DiagnosticsPage refreshKey={refreshKey} onNavigate={navigate} />
+          )}
+          {pathname === 'diagnostic' && route.id && (
+            <DiagnosticDetailPage
+              diagnosticId={route.id}
+              refreshKey={refreshKey}
+              onNavigate={navigate}
+            />
+          )}
+          {pathname === 'runs' && (
+            <RunsPage refreshKey={refreshKey} onNavigate={navigate} />
+          )}
+          {pathname === 'run' && route.id && (
+            <RunDetailPage
+              key={`run:${route.id}`}
+              runId={route.id}
+              refreshKey={refreshKey}
+              onNavigate={navigate}
+            />
+          )}
+          {pathname === 'baselines' && (
+            <BaselinesPage refreshKey={refreshKey} onNavigate={navigate} />
+          )}
+          {pathname === 'baseline' && route.id && (
+            <BaselineDetailPage
+              key={`baseline:${route.id}`}
+              baselineId={route.id}
+              refreshKey={refreshKey}
+              onNavigate={navigate}
+            />
+          )}
+          {pathname === 'comparisons' && (
+            <ComparisonsPage refreshKey={refreshKey} onNavigate={navigate} />
+          )}
+          {pathname === 'comparison' && route.id && (
+            <ComparisonDetailPage
+              key={`comparison:${route.id}`}
+              comparisonId={route.id}
+              refreshKey={refreshKey}
+              onNavigate={navigate}
+            />
+          )}
           {pathname === 'settings' && (
             <SettingsPage
               refreshKey={refreshKey}
@@ -346,7 +413,7 @@ export function App(): React.ReactElement {
 
           <footer className="content-footer">
             <span>
-              NextScope is local-only: spans are redacted, bounded in memory and never uploaded.
+              StackNext is local-only: spans are redacted, bounded in memory and never uploaded.
             </span>
             <span className="mono">
               {pageHealth

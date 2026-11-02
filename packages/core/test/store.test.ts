@@ -51,6 +51,23 @@ describe('TelemetryStore', () => {
     const trace = store.getTrace(TRACE_ID)!
     expect(trace.spans).toHaveLength(2)
     expect(trace.missingParentSpanIds).toContain('aaaaaaaaaaaaaaaa')
+    expect(trace.warnings.map((warning) => warning.code)).toContain('missing-parent')
+  })
+
+  it('warns about unmeasured query durations and missing request roots', () => {
+    const store = new TelemetryStore()
+    store.ingest(
+      envelope({
+        spans: [fetchSpan()],
+        errors: [],
+        databaseQueries: [databaseQuery({ durationMs: null })],
+      }),
+    )
+    const trace = store.getTrace(TRACE_ID)!
+    expect(trace.request).toBeNull()
+    expect(trace.warnings.map((warning) => warning.code)).toEqual(
+      expect.arrayContaining(['unmeasured-query-duration', 'no-request-root']),
+    )
   })
 
   it('links an error to a request when trace id is absent', () => {
@@ -134,6 +151,58 @@ describe('TelemetryStore', () => {
     expect(store.getStats().dropped.capacity).toBe(1)
   })
 
+  it('does not pollute object prototypes with hostile span types', () => {
+    const store = new TelemetryStore({ now: () => 5_000 })
+    store.ingest(
+      envelope({
+        spans: [rootSpan({ nextSpanType: '__proto__' })],
+        errors: [],
+        databaseQueries: [],
+      }),
+      5_000,
+    )
+    const evidence = store.getCoverageEvidence()
+    expect(({} as Record<string, unknown>).count).toBeUndefined()
+    expect(Object.hasOwn(evidence.spanTypes, '__proto__')).toBe(true)
+    expect(evidence.spanTypes['__proto__']?.count).toBe(1)
+  })
+
+  it('keeps retention order correct when an existing span is re-sent', () => {
+    let now = 5_000
+    const store = new TelemetryStore({ retentionMs: 1_000, now: () => now })
+    store.ingest(
+      envelope({ spans: [rootSpan()], errors: [], databaseQueries: [] }),
+      5_000,
+    )
+    now = 5_500
+    store.ingest(
+      envelope({
+        spans: [
+          rootSpan({
+            traceId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            spanId: 'bbbbbbbbbbbbbbbb',
+            route: '/second',
+            startTime: 5_500,
+            endTime: 5_510,
+          }),
+        ],
+        errors: [],
+        databaseQueries: [],
+      }),
+      5_500,
+    )
+    now = 5_600
+    store.ingest(
+      envelope({ spans: [rootSpan()], errors: [], databaseQueries: [] }),
+      5_600,
+    )
+    now = 6_500
+    store.prune(6_500)
+    expect(store.spanCount).toBe(1)
+    expect(store.getTrace(TRACE_ID)?.spans).toHaveLength(1)
+    expect(store.getTrace('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).toBeNull()
+  })
+
   it('expires events after the retention window', () => {
     let now = 5_000
     const store = new TelemetryStore({ retentionMs: 1_000, now: () => now })
@@ -214,5 +283,84 @@ describe('TelemetryStore', () => {
     store.clear()
     expect(store.spanCount).toBe(0)
     expect(store.errorCount).toBe(0)
+  })
+
+  it('tracks a store revision for diagnostic cache invalidation', () => {
+    let now = 5_000
+    const store = new TelemetryStore({ retentionMs: 1_000, now: () => now })
+    expect(store.storeRevision).toBe(0)
+
+    store.ingest(envelope(), now)
+    const afterIngest = store.storeRevision
+    expect(afterIngest).toBeGreaterThan(0)
+
+    store.getDiagnosticSnapshot()
+    expect(store.storeRevision).toBe(afterIngest)
+
+    store.prune(now)
+    expect(store.storeRevision).toBe(afterIngest)
+
+    now = 7_000
+    store.prune(now)
+    expect(store.storeRevision).toBeGreaterThan(afterIngest)
+
+    const beforeClear = store.storeRevision
+    store.clear()
+    expect(store.storeRevision).toBe(beforeClear)
+    store.clear()
+    expect(store.storeRevision).toBe(beforeClear)
+  })
+
+  it('returns a diagnostic snapshot with resolved routes and trace ids', () => {
+    const store = new TelemetryStore({ now: () => 5_000 })
+    store.ingest(
+      envelope({
+        errors: [
+          errorEvent({
+            id: 'fallback-error',
+            traceId: undefined,
+            spanId: undefined,
+            timestamp: 1_040,
+          }),
+        ],
+      }),
+      5_000,
+    )
+    const snapshot = store.getDiagnosticSnapshot(100)
+    expect(snapshot.revision).toBe(store.storeRevision)
+    expect(snapshot.spans).toHaveLength(2)
+    expect(snapshot.errors).toHaveLength(1)
+    expect(snapshot.errors[0]?.resolvedTraceId).toBe(TRACE_ID)
+    expect(snapshot.databaseQueries[0]?.resolvedTraceId).toBe(TRACE_ID)
+    expect(snapshot.databaseQueries[0]?.route).toBe('/api/test')
+    expect(snapshot.requests).toHaveLength(1)
+    expect(snapshot.requests[0]?.traceId).toBe(TRACE_ID)
+    expect(snapshot.firstEventTime).toBe(1_000)
+    expect(snapshot.lastEventTime).toBe(1_040)
+    expect(snapshot.retentionMs).toBe(600_000)
+  })
+
+  it('increments the revision when capacity evicts old telemetry', () => {
+    const store = new TelemetryStore({ maxSpans: 2, now: () => 5_000 })
+    store.ingest(envelope(), 5_000)
+    const before = store.storeRevision
+    store.ingest(
+      envelope({
+        spans: [
+          rootSpan({
+            traceId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            spanId: 'bbbbbbbbbbbbbbbb',
+            route: '/new',
+            startTime: 2_000,
+            endTime: 2_010,
+          }),
+        ],
+        errors: [],
+        databaseQueries: [],
+      }),
+      5_000,
+    )
+    expect(store.storeRevision).toBeGreaterThan(before)
+    expect(store.getStats().dropped.capacity).toBeGreaterThan(0)
   })
 })

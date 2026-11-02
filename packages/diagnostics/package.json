@@ -1,0 +1,51 @@
+{
+  "name": "@stacknext/diagnostics",
+  "version": "0.6.0",
+  "description": "Deterministic, evidence-backed runtime diagnostics for StackNext telemetry",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@stacknext/core": "workspace:*"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "author": "StackNext contributors",
+  "homepage": "https://github.com/marrrkkk/stacknext#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marrrkkk/stacknext.git",
+    "directory": "packages/diagnostics"
+  },
+  "bugs": {
+    "url": "https://github.com/marrrkkk/stacknext/issues"
+  },
+  "keywords": [
+    "stacknext",
+    "nextjs",
+    "diagnostics",
+    "n-plus-one",
+    "observability",
+    "debugging"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

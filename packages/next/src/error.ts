@@ -1,15 +1,15 @@
-import { randomUUID } from 'node:crypto'
+import { randomUUID } from 'crypto'
 import { isSpanContextValid, trace } from '@opentelemetry/api'
 import {
   redactErrorText,
   redactText,
   stripUrlQuery,
-  type NextScopeErrorInput,
-} from '@nextscope/core'
+  type StackNextErrorInput,
+} from '@stacknext/core'
 import {
-  getNextScopeTransport,
-  type NextScopeTransport,
-} from '@nextscope/core/transport'
+  getStackNextTransport,
+  type StackNextTransport,
+} from '@stacknext/core/transport'
 
 /** Structural subset of Next.js `Instrumentation.RequestInfo`. */
 export interface NextRequestInfo {
@@ -106,14 +106,14 @@ function buildAttributes(
 }
 
 /**
- * Converts a Next.js request error into the NextScope wire format.
+ * Converts a Next.js request error into the StackNext wire format.
  * Header values are never read or stored.
  */
 export function requestErrorToInput(
   error: unknown,
   request: NextRequestInfo,
   context: NextRequestErrorContext,
-): NextScopeErrorInput {
+): StackNextErrorInput {
   const details = readErrorDetails(error)
   const route = safePath(context.routePath)
   const requestPath = safePath(request.path)
@@ -149,7 +149,7 @@ export function requestErrorToInput(
   }
 }
 
-type ErrorSink = Pick<NextScopeTransport, 'enqueueError'>
+type ErrorSink = Pick<StackNextTransport, 'enqueueError'>
 
 /**
  * Creates a Next.js `onRequestError` handler bound to a transport. Exposed for
@@ -183,9 +183,9 @@ export function onRequestError(
 ): void {
   const runtime = process.env.NEXT_RUNTIME
   if (runtime !== undefined && runtime !== 'nodejs') return
-  if (process.env.NEXTSCOPE_CAPTURE_ERRORS === '0') return
+  if (process.env.STACKNEXT_CAPTURE_ERRORS === '0') return
   try {
-    const transport = getNextScopeTransport()
+    const transport = getStackNextTransport()
     if (!transport) return
     createRequestErrorHandler(transport)(error, request, context)
   } catch {

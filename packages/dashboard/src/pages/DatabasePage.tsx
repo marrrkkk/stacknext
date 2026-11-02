@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { DatabaseQueryListItem, PageResult } from '@nextscope/core'
+import type { DatabaseQueryListItem, PageResult } from '@stacknext/core'
 import { api } from '../api'
 import { useAsync, useDebounced } from '../hooks'
 import {
@@ -147,7 +147,7 @@ export function DatabasePage({
                 'Adjust the search, database system or duration filter.'
               ) : (
                 <>
-                  Add <code>createNextScopeDrizzleLogger()</code> to drizzle or call{' '}
+                  Add <code>createStackNextDrizzleLogger()</code> to drizzle or call{' '}
                   <code>instrumentPrismaClient(prisma)</code> in a server-only module.
                 </>
               )

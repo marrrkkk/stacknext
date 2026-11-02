@@ -1,6 +1,9 @@
 import type {
   DatabaseFilters,
   DatabaseQueryListItem,
+  DiagnosticDetailResponse,
+  DiagnosticFilters,
+  DiagnosticListResponse,
   ErrorDetailResponse,
   ErrorFilters,
   ErrorListResponse,
@@ -10,21 +13,29 @@ import type {
   RequestSummary,
   TraceDetail,
   TraceListResult,
-} from '@nextscope/core'
+} from '@stacknext/core'
+import type {
+  Baseline,
+  BaselineSummary,
+  Comparison,
+  ComparisonSummaryItem,
+  RunSummary,
+  TestRun,
+} from '@stacknext/regression'
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '::1'])
 
-export class NextScopeApiError extends Error {
+export class StackNextApiError extends Error {
   readonly status: number
 
   constructor(message: string, status: number) {
     super(message)
-    this.name = 'NextScopeApiError'
+    this.name = 'StackNextApiError'
     this.status = status
   }
 }
 
-export interface NextScopeApiClientOptions {
+export interface StackNextApiClientOptions {
   baseUrl: string
   token: string
   timeoutMs?: number
@@ -41,7 +52,7 @@ function assertLoopback(baseUrl: string): URL {
     throw new Error('Collector URL must use HTTP')
   }
   if (!LOOPBACK_HOSTS.has(url.hostname)) {
-    throw new Error('NextScope only reads from a loopback collector')
+    throw new Error('StackNext only reads from a loopback collector')
   }
   return url
 }
@@ -66,12 +77,12 @@ function appendString(
  * Read-only client for the local collector HTTP API. It never sends mutation
  * requests and refuses non-loopback hosts.
  */
-export class NextScopeApiClient {
+export class StackNextApiClient {
   private readonly baseUrl: string
   private readonly token: string
   private readonly timeoutMs: number
 
-  constructor(options: NextScopeApiClientOptions) {
+  constructor(options: StackNextApiClientOptions) {
     assertLoopback(options.baseUrl)
     if (options.token.length < 16) {
       throw new Error('Collector token is too short')
@@ -83,14 +94,28 @@ export class NextScopeApiClient {
 
   private async get<T>(pathname: string, params?: URLSearchParams): Promise<T> {
     const suffix = params && params.size > 0 ? `?${params.toString()}` : ''
-    const response = await fetch(`${this.baseUrl}${pathname}${suffix}`, {
-      method: 'GET',
-      headers: {
-        authorization: `Bearer ${this.token}`,
-        accept: 'application/json',
-      },
-      signal: AbortSignal.timeout(this.timeoutMs),
-    })
+    const url = `${this.baseUrl}${pathname}${suffix}`
+    let response: Response
+    try {
+      response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          authorization: `Bearer ${this.token}`,
+          accept: 'application/json',
+        },
+        signal: AbortSignal.timeout(this.timeoutMs),
+      })
+    } catch (error) {
+      const detail =
+        error instanceof Error && error.name === 'TimeoutError'
+          ? `The request timed out after ${this.timeoutMs} ms.`
+          : error instanceof Error
+            ? error.message
+            : String(error)
+      throw new Error(
+        `Cannot reach the StackNext collector at ${this.baseUrl}. Start it with "stacknext dev" in your app directory, then retry. ${detail}`,
+      )
+    }
     if (!response.ok) {
       let message = `Collector responded with HTTP ${response.status}`
       try {
@@ -99,9 +124,22 @@ export class NextScopeApiClient {
       } catch {
         // Keep the status-based message.
       }
-      throw new NextScopeApiError(message, response.status)
+      if (response.status === 401) {
+        message =
+          'StackNext collector rejected the token. The collector may have restarted; restart the MCP client or pass the current token with --token.'
+      } else if (response.status === 403) {
+        message = `StackNext collector refused the request: ${message}`
+      }
+      throw new StackNextApiError(message, response.status)
     }
-    return (await response.json()) as T
+    try {
+      return (await response.json()) as T
+    } catch {
+      throw new StackNextApiError(
+        'StackNext collector returned a response that was not valid JSON.',
+        response.status,
+      )
+    }
   }
 
   async overview(): Promise<OverviewResponse> {
@@ -167,6 +205,70 @@ export class NextScopeApiClient {
     appendString(params, 'traceId', filters.traceId)
     appendString(params, 'databaseSystem', filters.databaseSystem)
     return this.get<PageResult<DatabaseQueryListItem>>('/api/database', params)
+  }
+
+  async listDiagnostics(filters: DiagnosticFilters = {}): Promise<DiagnosticListResponse> {
+    const params = new URLSearchParams()
+    appendNumber(params, 'limit', filters.limit)
+    appendNumber(params, 'offset', filters.offset)
+    appendString(params, 'q', filters.q)
+    appendString(params, 'category', filters.category)
+    appendString(params, 'severity', filters.severity)
+    appendString(params, 'status', filters.status)
+    appendString(params, 'ruleId', filters.ruleId)
+    appendString(params, 'route', filters.route)
+    appendString(params, 'traceId', filters.traceId)
+    appendNumber(params, 'since', filters.since)
+    appendNumber(params, 'until', filters.until)
+    return this.get<DiagnosticListResponse>('/api/diagnostics', params)
+  }
+
+  async getDiagnostic(id: string): Promise<DiagnosticDetailResponse> {
+    return this.get<DiagnosticDetailResponse>(
+      `/api/diagnostics/${encodeURIComponent(id)}`,
+    )
+  }
+
+  async listTestRuns(options: {
+    limit?: number
+    offset?: number
+  } = {}): Promise<PageResult<RunSummary>> {
+    const params = new URLSearchParams()
+    appendNumber(params, 'limit', options.limit)
+    appendNumber(params, 'offset', options.offset)
+    return this.get<PageResult<RunSummary>>('/api/test-runs', params)
+  }
+
+  async getTestRun(id: string): Promise<TestRun> {
+    return this.get<TestRun>(`/api/test-runs/${encodeURIComponent(id)}`)
+  }
+
+  async listBaselines(options: {
+    limit?: number
+    offset?: number
+  } = {}): Promise<PageResult<BaselineSummary>> {
+    const params = new URLSearchParams()
+    appendNumber(params, 'limit', options.limit)
+    appendNumber(params, 'offset', options.offset)
+    return this.get<PageResult<BaselineSummary>>('/api/baselines', params)
+  }
+
+  async getBaseline(id: string): Promise<Baseline> {
+    return this.get<Baseline>(`/api/baselines/${encodeURIComponent(id)}`)
+  }
+
+  async listComparisons(options: {
+    limit?: number
+    offset?: number
+  } = {}): Promise<PageResult<ComparisonSummaryItem>> {
+    const params = new URLSearchParams()
+    appendNumber(params, 'limit', options.limit)
+    appendNumber(params, 'offset', options.offset)
+    return this.get<PageResult<ComparisonSummaryItem>>('/api/comparisons', params)
+  }
+
+  async getComparison(id: string): Promise<Comparison> {
+    return this.get<Comparison>(`/api/comparisons/${encodeURIComponent(id)}`)
   }
 
   async findSlowRequests(options: {

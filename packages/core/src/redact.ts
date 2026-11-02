@@ -1,8 +1,12 @@
 const SENSITIVE_KEY_PATTERN =
-  /(authorization|proxy[-_]?authorization|cookie|set[-_]?cookie|password|passwd|pwd|secret|api[-_]?key|access[-_]?token|refresh[-_]?token|private[-_]?key|client[-_]?secret|credential|connection[-_]?string|database[-_]?url|dsn|session[-_]?token)/i
+  /(authorization|proxy[-_]?authorization|cookie|set[-_]?cookie|password|passwd|pwd|secret|api[-_]?key|access[-_]?token|refresh[-_]?token|private[-_]?key|client[-_]?secret|credential|connection[-_]?string|database[-_]?url|dsn|session[-_]?token|(^|[._-])tokens?($|[._-])|auth[-_]?token|x[-_]?auth[-_]?token)/i
 
-const URL_LIKE_KEY_PATTERN = /(^|\.)(url|uri|target|href|original[-_]?url|request[-_]?url)$/i
-const HEADER_KEY_PATTERN = /(^|\.)(headers?|request[-_]?headers?|response[-_]?headers?)$/i
+const URL_LIKE_KEY_PATTERN =
+  /(^|\.)(url|uri|target|href|span_name|route|page|segment|original[-_]?url|request[-_]?url|url\.(?:full|path))$/i
+const URL_QUERY_KEY_PATTERN =
+  /(^|\.)(url\.(?:query|fragment|search)|http\.(?:query|fragment))$/i
+const HEADER_KEY_PATTERN =
+  /(^|\.)(headers?|request[-_.]headers?|response[-_.]headers?)(\.|$)/i
 const REDACTED = '[redacted]'
 const MAX_DEPTH = 8
 const MAX_ARRAY_ITEMS = 50
@@ -30,8 +34,8 @@ const SECRET_PATTERNS: Array<[RegExp, string]> = [
   [/\bsk-[a-z0-9_-]{16,}\b/gi, REDACTED],
   [/\b(pk|rk)_(live|test)_[a-z0-9]{10,}\b/gi, REDACTED],
   [
-    /\b(postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqp|mssql):\/\/[^\s/@]+(?::[^\s/@]*)?@/gi,
-    `$1://${REDACTED}@`,
+    /\b([a-z][a-z0-9+.-]*:\/\/)[^\s/@?#]+@/gi,
+    `$1${REDACTED}@`,
   ],
   [
     /\b(password|passwd|pwd|secret|token|api[_-]?key)\s*[=:]\s*("[^"]*"|'[^']*'|[^\s,;&]+)/gi,
@@ -74,7 +78,7 @@ export function isSensitiveKey(key: string): boolean {
 }
 
 function sanitizeValue(key: string, value: unknown, depth: number): unknown {
-  if (isSensitiveKey(key) || HEADER_KEY_PATTERN.test(key)) {
+  if (isSensitiveKey(key) || HEADER_KEY_PATTERN.test(key) || URL_QUERY_KEY_PATTERN.test(key)) {
     return REDACTED
   }
   if (value === null || value === undefined) return value
@@ -95,7 +99,7 @@ function sanitizeValue(key: string, value: unknown, depth: number): unknown {
       .map((item) => sanitizeValue(key, item, depth + 1))
   }
   if (typeof value === 'object') {
-    const output: Record<string, unknown> = {}
+    const output = Object.create(null) as Record<string, unknown>
     let count = 0
     for (const [childKey, childValue] of Object.entries(value as Record<string, unknown>)) {
       if (count >= MAX_ARRAY_ITEMS) break
@@ -108,18 +112,18 @@ function sanitizeValue(key: string, value: unknown, depth: number): unknown {
 }
 
 /**
- * Central privacy boundary. Every attribute map that enters NextScope passes
+ * Central privacy boundary. Every attribute map that enters StackNext passes
  * through this function, in the application exporter and again in the collector.
  */
 export function sanitizeAttributes(
   attributes: Record<string, unknown> | undefined,
 ): Record<string, unknown> {
   if (!attributes) return {}
-  const output: Record<string, unknown> = {}
+  const output = Object.create(null) as Record<string, unknown>
   let count = 0
   for (const [key, value] of Object.entries(attributes)) {
     if (count >= 100) {
-      output['nextscope.truncated_attributes'] = true
+      output['stacknext.truncated_attributes'] = true
       break
     }
     output[key] = sanitizeValue(key, value, 0)
@@ -132,7 +136,7 @@ export function sanitizeResource(
   resource: Record<string, unknown> | undefined,
 ): Record<string, unknown> {
   if (!resource) return {}
-  const output: Record<string, unknown> = {}
+  const output = Object.create(null) as Record<string, unknown>
   for (const [key, value] of Object.entries(resource)) {
     if (!RESOURCE_ALLOWLIST.has(key)) continue
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {

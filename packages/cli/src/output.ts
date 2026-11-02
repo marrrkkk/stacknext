@@ -17,7 +17,7 @@ export const style = {
 }
 
 export function printBanner(version: string): void {
-  console.log(`${style.bold('NextScope')} ${style.dim(`v${version}`)}`)
+  console.log(`${style.bold('StackNext')} ${style.dim(`v${version}`)}`)
 }
 
 export function printSection(title: string): void {

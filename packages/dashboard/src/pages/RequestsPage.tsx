@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { PageResult, RequestSummary } from '@nextscope/core'
+import type { PageResult, RequestSummary } from '@stacknext/core'
 import { api } from '../api'
 import { useAsync, useDebounced } from '../hooks'
 import {
@@ -165,7 +165,7 @@ export function RequestsPage({
             description={
               filtersActive
                 ? 'Adjust the search, method, status or slow filter.'
-                : 'Start the app with NextScope instrumentation, then make a request to see the full trace.'
+                : 'Start the app with StackNext instrumentation, then make a request to see the full trace.'
             }
             action={
               filtersActive ? (
@@ -184,7 +184,7 @@ export function RequestsPage({
                   Clear filters
                 </button>
               ) : (
-                <code className="inline-code">nextscope dev</code>
+                <code className="inline-code">stacknext dev</code>
               )
             }
           />

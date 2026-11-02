@@ -1,8 +1,8 @@
 import { context, trace } from '@opentelemetry/api'
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import type { NextScopeDatabaseQueryInput } from '@nextscope/core'
-import { createNextScopeDrizzleLogger } from '../src/index.js'
+import type { StackNextDatabaseQueryInput } from '@stacknext/core'
+import { createStackNextDrizzleLogger } from '../src/index.js'
 
 let provider: NodeTracerProvider
 
@@ -15,10 +15,10 @@ afterAll(async () => {
   await provider.shutdown()
 })
 
-describe('createNextScopeDrizzleLogger', () => {
+describe('createStackNextDrizzleLogger', () => {
   it('captures SQL, infers the operation and never stores params', () => {
-    const queries: NextScopeDatabaseQueryInput[] = []
-    const logger = createNextScopeDrizzleLogger({
+    const queries: StackNextDatabaseQueryInput[] = []
+    const logger = createStackNextDrizzleLogger({
       databaseSystem: 'sqlite',
       transport: { enqueueDatabaseQuery: (query) => queries.push(query) },
     })
@@ -38,8 +38,8 @@ describe('createNextScopeDrizzleLogger', () => {
   })
 
   it('correlates queries with the active trace', () => {
-    const queries: NextScopeDatabaseQueryInput[] = []
-    const logger = createNextScopeDrizzleLogger({
+    const queries: StackNextDatabaseQueryInput[] = []
+    const logger = createStackNextDrizzleLogger({
       transport: { enqueueDatabaseQuery: (query) => queries.push(query) },
     })
     const span = trace.getTracer('test').startSpan('GET /users')
@@ -54,8 +54,8 @@ describe('createNextScopeDrizzleLogger', () => {
   })
 
   it('redacts secrets in SQL text', () => {
-    const queries: NextScopeDatabaseQueryInput[] = []
-    const logger = createNextScopeDrizzleLogger({
+    const queries: StackNextDatabaseQueryInput[] = []
+    const logger = createStackNextDrizzleLogger({
       transport: { enqueueDatabaseQuery: (query) => queries.push(query) },
     })
     logger.logQuery("select * from users where password = 'hunter2'", [])
@@ -64,15 +64,15 @@ describe('createNextScopeDrizzleLogger', () => {
   })
 
   it('is inert without a transport and never throws', () => {
-    delete process.env.NEXTSCOPE_COLLECTOR_URL
-    delete process.env.NEXTSCOPE_TOKEN
-    const logger = createNextScopeDrizzleLogger()
+    delete process.env.STACKNEXT_COLLECTOR_URL
+    delete process.env.STACKNEXT_TOKEN
+    const logger = createStackNextDrizzleLogger()
     expect(() => logger.logQuery('select 1', [])).not.toThrow()
   })
 
   it('swallows sink failures through onError', () => {
     const errors: unknown[] = []
-    const logger = createNextScopeDrizzleLogger({
+    const logger = createStackNextDrizzleLogger({
       transport: {
         enqueueDatabaseQuery: () => {
           throw new Error('sink failed')

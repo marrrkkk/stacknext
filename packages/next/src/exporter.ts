@@ -7,14 +7,16 @@ import {
 } from '@opentelemetry/api'
 import type { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base'
 import {
+  frameworkSpanFields,
   redactText,
   sanitizeAttributes,
   sanitizeResource,
-  type NextScopeSpanInput,
-  type NextScopeSpanKind,
-  type NextScopeSpanStatus,
-} from '@nextscope/core'
-import type { NextScopeTransport } from '@nextscope/core/transport'
+  stripUrlQueryInText,
+  type StackNextSpanInput,
+  type StackNextSpanKind,
+  type StackNextSpanStatus,
+} from '@stacknext/core'
+import type { StackNextTransport } from '@stacknext/core/transport'
 
 const TRACE_ID_PATTERN = /^[0-9a-f]{32}$/i
 const SPAN_ID_PATTERN = /^[0-9a-f]{16}$/i
@@ -24,7 +26,7 @@ function hrTimeToMilliseconds(time: HrTime): number {
   return seconds * 1_000 + nanoseconds / 1_000_000
 }
 
-function kindFromOtel(kind: SpanKind): NextScopeSpanKind {
+function kindFromOtel(kind: SpanKind): StackNextSpanKind {
   switch (kind) {
     case SpanKind.SERVER:
       return 'server'
@@ -39,7 +41,7 @@ function kindFromOtel(kind: SpanKind): NextScopeSpanKind {
   }
 }
 
-function statusFromOtel(status: ReadableSpan['status']): NextScopeSpanStatus {
+function statusFromOtel(status: ReadableSpan['status']): StackNextSpanStatus {
   if (status.code === SpanStatusCode.OK) return 'ok'
   if (status.code === SpanStatusCode.ERROR) return 'error'
   return 'unset'
@@ -64,7 +66,7 @@ function isInternalUrl(
     attributeString(attributes, 'next.original_url'),
   ].filter((value): value is string => Boolean(value))
   for (const candidate of candidates) {
-    if (candidate.includes('/__nextscope/')) return true
+    if (candidate.includes('/__stacknext/')) return true
     try {
       if (collectorUrl && candidate.startsWith(new URL(collectorUrl).origin)) {
         return true
@@ -77,7 +79,7 @@ function isInternalUrl(
 }
 
 /**
- * Converts an OTel ReadableSpan into the NextScope wire format. Redaction happens
+ * Converts an OTel ReadableSpan into the StackNext wire format. Redaction happens
  * here as well as in the collector: sensitive data never leaves the app process.
  */
 export function readableSpanToInput(
@@ -86,7 +88,7 @@ export function readableSpanToInput(
     collectorUrl: string
     fallbackServiceName: string
   },
-): NextScopeSpanInput | null {
+): StackNextSpanInput | null {
   const context = span.spanContext()
   if (
     !TRACE_ID_PATTERN.test(context.traceId) ||
@@ -98,6 +100,7 @@ export function readableSpanToInput(
   const nextSpanType = attributeString(attributes, 'next.span_type')
   if (nextSpanType?.startsWith('Instrumentation.')) return null
   if (isInternalUrl(attributes, options.collectorUrl)) return null
+  const framework = frameworkSpanFields(attributes)
 
   const resource = sanitizeResource(span.resource.attributes)
   const serviceName =
@@ -108,7 +111,7 @@ export function readableSpanToInput(
   const endTime = Math.max(startTime, hrTimeToMilliseconds(span.endTime))
   const status = statusFromOtel(span.status)
   const parentSpanId = span.parentSpanContext?.spanId
-  const safeName = redactText(span.name, 512)
+  const safeName = stripUrlQueryInText(redactText(span.name, 512))
   return {
     traceId: context.traceId.toLowerCase(),
     spanId: context.spanId.toLowerCase(),
@@ -122,13 +125,18 @@ export function readableSpanToInput(
     durationMs: endTime - startTime,
     status,
     ...(span.status.message
-      ? { statusMessage: redactText(span.status.message, 8_000) }
+      ? {
+          statusMessage: stripUrlQueryInText(
+            redactText(span.status.message, 8_000),
+          ),
+        }
       : {}),
     serviceName: redactText(serviceName, 200),
     ...(nextSpanType ? { nextSpanType: redactText(nextSpanType, 200) } : {}),
+    ...framework,
     attributes,
     events: span.events.slice(0, 100).map((event) => ({
-      name: redactText(event.name, 512),
+      name: stripUrlQueryInText(redactText(event.name, 512)),
       time: hrTimeToMilliseconds(event.time),
       attributes: sanitizeAttributes(event.attributes ?? {}),
     })),
@@ -136,8 +144,8 @@ export function readableSpanToInput(
   }
 }
 
-export interface NextScopeSpanExporterOptions {
-  transport: Pick<NextScopeTransport, 'enqueueSpan' | 'forceFlush'>
+export interface StackNextSpanExporterOptions {
+  transport: Pick<StackNextTransport, 'enqueueSpan' | 'forceFlush'>
   collectorUrl: string
   fallbackServiceName?: string
   /** Set to false to drop Next.js fetch spans. */
@@ -148,13 +156,13 @@ export interface NextScopeSpanExporterOptions {
  * OpenTelemetry SpanExporter that hands normalized spans to the bounded local
  * transport. It never performs network I/O synchronously.
  */
-export class NextScopeSpanExporter implements SpanExporter {
-  private readonly transport: Pick<NextScopeTransport, 'enqueueSpan' | 'forceFlush'>
+export class StackNextSpanExporter implements SpanExporter {
+  private readonly transport: Pick<StackNextTransport, 'enqueueSpan' | 'forceFlush'>
   private readonly collectorUrl: string
   private readonly fallbackServiceName: string
   private readonly captureFetch: boolean
 
-  constructor(options: NextScopeSpanExporterOptions) {
+  constructor(options: StackNextSpanExporterOptions) {
     this.transport = options.transport
     this.collectorUrl = options.collectorUrl
     this.fallbackServiceName = options.fallbackServiceName ?? 'next-app'
