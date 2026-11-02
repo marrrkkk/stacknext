@@ -22,7 +22,7 @@ export const environmentSnapshot: EnvironmentSnapshot = {
     captureFetch: true,
     captureErrors: true,
   },
-  sdkVersion: '0.6.0',
+  sdkVersion: '0.6.1',
   playwrightVersion: '1.58.2',
 }
 
@@ -33,7 +33,7 @@ export function createRunRequest(
     name: 'collector-run',
     projectName: 'collector-test',
     environment: environmentSnapshot,
-    collectorVersion: '0.6.0',
+    collectorVersion: '0.6.1',
     command: {
       executable: 'npx',
       args: ['playwright', 'test'],
@@ -63,7 +63,7 @@ export function completedRun(overrides: Partial<TestRun> = {}): TestRun {
       durationMs: 1_000,
     },
     environment: environmentSnapshot,
-    collector: { version: '0.6.0', connected: true },
+    collector: { version: '0.6.1', connected: true },
     scenarios: [],
     warnings: [],
     notes: [],

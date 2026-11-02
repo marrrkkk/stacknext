@@ -14,7 +14,7 @@ const environment = {
     captureFetch: true,
     captureErrors: true,
   },
-  sdkVersion: '0.6.0',
+  sdkVersion: '0.6.1',
 }
 
 function request(name: string) {
@@ -22,7 +22,7 @@ function request(name: string) {
     name,
     projectName: 'demo',
     environment,
-    collectorVersion: '0.6.0',
+    collectorVersion: '0.6.1',
     command: {
       executable: 'pnpm',
       args: [],

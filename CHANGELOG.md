@@ -6,6 +6,16 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-03
+
+### Fixed
+
+- Corrected the install command in the published package READMEs to use
+  `@stacknext/cli`. The `0.6.0` bootstrap archives still referenced the
+  unavailable unscoped `stacknext` package.
+- Aligned all ten package versions and rebuilt the archives so the published
+  files match the tagged source.
+
 ## [0.6.0] - 2026-11-03
 
 This is the first public package release. The project, packages, CLI, config,

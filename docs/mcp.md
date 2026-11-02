@@ -143,8 +143,8 @@ Every successful response adds a top-level `meta` object:
       "instrumentation": "connected",
       "instances": 1,
       "lastSeen": "2026-11-02T11:59:59.000Z",
-      "sdkVersion": "0.6.0",
-      "collectorVersion": "0.6.0"
+      "sdkVersion": "0.6.1",
+      "collectorVersion": "0.6.1"
     },
     "completeness": { "complete": true, "reasons": [] },
     "notes": []

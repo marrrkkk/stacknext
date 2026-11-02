@@ -2,7 +2,7 @@ export const STACKNEXT_RUN_FORMAT = 'stacknext-test-run'
 export const STACKNEXT_BASELINE_FORMAT = 'stacknext-baseline'
 export const STACKNEXT_COMPARISON_FORMAT = 'stacknext-comparison'
 export const STACKNEXT_REGRESSION_FORMAT_VERSION = 1
-export const STACKNEXT_REGRESSION_ENGINE_VERSION = '0.6.0'
+export const STACKNEXT_REGRESSION_ENGINE_VERSION = '0.6.1'
 
 export const RUN_STATUSES = [
   'running',

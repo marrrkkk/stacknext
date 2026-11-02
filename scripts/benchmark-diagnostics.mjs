@@ -248,7 +248,7 @@ async function main() {
         instanceId: 'benchmark-diagnostics-instance',
         serviceName: SERVICE,
         projectName: SERVICE,
-        sdkVersion: '0.6.0',
+        sdkVersion: '0.6.1',
         runtime: 'nodejs',
       },
       spans,

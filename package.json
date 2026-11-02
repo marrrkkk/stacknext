@@ -1,6 +1,6 @@
 {
   "name": "stacknext-monorepo",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "description": "Local-first runtime debugging, diagnostics and Playwright regression testing for Next.js",
   "license": "MIT",

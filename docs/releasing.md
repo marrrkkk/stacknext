@@ -127,13 +127,28 @@ setting is left at staged publishing, the workflow fails and must be changed to
 | `@stacknext/mcp` |
 | `@stacknext/dashboard` |
 
+With npm 11.15 or newer, the same relationship can be created from a terminal:
+
+```bash
+for package in @stacknext/cli @stacknext/core @stacknext/diagnostics \
+  @stacknext/regression @stacknext/next @stacknext/drizzle @stacknext/prisma \
+  @stacknext/playwright @stacknext/mcp @stacknext/dashboard; do
+  npm trust github "$package" \
+    --file release.yml \
+    --repo marrrkkk/stacknext \
+    --environment npm \
+    --allow-publish \
+    --yes
+done
+```
+
 Do not add an `NPM_TOKEN` secret. Trusted publishing uses the workflow's
 `id-token: write` permission. The runner needs npm 11.5.1 or newer; the release
 workflow enforces that version before its gates run. Managing the configuration
 from a terminal with `npm trust` requires npm 11.15.0 or newer.
 
 Verify the publisher configuration on each package page and with
-`npm view <package>@0.6.0 version` before making the next release.
+`npm view <package>@<version> version` before making the next release.
 
 ## Prepare the version
 
@@ -319,7 +334,7 @@ It does not push commits, create tags or create a GitHub release.
    mkdir -p /tmp/stacknext-registry-smoke
    cd /tmp/stacknext-registry-smoke
    npm init -y
-   npm install @stacknext/cli@0.6.0 @stacknext/next@0.6.0
+   npm install @stacknext/cli@0.6.1 @stacknext/next@0.6.1
    npm audit signatures
    npx stacknext --version
    ```
@@ -339,9 +354,9 @@ It does not push commits, create tags or create a GitHub release.
    registry verification passes:
 
    ```bash
-   git tag -s v0.6.0 -m "StackNext 0.6.0"
-   git push origin v0.6.0
-   gh release create v0.6.0 --title "StackNext 0.6.0" --notes-file CHANGELOG.md
+   git tag -s v0.6.1 -m "StackNext 0.6.1"
+   git push origin v0.6.1
+   gh release create v0.6.1 --title "StackNext 0.6.1" --notes-file CHANGELOG.md
    ```
 
 5. If npm shows a broken package, deprecate that exact version with a message

@@ -163,7 +163,7 @@ const SPAN_B_ROOT = {
 const HEALTH = {
   status: 'ok',
   name: 'stacknext',
-  version: '0.6.0',
+  version: '0.6.1',
   projectName: 'mcp-demo',
   dashboardUrl: 'http://127.0.0.1:4400',
   startedAt: 1,
@@ -176,7 +176,7 @@ const HEALTH = {
       serviceName: 'mcp-demo',
       projectName: 'mcp-demo',
       nextVersion: '16.4.3',
-      sdkVersion: '0.6.0',
+      sdkVersion: '0.6.1',
       lastSeen: 2,
       connected: true,
     },
@@ -230,7 +230,7 @@ const SUMMARY = {
 const COVERAGE = {
   projectName: 'mcp-demo',
   generatedAt: 130,
-  collectorVersion: '0.6.0',
+  collectorVersion: '0.6.1',
   sample: {
     firstEventTime: 1,
     lastEventTime: 121,
@@ -356,7 +356,7 @@ const DIAGNOSTICS = {
   limit: 50,
   offset: 0,
   generatedAt: 130,
-  engineVersion: '0.6.0',
+  engineVersion: '0.6.1',
   ruleSetVersion: 1,
   sample: {
     firstEventTime: 1,
@@ -402,7 +402,7 @@ const REGRESSION_ENVIRONMENT = {
     captureFetch: true,
     captureErrors: true,
   },
-  sdkVersion: '0.6.0',
+  sdkVersion: '0.6.1',
   playwrightVersion: '1.58.2',
 }
 
@@ -520,7 +520,7 @@ const TEST_RUN = {
     durationMs: 1_000,
   },
   environment: REGRESSION_ENVIRONMENT,
-  collector: { version: '0.6.0', connected: true },
+  collector: { version: '0.6.1', connected: true },
   scenarios: [CAPTURED_SCENARIO],
   warnings: [],
   notes: [],
@@ -1015,7 +1015,7 @@ describe('read-only MCP server', () => {
     expect(summaryData.meta).toMatchObject({
       tool: 'get_project_summary',
       project: 'mcp-demo',
-      connection: { instrumentation: 'connected', collectorVersion: '0.6.0' },
+      connection: { instrumentation: 'connected', collectorVersion: '0.6.1' },
       coverage: {
         observed: 1,
         notObserved: 1,

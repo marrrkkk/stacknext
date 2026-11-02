@@ -100,7 +100,7 @@ export function envelope(
       serviceName: 'collector-test',
       projectName: 'collector-test',
       nextVersion: '16.4.3',
-      sdkVersion: '0.6.0',
+      sdkVersion: '0.6.1',
       runtime: 'nodejs',
     },
     spans: [rootSpan()],

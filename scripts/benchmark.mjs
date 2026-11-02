@@ -134,7 +134,7 @@ async function main() {
         instanceId: 'benchmark-instance',
         serviceName: 'stacknext-benchmark',
         projectName: 'stacknext-benchmark',
-        sdkVersion: '0.6.0',
+        sdkVersion: '0.6.1',
         runtime: 'nodejs',
       },
       spans,

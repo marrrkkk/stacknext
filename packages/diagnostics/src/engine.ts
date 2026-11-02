@@ -17,7 +17,7 @@ import {
 } from '@stacknext/core'
 import { evaluateDiagnosticRules } from './rules.js'
 
-export const DIAGNOSTICS_ENGINE_VERSION = '0.6.0'
+export const DIAGNOSTICS_ENGINE_VERSION = '0.6.1'
 
 export interface DiagnosticEngineOptions {
   projectName: string

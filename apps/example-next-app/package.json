@@ -1,6 +1,6 @@
 {
   "name": "@stacknext/example-next-app",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "description": "StackNext example: a small task tracker with Drizzle and SQLite",
   "type": "module",
