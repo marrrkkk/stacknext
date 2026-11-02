@@ -19,6 +19,9 @@
       "@stacknext/core": [
         "../core/src/index.ts"
       ],
+      "@stacknext/diagnostics": [
+        "../diagnostics/src/index.ts"
+      ],
       "@stacknext/regression": [
         "../regression/src/index.ts"
       ]

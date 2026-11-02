@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@stacknext/core": ["../../packages/core/src/index.ts"],
+      "@stacknext/core/transport": ["../../packages/core/src/transport.ts"],
+      "@stacknext/diagnostics": ["../../packages/diagnostics/src/index.ts"],
+      "@stacknext/drizzle": ["../../packages/drizzle/src/index.ts"],
+      "@stacknext/next": ["../../packages/next/src/index.ts"],
+      "@stacknext/playwright": ["../../packages/playwright/src/index.ts"],
+      "@stacknext/regression": ["../../packages/regression/src/index.ts"]
+    }
+  }
+}
