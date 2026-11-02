@@ -73,14 +73,38 @@ function seed(client: Database.Database): void {
   runSeed.immediate()
 }
 
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
+
+/**
+ * Next.js build workers evaluate route modules in parallel. Switching a fresh
+ * database to WAL can return SQLITE_BUSY while another worker holds a lock, so
+ * retry the idempotent initialization instead of failing the build.
+ */
+function initializeDatabase(client: Database.Database): void {
+  const deadline = Date.now() + 10_000
+  for (;;) {
+    try {
+      client.pragma('journal_mode = WAL')
+      client.pragma('foreign_keys = ON')
+      client.exec(SCHEMA_SQL)
+      seed(client)
+      return
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (code !== 'SQLITE_BUSY' || Date.now() >= deadline) throw error
+      sleepSync(25 + Math.floor(Math.random() * 50))
+    }
+  }
+}
+
 function createDatabase(): ReturnType<typeof drizzle<typeof schema>> {
   const dataDir = path.join(process.cwd(), 'data')
   mkdirSync(dataDir, { recursive: true })
   const client = new Database(path.join(dataDir, 'stacknext-demo.db'))
-  client.pragma('journal_mode = WAL')
-  client.pragma('foreign_keys = ON')
-  client.exec(SCHEMA_SQL)
-  seed(client)
+  client.pragma('busy_timeout = 5000')
+  initializeDatabase(client)
 
   return drizzle(client, {
     schema,
