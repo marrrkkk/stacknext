@@ -61,6 +61,10 @@ if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
 if (!/^[A-Za-z][0-9A-Za-z._-]*$/.test(tag)) {
   throw new Error(`Invalid npm dist-tag "${tag}"`)
 }
+const registryWaitMs = Number(process.env.STACKNEXT_REGISTRY_WAIT_MS ?? 120_000)
+if (!Number.isFinite(registryWaitMs) || registryWaitMs < 0) {
+  throw new Error('STACKNEXT_REGISTRY_WAIT_MS must be a non-negative number')
+}
 
 const inActions = process.env.GITHUB_ACTIONS === 'true'
 const localPublish = publish && !inActions
@@ -132,11 +136,7 @@ async function registryHasVersion(name, releaseVersion) {
  * version to become visible instead of failing the workflow immediately.
  */
 async function waitForRegistryVersion(name, releaseVersion) {
-  const waitMs = Number(process.env.STACKNEXT_REGISTRY_WAIT_MS ?? 120_000)
-  if (!Number.isFinite(waitMs) || waitMs < 0) {
-    throw new Error('STACKNEXT_REGISTRY_WAIT_MS must be a non-negative number')
-  }
-  const deadline = Date.now() + waitMs
+  const deadline = Date.now() + registryWaitMs
   let lastError
   for (;;) {
     try {
@@ -189,7 +189,7 @@ if (!dryRun) {
   for (const entry of PUBLIC_PACKAGES) {
     if (!(await waitForRegistryVersion(entry.name, version))) {
       throw new Error(
-        `Registry does not show ${entry.name}@${version} after waiting ${process.env.STACKNEXT_REGISTRY_WAIT_MS ?? 120_000}ms. Re-run with --resume after fixing the failure.`,
+        `Registry does not show ${entry.name}@${version} after waiting ${registryWaitMs}ms. Re-run with --resume after fixing the failure.`,
       )
     }
   }
