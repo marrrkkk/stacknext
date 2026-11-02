@@ -86,15 +86,16 @@ model-driven investigation.
 
 The same archives were also installed into external Next.js 15 and 16 fixtures
 with npm and pnpm on Node.js 22.23.3, 24.21.0 and 26.13.0. All 12 combinations
-passed the consumer journey; see [compatibility](compatibility.md).
+passed the consumer journey, as did the Windows and macOS package smoke jobs.
+See [compatibility](compatibility.md).
 
 ### What was not tested in 0.6
 
 - No model-driven regression scenario was run with OpenCode, Codex or Claude
   Code. The client matrix below remains the 0.4 diagnostics record.
 - Parallel Playwright workers are not supported or tested for captured runs.
-- The full e2e suite ran on Linux only. Windows and macOS have package smoke
-  jobs defined in CI but no recorded local model-driven results.
+- The full e2e suite ran on Linux only. The Windows and macOS package smoke
+  jobs passed in CI, but no model-driven agent results were recorded there.
 - Node.js 22 and 26 were validated with the consumer smoke test, not the full
   e2e suite.
 - Large regression histories, concurrent captures and cross-machine baseline
@@ -219,7 +220,8 @@ environment could not approve it without an account.
 - Codex MCP configuration was injected with `-c` overrides so the test would
   not depend on global config or project trust. Project `.codex/config.toml`
   trust behavior was not exercised.
-- Only Linux/WSL2 was tested. Windows and macOS were not.
+- Only Linux/WSL2 was tested for model-driven agent scenarios. Windows and
+  macOS were not part of the agent client matrix.
 - The five MCP prompts were verified by the e2e protocol checks and by the
   clients' capability handshakes. The scenarios did not invoke every prompt as a
   slash command in every client.

@@ -5,7 +5,7 @@ page separates combinations that were actually exercised in release validation
 from combinations that are expected to work but were not part of the recorded
 matrix.
 
-Last validation: **2026-11-02**.
+Last validation: **2026-11-03**.
 
 ## Supported surface
 
@@ -15,7 +15,7 @@ Last validation: **2026-11-02**.
 | Runtime | Node.js runtime |
 | Node.js engine | `>=20.9.0` |
 | Module format | ESM packages; CommonJS `require()` is not supported |
-| Operating system | Linux (validated locally); Windows and macOS smoke jobs are defined in CI |
+| Operating system | Linux (full e2e); Windows and macOS (package smoke in CI) |
 | Package managers | npm and pnpm (validated); yarn and bun detection is best-effort |
 
 The supported Next.js peer range is `>=15.0.0 <17`. A newer major prints a
@@ -67,6 +67,9 @@ below before the publish job can start. The matrix passed on Linux:
 | 24.21.0 | 15.5.28 | Pass | Pass |
 | 26.13.0 | 16.4.3 | Pass | Pass |
 | 26.13.0 | 15.5.28 | Pass | Pass |
+
+The Windows and macOS smoke jobs also passed with Node.js 24, Next.js 16.4.3
+and npm. They run the same consumer journey as each Linux combination.
 
 Each combination checks `init`, idempotent re-init, `doctor`, dashboard hosting
 and static assets, real request telemetry, `status`, `coverage`, `diagnose`, an
