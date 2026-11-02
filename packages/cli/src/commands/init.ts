@@ -244,6 +244,9 @@ export async function runInit(options: InitOptions, cwd = process.cwd()): Promis
   )
   console.log(`2. Open the dashboard and make a request to your app.`)
   console.log(`3. Run ${style.cyan('stacknext doctor')} if data does not appear.`)
+  console.log(
+    `4. Optional: install the Agent Skill for your AI client with ${style.cyan('stacknext skill install --client opencode')} (or codex/claude-code).`,
+  )
   return 0
 }
 

@@ -40,7 +40,7 @@ Start with the [README](../README.md) for the package quick start and the
 | Document | What it covers |
 | --- | --- |
 | [MCP server](mcp.md) | Seventeen read-only tools, five prompts and response metadata. |
-| [Agent skill](../skills/stacknext-debugging/SKILL.md) | Portable evidence-first debugging workflows. |
+| [Agent skill](../skills/stacknext-debugging/SKILL.md) | Portable evidence-first debugging workflows, bundled in `@stacknext/cli`. |
 | [Agent instructions](integrations/agent-instructions.md) | Safe instruction snippets for project files. |
 | [Agent testing](agent-testing.md) | Protocol and client compatibility record. |
 | [OpenCode](integrations/opencode.md) | Client setup. |

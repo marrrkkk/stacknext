@@ -27,12 +27,13 @@ URL and token.
 From the project root:
 
 ```bash
-mkdir -p .claude/skills
-cp -R /path/to/stacknext/skills/stacknext-debugging .claude/skills/
+pnpm exec stacknext skill install --client claude-code
 ```
 
-Copy the whole directory, including `references/`. Do not copy only `SKILL.md`.
-Restart Claude Code after installing.
+The skill ships inside `@stacknext/cli`. The command copies the whole directory,
+including `references/`, into `.claude/skills/stacknext-debugging/`. Use
+`--force` to replace an existing copy. `stacknext skill path` prints the bundled
+location. Restart Claude Code after installing.
 
 ## 3. Add the MCP server
 

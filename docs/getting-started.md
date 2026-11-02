@@ -380,10 +380,20 @@ Start `stacknext dev`, then configure the MCP server for your client:
 The portable skill at
 [`skills/stacknext-debugging`](../skills/stacknext-debugging/SKILL.md) adds
 evidence-first workflows for runtime errors, slow requests, database activity,
-traces, diagnostic findings and runtime regression evidence. It requires no AI
-API key. See [agent instructions](integrations/agent-instructions.md) for safe
-project instruction snippets and [agent testing](agent-testing.md) for
-compatibility results.
+traces, diagnostic findings and runtime regression evidence. It ships inside
+`@stacknext/cli`:
+
+```bash
+pnpm exec stacknext skill install --client opencode
+pnpm exec stacknext skill install --client codex
+pnpm exec stacknext skill install --client claude-code
+```
+
+`stacknext skill path` prints the bundled directory, and `--force` replaces an
+existing copy. It requires no AI API key. See
+[agent instructions](integrations/agent-instructions.md) for safe project
+instruction snippets and [agent testing](agent-testing.md) for compatibility
+results.
 
 See [privacy and redaction](privacy.md), [instrumentation coverage](instrumentation-coverage.md),
 [custom instrumentation](custom-instrumentation.md), [Server Actions](server-actions.md),

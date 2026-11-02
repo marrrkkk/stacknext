@@ -29,8 +29,17 @@ pnpm exec stacknext coverage
 
 ## 2. Install the skill
 
-The skill is the directory containing `SKILL.md` and `references/`. Copy the
-whole directory; do not copy only `SKILL.md`.
+From the app project root, run the command for your client:
+
+```bash
+pnpm exec stacknext skill install --client opencode
+pnpm exec stacknext skill install --client codex
+pnpm exec stacknext skill install --client claude-code
+```
+
+The skill ships inside `@stacknext/cli`. The command copies the whole directory,
+including `references/`, into the client's project skill path. Use `--force` to
+replace an existing copy; `stacknext skill path` prints the bundled location.
 
 | Client | Project skill location |
 | --- | --- |
@@ -40,9 +49,11 @@ whole directory; do not copy only `SKILL.md`.
 
 For a project that uses more than one client, keep one copy in
 `.agents/skills/stacknext-debugging/` for OpenCode and Codex, and copy it to
-`.claude/skills/stacknext-debugging/` for Claude Code. Copying is more portable
-than symlinks, especially on Windows. Reload or restart the client if it does
-not discover the new skill automatically.
+`.claude/skills/stacknext-debugging/` for Claude Code. Reload or restart the
+client if it does not discover the new skill automatically.
+
+When working from a source checkout before packing, `skill install` also falls
+back to the repository's `skills/stacknext-debugging` directory.
 
 Do not modify a user's global skill directory or global instructions without
 asking. Project-level files are easier to review and remove.

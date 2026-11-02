@@ -24,16 +24,26 @@ URL and token.
 
 ## 2. Install the skill
 
-Copy the whole skill directory:
+From the project root:
 
 ```bash
-mkdir -p .opencode/skills
-cp -R /path/to/stacknext/skills/stacknext-debugging .opencode/skills/
+pnpm exec stacknext skill install --client opencode
 ```
 
+The skill ships inside `@stacknext/cli`. The command copies the whole directory,
+including `references/`, into `.opencode/skills/stacknext-debugging/`. Use
+`--force` to replace an existing copy. `stacknext skill path` prints the bundled
+location.
+
 OpenCode also discovers `.claude/skills/` and `.agents/skills/`. If the project
-uses Codex as well, a single copy in `.agents/skills/stacknext-debugging/` works
-for both OpenCode and Codex. Do not copy only `SKILL.md`; keep `references/`.
+uses Codex as well, one copy in `.agents/skills/stacknext-debugging/` works for
+both OpenCode and Codex:
+
+```bash
+pnpm exec stacknext skill install --client codex
+```
+
+Do not copy only `SKILL.md`; keep `references/`.
 
 ## 3. Add the MCP server
 

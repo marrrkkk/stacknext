@@ -99,6 +99,21 @@ function exportTargets(value, output = []) {
   return output
 }
 
+const CLI_SKILL_FILES = [
+  'skills/stacknext-debugging/SKILL.md',
+  'skills/stacknext-debugging/references/setup.md',
+  'skills/stacknext-debugging/references/tools.md',
+  'skills/stacknext-debugging/references/workflows.md',
+]
+
+function skillVersionFrom(source) {
+  const frontmatter = source.match(/^---\r?\n([\s\S]*?)\r?\n---/)
+  const version = frontmatter?.[1].match(
+    /^metadata:\s*\r?\n(?:[ \t]+.*\r?\n)*?[ \t]+version:\s*["']?([^"'\r\n]+)["']?\s*$/m,
+  )
+  return version?.[1] ?? null
+}
+
 export async function inspectTarball(entry) {
   const size = (await stat(entry.tarball)).size
   const listing = tar(['-tzf', entry.tarball]).trim().split('\n').filter(Boolean)
@@ -119,6 +134,22 @@ export async function inspectTarball(entry) {
   if (!files.some((file) => file.startsWith('dist/'))) problems.push('dist/ is missing')
   if (entry.name === '@stacknext/cli' && !files.includes('dist/bin.js')) {
     problems.push('CLI bin entry is missing')
+  }
+  if (entry.name === '@stacknext/cli') {
+    for (const file of CLI_SKILL_FILES) {
+      if (!files.includes(file)) problems.push(`Agent Skill file is missing: ${file}`)
+    }
+    if (files.includes(CLI_SKILL_FILES[0])) {
+      const skill = tar(['-xOf', entry.tarball, `package/${CLI_SKILL_FILES[0]}`])
+      const version = skillVersionFrom(skill)
+      if (!version) {
+        problems.push('Agent Skill metadata.version is missing')
+      } else if (version !== entry.version) {
+        problems.push(
+          `Agent Skill version is ${version}; expected aligned version ${entry.version}`,
+        )
+      }
+    }
   }
   if (entry.name === '@stacknext/next') {
     if (!files.includes('dist/edge.js')) problems.push('edge-safe entry is missing')

@@ -241,9 +241,18 @@ the client after restarting `stacknext dev`, because the token changes.
 
 ### An agent cannot find the skill
 
-Install the whole `skills/stacknext-debugging` directory, including
-`references/`, into the client's project skill path. Do not copy only `SKILL.md`.
-See the client guides under [docs/integrations](integrations/).
+The skill ships inside `@stacknext/cli`. Install the whole directory, including
+`references/`, with the command for the client:
+
+```bash
+pnpm exec stacknext skill install --client opencode
+pnpm exec stacknext skill install --client codex
+pnpm exec stacknext skill install --client claude-code
+```
+
+`stacknext skill path` prints the bundled location. Do not copy only `SKILL.md`.
+If an older copy exists, re-run with `--force`. See the client guides under
+[docs/integrations](integrations/).
 
 ## Windows and WSL
 

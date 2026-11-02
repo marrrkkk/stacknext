@@ -359,8 +359,18 @@ The skill also has a coverage-check workflow that uses `meta.coverage` and the
 summary coverage report to distinguish a feature that was not exercised from one
 that is missing or unsupported.
 
-Install the whole skill directory into your client's project skill path. Do not
-overwrite existing instruction files; add the marked block from
+Install the whole skill directory into your client's project skill path:
+
+```bash
+pnpm exec stacknext skill install --client opencode
+pnpm exec stacknext skill install --client codex
+pnpm exec stacknext skill install --client claude-code
+```
+
+`stacknext skill path` prints the bundled directory, and `--force` replaces an
+existing copy. The skill ships inside `@stacknext/cli`; the repository copy
+remains the canonical source. Do not overwrite existing instruction files; add
+the marked block from
 [docs/integrations/agent-instructions.md](docs/integrations/agent-instructions.md)
 to `AGENTS.md` or `CLAUDE.md` only after reviewing it.
 

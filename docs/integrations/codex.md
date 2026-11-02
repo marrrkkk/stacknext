@@ -27,12 +27,13 @@ URL and token.
 From the project root:
 
 ```bash
-mkdir -p .agents/skills
-cp -R /path/to/stacknext/skills/stacknext-debugging .agents/skills/
+pnpm exec stacknext skill install --client codex
 ```
 
-Copy the whole directory, including `references/`. Do not copy only `SKILL.md`.
-Restart Codex after installing.
+The skill ships inside `@stacknext/cli`. The command copies the whole directory,
+including `references/`, into `.agents/skills/stacknext-debugging/`. Use
+`--force` to replace an existing copy. `stacknext skill path` prints the bundled
+location. Restart Codex after installing.
 
 ## 3. Add the MCP server
 

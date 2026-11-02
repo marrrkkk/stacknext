@@ -322,10 +322,20 @@ evidence-first workflows for runtime errors, slow requests, database activity,
 general investigation, diagnostic findings and runtime regression evidence. It
 also carries mandatory reasoning rules for observation-versus-causation, null
 durations, overlapping spans, coverage gaps and non-significant regression
-statuses. Install the whole directory into the client's project skill path; see
+statuses. The skill ships inside `@stacknext/cli`; install the whole directory
+into the client's project skill path:
+
+```bash
+pnpm exec stacknext skill install --client opencode
+pnpm exec stacknext skill install --client codex
+pnpm exec stacknext skill install --client claude-code
+```
+
+`stacknext skill path` prints the bundled location, and `--force` replaces an
+existing copy. The skill is optional: the MCP tools and server instructions
+remain usable without it. See
 [agent instructions](integrations/agent-instructions.md) and the client setup
-guides. The skill is optional. The MCP tools and server instructions remain
-usable without it.
+guides.
 
 ## Example prompts
 

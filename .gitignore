@@ -1,5 +1,6 @@
 node_modules/
 dist/
+packages/cli/skills/
 .next/
 .stacknext/
 coverage/

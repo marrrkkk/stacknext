@@ -145,9 +145,11 @@ import CLI, Next.js, React, Playwright or adapter code from `core`.
   metadata is additive. The six regression tools read runs, baselines and
   comparisons only; they cannot capture, save, compare, delete or edit.
 - **Portable skill.** `skills/stacknext-debugging` follows the Agent Skills
-  specification. Keep `SKILL.md` concise, put details in `references/`, and do
-  not claim a client is supported without a real end-to-end test recorded in
-  `docs/agent-testing.md`.
+  specification and is the canonical source. It is copied into the
+  `@stacknext/cli` archive at pack time and installed with `stacknext skill
+  install --client opencode|codex|claude-code`. Keep `SKILL.md` concise, put
+  details in `references/`, and do not claim a client is supported without a
+  real end-to-end test recorded in `docs/agent-testing.md`.
 
 ## Privacy and security rules
 

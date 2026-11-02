@@ -8,7 +8,7 @@ import { STACKNEXT_SDK_VERSION } from '@stacknext/core'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 
 describe('release version alignment', () => {
-  it('keeps the CLI, SDK and package versions aligned', async () => {
+  it('keeps the CLI, SDK, packages and Agent Skill versions aligned', async () => {
     const packages = ['core', 'cli', 'dashboard', 'diagnostics', 'drizzle', 'mcp', 'next', 'playwright', 'prisma', 'regression']
     const versions = await Promise.all(
       packages.map(async (name) => {
@@ -18,5 +18,14 @@ describe('release version alignment', () => {
     )
     expect(new Set(versions.map((entry) => entry.version))).toEqual(new Set([CLI_VERSION]))
     expect(STACKNEXT_SDK_VERSION).toBe(CLI_VERSION)
+
+    const skill = await readFile(
+      path.join(root, 'skills', 'stacknext-debugging', 'SKILL.md'),
+      'utf8',
+    )
+    const version = skill.match(
+      /^metadata:\s*\r?\n(?:[ \t]+.*\r?\n)*?[ \t]+version:\s*["']?([^"'\r\n]+)["']?\s*$/m,
+    )?.[1]
+    expect(version).toBe(CLI_VERSION)
   })
 })

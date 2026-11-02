@@ -472,9 +472,11 @@ arguments:
   statuses are not statistical significance.
 
 The portable skill lives at `skills/stacknext-debugging` and is not imported by
-the MCP package. It documents the same read-only boundary and evidence rules for
-clients that load Agent Skills. The MCP server remains a separate stdio process;
-the skill cannot make it mutate data, read files or reach a non-loopback URL.
+the MCP package. It is copied into the `@stacknext/cli` archive at pack time and
+installed into client projects with `stacknext skill install`. It documents the
+same read-only boundary and evidence rules for clients that load Agent Skills.
+The MCP server remains a separate stdio process; the skill cannot make it mutate
+data, read files or reach a non-loopback URL.
 
 Response metadata is additive. Tool failures still return `isError: true` with
 text and no structured content. Error stacks are omitted from `list_errors` by

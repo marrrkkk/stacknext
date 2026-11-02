@@ -6,6 +6,15 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Bundled the `stacknext-debugging` Agent Skill in the `@stacknext/cli`
+  archive. `stacknext skill path` prints the bundled directory, and
+  `stacknext skill install --client opencode|codex|claude-code` copies it into a
+  project without overwriting an existing copy unless `--force` is passed.
+- The release archive check now fails when the bundled skill is missing or its
+  `metadata.version` does not match the package version.
+
 ## [0.6.1] - 2026-11-03
 
 ### Fixed

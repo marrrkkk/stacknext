@@ -8,6 +8,7 @@ import { registerExportCommand } from './commands/export.js'
 import { registerCoverageCommand } from './commands/coverage.js'
 import { registerDiagnoseCommand } from './commands/diagnose.js'
 import { registerMcpCommand } from './commands/mcp.js'
+import { registerSkillCommand } from './commands/skill.js'
 import { registerCaptureCommand } from './commands/capture.js'
 import { registerRunsCommand } from './commands/runs.js'
 import { registerBaselineCommand } from './commands/baseline.js'
@@ -40,6 +41,7 @@ export function createProgram(cwd = process.cwd()): Command {
   registerBaselineCommand(program, cwd)
   registerCompareCommand(program, cwd)
   registerMcpCommand(program, cwd)
+  registerSkillCommand(program, cwd)
   registerUninstallCommand(program, cwd)
   return program
 }
