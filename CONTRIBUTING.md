@@ -62,8 +62,8 @@ and `pnpm -v` match the pinned versions before opening a pull request.
 VS Code Dev Containers and the Dev Containers CLI can open the repository with
 `.devcontainer/`. The image includes Node 24, pnpm 12.16.1 and Playwright
 Chromium, and runs `pnpm install --frozen-lockfile` when the container is
-created. Ports 4400 (collector and dashboard) and 4402 (example app) are
-forwarded to loopback.
+created. In VS Code, ports 4400 (collector and dashboard) and 4402 (example
+app) are forwarded to loopback.
 
 GitHub Codespaces is not supported: browser-forwarded URLs use `app.github.dev`
 Host headers, which the collector intentionally rejects. Use a local container
@@ -78,10 +78,12 @@ pnpm build
 pnpm test
 ```
 
-Do not use `stacknext dev --open` inside the container; open the forwarded
-dashboard URL instead. The container does not mount the Docker socket. Native
-Node remains the canonical development and test path; the dev container is a
-convenience for reproducible setup.
+In VS Code, do not use `stacknext dev --open` inside the container; open the
+forwarded dashboard URL instead. The Dev Containers CLI does not apply
+`forwardPorts`, so a CLI session reaches the dashboard only inside the container
+unless you map port 4400 yourself. The container does not mount the Docker
+socket. Native Node remains the canonical development and test path; the dev
+container is a convenience for reproducible setup.
 
 Useful commands:
 
