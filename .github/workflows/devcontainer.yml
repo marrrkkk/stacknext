@@ -33,6 +33,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The action runs the Dev Containers CLI as UID 1000 inside its own
+      # container, while the hosted runner checks out files as UID 1001. Match
+      # the workspace to the container user so postCreateCommand can install.
+      - name: Align workspace ownership with the container user
+        run: sudo chown -R 1000:1000 "$GITHUB_WORKSPACE"
+
       - name: Build and test in the dev container
         uses: devcontainers/ci@v0.3
         with:
