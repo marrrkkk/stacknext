@@ -37,6 +37,10 @@ interface UninstallReport {
 
 async function removeGeneratedRuntimeFiles(dir: string): Promise<void> {
   try {
+    const entries = await readdir(dir)
+    // Keep the ignore file when any other runtime file survived. Removing it
+    // could expose leftover token-bearing files to `git add`.
+    if (entries.length !== 1 || entries[0] !== '.gitignore') return
     const gitignore = path.join(dir, '.gitignore')
     if ((await readFile(gitignore, 'utf8')) === '*\n') {
       await rm(gitignore, { force: true })
@@ -119,11 +123,18 @@ export async function runUninstall(
   if (options.removeData) {
     const dir = runtimeDir(project.dir)
     if (await fileExists(dir)) {
-      removed.push({
-        kind: 'data',
-        file: dir,
-        reason: 'saved runs, baselines and comparisons (--remove-data)',
-      })
+      if (runtimeProcess !== null) {
+        preserved.push({
+          file: dir,
+          reason: `StackNext is still running (pid ${runtimeProcess}); stop it with SIGINT/SIGTERM first`,
+        })
+      } else {
+        removed.push({
+          kind: 'data',
+          file: dir,
+          reason: 'saved runs, baselines and comparisons (--remove-data)',
+        })
+      }
     }
   }
 

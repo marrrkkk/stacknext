@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto'
+import { readFileSync, rmSync } from 'node:fs'
 import { chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { z } from 'zod'
@@ -38,6 +39,136 @@ export function generateToken(): string {
   return randomBytes(32).toString('base64url')
 }
 
+export interface RuntimeLock {
+  file: string
+  release: () => Promise<void>
+  releaseSync: () => void
+}
+
+const LOCK_FILE_NAME = 'dev.lock'
+const LOCK_EMPTY_GRACE_MS = 1_000
+const LOCK_RETRY_DELAY_MS = 25
+const LOCK_MAX_ATTEMPTS = 40
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function lockBelongsTo(file: string, token: string): boolean {
+  try {
+    const parsed = JSON.parse(readFileSync(file, 'utf8')) as { token?: unknown }
+    return parsed.token === token
+  } catch {
+    return false
+  }
+}
+
+function lockOwnerPid(contents: string): number | null {
+  try {
+    const parsed = JSON.parse(contents) as { pid?: unknown }
+    return typeof parsed.pid === 'number' &&
+      Number.isInteger(parsed.pid) &&
+      parsed.pid > 0
+      ? parsed.pid
+      : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Creates the private runtime directory and its ignore file before any
+ * token-bearing file is written, so an interrupted start cannot leave a token
+ * exposed to `git add`.
+ */
+export async function ensureRuntimeDir(projectDir: string): Promise<string> {
+  const dir = runtimeDir(projectDir)
+  await mkdir(dir, { recursive: true, mode: 0o700 })
+  await chmod(dir, 0o700).catch(() => undefined)
+  const ignoreFile = path.join(dir, '.gitignore')
+  try {
+    await writeFile(ignoreFile, '*\n', { mode: 0o600, flag: 'wx' })
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+  }
+  return dir
+}
+
+/**
+ * Serializes startup for one project. Runtime state is written only after the
+ * collector is ready, so without this lock two overlapping starts could both
+ * pass the running-state check and leave an orphaned collector behind.
+ */
+export async function acquireRuntimeLock(
+  projectDir: string,
+): Promise<RuntimeLock> {
+  const dir = await ensureRuntimeDir(projectDir)
+  const file = path.join(dir, LOCK_FILE_NAME)
+  const token = randomBytes(16).toString('hex')
+  const payload = `${JSON.stringify({
+    pid: process.pid,
+    startedAt: Date.now(),
+    token,
+  })}\n`
+  const emptyGraceDeadline = Date.now() + LOCK_EMPTY_GRACE_MS
+
+  for (let attempt = 0; attempt < LOCK_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      // Exclusive create-and-write. A reader can still observe the file between
+      // create and write, so an empty or truncated lock gets a grace period
+      // below before it is treated as stale.
+      await writeFile(file, payload, { flag: 'wx', mode: 0o600 })
+      return {
+        file,
+        release: async () => {
+          if (!lockBelongsTo(file, token)) return
+          try {
+            await rm(file, { force: true })
+          } catch {
+            // Best effort during shutdown; a stale lock is reclaimed on the
+            // next start once this process is gone.
+          }
+        },
+        releaseSync: () => {
+          if (!lockBelongsTo(file, token)) return
+          try {
+            rmSync(file, { force: true })
+          } catch {
+            // Best effort during process exit.
+          }
+        },
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+      let existing: string
+      try {
+        existing = await readFile(file, 'utf8')
+      } catch (readError) {
+        if ((readError as NodeJS.ErrnoException).code === 'ENOENT') continue
+        throw readError
+      }
+      const pid = lockOwnerPid(existing)
+      if (pid !== null) {
+        if (pid === process.pid || isProcessAlive(pid)) {
+          throw new Error(
+            `StackNext is already starting or running for this project (pid ${pid}). Wait for it to finish or stop it with SIGINT/SIGTERM.`,
+          )
+        }
+        await rm(file, { force: true })
+        continue
+      }
+      if (Date.now() < emptyGraceDeadline) {
+        await delay(LOCK_RETRY_DELAY_MS)
+        continue
+      }
+      await rm(file, { force: true })
+    }
+  }
+  throw new Error(
+    'Could not acquire the StackNext runtime lock. Remove .stacknext/dev.lock and retry.',
+  )
+}
+
 export async function readRuntimeState(projectDir: string): Promise<RuntimeState | null> {
   const file = runtimeStatePath(projectDir)
   let contents: string
@@ -66,10 +197,7 @@ export async function writeRuntimeState(
   projectDir: string,
   state: RuntimeState,
 ): Promise<string> {
-  const dir = runtimeDir(projectDir)
-  await mkdir(dir, { recursive: true, mode: 0o700 })
-  await chmod(dir, 0o700).catch(() => undefined)
-  await writeFile(path.join(dir, '.gitignore'), '*\n', { mode: 0o600 })
+  await ensureRuntimeDir(projectDir)
   const file = runtimeStatePath(projectDir)
   await mkdir(path.dirname(file), { recursive: true, mode: 0o700 })
   const temporary = `${file}.${process.pid}.tmp`
