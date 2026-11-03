@@ -52,7 +52,7 @@ All notable changes to StackNext are documented here. The format follows
 - The collector runs on a dedicated per-project bridge network instead of the
   default bridge, so unrelated containers cannot reach its container-internal
   listener. The network carries the same project labels and is removed with the
-  container.
+  container when no other container is attached.
 - The container runs with a read-only root filesystem, a `noexec,nosuid` tmpfs,
   all capabilities dropped, `no-new-privileges`, an init process and the host
   uid/gid on POSIX. Docker mode refuses to run as root and never mounts the

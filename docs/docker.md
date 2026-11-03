@@ -87,14 +87,16 @@ the host, so those records survive container restarts.
     bearer token.
 
 On SIGINT/SIGTERM, the CLI stops the Next.js child, stops and removes the
-container, removes the private Docker config and the project network, and
-deletes `.stacknext/run.json`. An abnormal exit is cleaned up by the next
+container, removes the private Docker config, attempts to remove the project
+network, and deletes `.stacknext/run.json`. The network remains when another
+container is still attached. An abnormal exit is cleaned up by the next
 `stacknext dev` or by `stacknext stop`.
 
 `stacknext stop` only manages Docker resources for the current project. It
 removes containers and networks carrying the `stacknext.managed=true` and
 matching `stacknext.project` labels, removes `.stacknext/docker`, and deletes
-the runtime state. It refuses to stop a live native runtime, a live Docker
+the runtime state. It removes the network after the container when no other
+container is attached. It refuses to stop a live native runtime, a live Docker
 runtime, or a startup that still holds the project runtime lock; stop those with
 SIGINT/SIGTERM instead.
 
@@ -116,15 +118,16 @@ mount. The existing Host, Origin, `Sec-Fetch-Site`, bearer-token, dashboard
 session-cookie, CSP, security-header, payload-limit and two-layer redaction
 checks are unchanged.
 
-The container-internal listener is reachable only from containers attached to
-the project's dedicated user-defined bridge network. StackNext creates
-`stacknext-net-<project-hash>` with `stacknext.managed` and `stacknext.project`
-labels and attaches only the collector. Other containers on Docker's default
-bridge cannot reach it, and `stacknext stop` removes the network after the
-container. Do not attach unrelated containers to this network; the bearer token,
-session-cookie and origin checks still apply, but container-to-container traffic
-on the project network is inside the Docker boundary. StackNext does not publish
-the port on a host interface and does not add a Docker socket or remote context.
+The container-internal listener is reachable from other containers only when
+they are attached to the project's dedicated user-defined bridge network.
+StackNext creates `stacknext-net-<project-hash>` with `stacknext.managed` and
+`stacknext.project` labels and attaches only the collector. Other containers on
+Docker's default bridge cannot reach it. On the host, the dashboard is reachable
+only at `127.0.0.1:<host-port>` through the published loopback port. Do not
+attach unrelated containers to this network; the bearer token, session-cookie
+and origin checks still apply, but container-to-container traffic on the project
+network is inside the Docker boundary. StackNext never publishes the port on a
+non-loopback host interface and does not add a Docker socket or remote context.
 
 The container runs with:
 
