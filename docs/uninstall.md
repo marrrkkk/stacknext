@@ -15,6 +15,11 @@ On Windows, closing the terminal may not stop the child Next.js process. Check
 for an orphaned `node.exe`/`next` process before retrying, then send
 `Ctrl+C` to the StackNext process rather than the child.
 
+In Docker mode, run `stacknext stop` to remove the project's container and
+private Docker config. Uninstall removes `.stacknext/docker` and runtime state
+but does not stop Docker containers; run `stacknext stop` first if `stacknext
+dev` exited abnormally and left a container behind.
+
 ## Preview the removals
 
 ```bash
@@ -27,6 +32,7 @@ The default is a dry run. It prints:
   StackNext template;
 - `stacknext.config.json`;
 - `.stacknext/run.json`;
+- the private `.stacknext/docker` runtime config when Docker mode was used;
 - optional `.stacknext` capture data when `--remove-data` is passed;
 - the package-manager command that would remove StackNext packages;
 - anything preserved because it belongs to the application.
@@ -93,7 +99,8 @@ If the CLI is no longer available:
    matches the generated StackNext template. If you edited it, remove the
    StackNext import and hook manually.
 3. Delete `.stacknext/run.json`. Keep `.stacknext/runs`, `.stacknext/baselines`
-   and `.stacknext/comparisons` if you still need the evidence.
+   and `.stacknext/comparisons` if you still need the evidence. Delete
+   `.stacknext/docker` after `stacknext stop` if Docker mode was used.
 4. Delete the `.stacknext` directory only when you no longer need any saved
    records.
 5. Remove the packages with the package manager.

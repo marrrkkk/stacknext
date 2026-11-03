@@ -399,7 +399,7 @@ describe('local collector', () => {
     })
     expect(response.status).toBe(200)
     const list = (await response.json()) as DiagnosticListResponse
-    expect(list.engineVersion).toBe('0.6.1')
+    expect(list.engineVersion).toBe('0.7.0')
     expect(list.ruleSetVersion).toBe(1)
     expect(list.sample.spans).toBe(4)
     expect(list.sample.errors).toBe(2)

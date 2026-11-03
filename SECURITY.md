@@ -9,7 +9,7 @@ public, shared or multi-user deployment.
 
 | Version | Security support |
 | --- | --- |
-| 0.6.x | Supported |
+| 0.7.x | Supported |
 | Earlier versions | Not supported |
 
 Security fixes are released as patch or minor versions, depending on the
@@ -66,15 +66,18 @@ In scope:
   ranges or accidental inclusion of secrets/source/test files;
 - read-only MCP guarantees and prompt/instruction injection that could make a
   tool mutate data;
-- local file permissions for `.stacknext` runtime state and saved records.
+- local file permissions for `.stacknext` runtime state and saved records;
+- the optional Docker runtime: host-loopback-only publishing, the read-only
+  `.stacknext` mount, non-root execution, and token handling outside Docker
+  arguments, environment values, image labels and logs.
 
 Out of scope:
 
 - hosted, multi-user or Edge deployments (unsupported);
 - vulnerabilities in Next.js, OpenTelemetry, Drizzle, Prisma, Playwright or
   other dependencies that are not exploitable through StackNext;
-- an attacker who already has the local user's filesystem access or can read
-  `.stacknext/run.json`;
+- an attacker who already has the local user's filesystem access, can read
+  `.stacknext/run.json`, or can control the local Docker daemon;
 - social engineering, spam or physical attacks;
 - reports that require disabling documented privacy settings or running the
   collector on a non-loopback interface;
@@ -94,6 +97,9 @@ incoming telemetry or browser requests:
   read-only tools.
 - Regression records are private local files with atomic writes and strict
   schemas.
+- The Docker runtime publishes the collector only on host loopback, mounts only
+  `.stacknext` read-only and keeps the token in a private `0600` config file
+  rather than Docker arguments, environment values, image labels or logs.
 
 If you find a way to cross one of those boundaries, report it privately.
 

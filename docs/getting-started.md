@@ -111,6 +111,10 @@ pnpm exec stacknext init
 pnpm exec stacknext dev
 ```
 
+Native mode is the default. To run the collector and dashboard in Docker
+instead, use `stacknext dev --runtime docker` or set
+`"runtime": { "mode": "docker" }`; see [Docker runtime](docker.md).
+
 `stacknext init`:
 
 1. Checks that the project uses Next.js 15/16 with `app/` or `src/app/`.
@@ -195,6 +199,7 @@ Defaults are shown below.
 ```json
 {
   "projectName": "my-app",
+  "runtime": { "mode": "native" },
   "dashboard": { "port": 4400 },
   "collector": { "maxSpans": 5000, "retentionMs": 600000 },
   "instrumentation": {
@@ -232,6 +237,7 @@ The bundled example app overrides `retentionMs` to `900000` and
 
 | Field | Meaning |
 | --- | --- |
+| `runtime.mode` | `native` (default) runs the collector in the CLI process. `docker` runs only the collector and dashboard in one container; see [Docker runtime](docker.md). |
 | `dashboard.port` | Preferred loopback dashboard port. StackNext tries the next 25 ports if it is busy. |
 | `collector.maxSpans` | In-memory span capacity. Error and query buffers are derived from it. |
 | `collector.retentionMs` | How long received telemetry stays in memory. |
@@ -301,7 +307,8 @@ attributes.
 
 ```bash
 stacknext init [--install]
-stacknext dev [--open] [--quiet] [--token <token>] [nextArgs...]
+stacknext dev [--open] [--quiet] [--runtime native|docker] [--token <token>] [nextArgs...]
+stacknext stop [--json]
 stacknext status [--json]
 stacknext doctor [--json]
 stacknext coverage [--json]
@@ -323,6 +330,8 @@ stacknext mcp [--collector <url>] [--token <token>]
 - Runtime credentials live in `<project>/.stacknext/run.json` with mode `0600`.
   The directory contains its own `.gitignore`. Do not copy the token into source
   control or share it.
+- `stop` removes only this project's Docker container and private Docker config.
+  It refuses to stop a live native process; use SIGINT/SIGTERM for native mode.
 - `coverage` reports what the current retention window observed for framework
   spans, adapters, custom spans, Server Actions and verbose tracing. It is not a
   score; `not-observed` and `unknown` can be correct on a healthy app.

@@ -20,7 +20,7 @@ export interface UninstallOptions {
 }
 
 interface PlannedRemoval {
-  kind: 'instrumentation' | 'config' | 'runtime' | 'data'
+  kind: 'instrumentation' | 'config' | 'runtime' | 'data' | 'docker'
   file: string
   reason: string
 }
@@ -37,6 +37,10 @@ interface UninstallReport {
 
 async function removeGeneratedRuntimeFiles(dir: string): Promise<void> {
   try {
+    const entries = await readdir(dir)
+    // Keep the ignore file when any other runtime file survived. Removing it
+    // would expose a leftover Docker token config to `git add`.
+    if (entries.length !== 1 || entries[0] !== '.gitignore') return
     const gitignore = path.join(dir, '.gitignore')
     if ((await readFile(gitignore, 'utf8')) === '*\n') {
       await rm(gitignore, { force: true })
@@ -116,14 +120,40 @@ export async function runUninstall(
     removed.push({ kind: 'runtime', file: stateFile, reason: 'runtime token state' })
   }
 
+  const dockerDir = path.join(runtimeDir(project.dir), 'docker')
+  if (await fileExists(dockerDir)) {
+    if (runtimeProcess !== null) {
+      preserved.push({
+        file: dockerDir,
+        reason: `StackNext is still running (pid ${runtimeProcess}); stop it with SIGINT/SIGTERM first`,
+      })
+    } else {
+      removed.push({
+        kind: 'docker',
+        file: dockerDir,
+        reason: 'private Docker runtime config',
+      })
+      manual.push(
+        'If a StackNext Docker container is still running, run "stacknext stop" to remove this project\'s container; uninstall only removes local files.',
+      )
+    }
+  }
+
   if (options.removeData) {
     const dir = runtimeDir(project.dir)
     if (await fileExists(dir)) {
-      removed.push({
-        kind: 'data',
-        file: dir,
-        reason: 'saved runs, baselines and comparisons (--remove-data)',
-      })
+      if (runtimeProcess !== null) {
+        preserved.push({
+          file: dir,
+          reason: `StackNext is still running (pid ${runtimeProcess}); stop it with SIGINT/SIGTERM first`,
+        })
+      } else {
+        removed.push({
+          kind: 'data',
+          file: dir,
+          reason: 'saved runs, baselines and comparisons (--remove-data)',
+        })
+      }
     }
   }
 
@@ -170,7 +200,7 @@ export async function runUninstall(
   }
 
   for (const entry of removed) {
-    if (entry.kind === 'data') {
+    if (entry.kind === 'data' || entry.kind === 'docker') {
       await rm(entry.file, { recursive: true, force: true })
     } else {
       await rm(entry.file, { force: true })

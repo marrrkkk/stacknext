@@ -3,8 +3,8 @@
  * Publishes the validated archives in dependency order.
  *
  * Release workflow:
- *   node scripts/publish-release.mjs --version 0.6.1 --dry-run
- *   node scripts/publish-release.mjs --version 0.6.1 --publish
+ *   node scripts/publish-release.mjs --version 0.7.0 --dry-run
+ *   node scripts/publish-release.mjs --version 0.7.0 --publish
  *
  * Dry-run is the default. Real publishing requires `--publish`; outside GitHub
  * Actions it also requires `--allow-local-publish` for the documented first

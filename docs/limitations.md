@@ -1,6 +1,6 @@
 # Limitations
 
-StackNext 0.6 is a local development tool, not a production APM. These are
+StackNext 0.7 is a local development tool, not a production APM. These are
 intentional boundaries, not claims of completeness.
 
 ## Runtime and framework
@@ -24,7 +24,7 @@ intentional boundaries, not claims of completeness.
 - **OpenTelemetry SDK packages are retained on the 2.x line.** Upstream marks
   `@opentelemetry/sdk-trace-base@2.12.0` and
   `@opentelemetry/sdk-trace-node@2.12.0` as deprecated in favor of
-  `@opentelemetry/sdk-trace@3.0.0`. StackNext 0.6 keeps 2.12.0 because SDK 3
+  `@opentelemetry/sdk-trace@3.0.0`. StackNext 0.7 keeps 2.12.0 because SDK 3
   requires Node.js 22.15 or newer, while StackNext still declares Node.js
   20.9 support. This is a packaging limitation, not a known runtime defect; a
   future major can migrate when the Node.js 20 floor is raised.

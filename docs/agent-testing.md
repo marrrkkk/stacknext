@@ -1,6 +1,6 @@
 # Agent compatibility testing
 
-StackNext 0.6 includes deterministic diagnostic findings, 17 read-only MCP
+StackNext 0.7 includes deterministic diagnostic findings, 17 read-only MCP
 tools, five guided prompts, six read-only regression tools and the Agent Skill
 workflows.
 This page keeps the 0.4 model-driven record below intact and adds the 0.6

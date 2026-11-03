@@ -6,14 +6,55 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-03
+
 ### Added
 
+- Optional Docker runtime for the collector and dashboard. Set
+  `runtime.mode` to `"docker"` in `stacknext.config.json` or pass
+  `stacknext dev --runtime docker`; native mode remains the default and still
+  works without Docker. Only the collector and dashboard move into the
+  container. Next.js, Playwright, MCP, the CLI and saved regression records stay
+  on the host.
+- `stacknext stop` removes only the current project's StackNext-managed Docker
+  container, its private config and the runtime state. It refuses to stop a live
+  native runtime, a live Docker runtime, or a startup in progress.
+- Production multi-stage image published to
+  `ghcr.io/<repository-owner>/stacknext:<version>` for `linux/amd64` and
+  `linux/arm64`, with a health check, graceful shutdown and non-root execution.
+- PR CI builds the image and runs the Docker runtime integration checks. The
+  release workflow builds and validates the image before npm publication and
+  publishes the version tag plus `latest` for stable releases after npm
+  publication.
 - Bundled the `stacknext-debugging` Agent Skill in the `@stacknext/cli`
   archive. `stacknext skill path` prints the bundled directory, and
   `stacknext skill install --client opencode|codex|claude-code` copies it into a
   project without overwriting an existing copy unless `--force` is passed.
 - The release archive check now fails when the bundled skill is missing or its
   `metadata.version` does not match the package version.
+
+### Changed
+
+- `.stacknext/run.json` now records `runtime.mode` and, in Docker mode, the
+  container id, name, image and host port. Runtime state written before this
+  release still parses as native mode.
+- `doctor`, `status`, `init` and the CLI help describe the selected runtime.
+  Docker availability is checked only when Docker mode is selected.
+- The collector accepts a Docker-only `0.0.0.0` bind and public port from the
+  container entrypoint. Host publication remains limited to
+  `127.0.0.1:<host-port>:4400`.
+
+### Security
+
+- Docker mode mounts only `<project>/.stacknext`, read-only, and passes the
+  bearer token through a `0600` config file rather than command-line arguments,
+  container environment values or image labels.
+- The container runs with a read-only root filesystem, a `noexec,nosuid` tmpfs,
+  all capabilities dropped, `no-new-privileges`, an init process and the host
+  uid/gid on POSIX. Docker mode refuses to run as root and never mounts the
+  Docker socket.
+- The image does not contain the project source, `node_modules`, Playwright
+  artifacts or MCP data.
 
 ## [0.6.1] - 2026-11-03
 

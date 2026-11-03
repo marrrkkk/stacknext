@@ -162,6 +162,7 @@ export async function runInit(options: InitOptions, cwd = process.cwd()): Promis
   if (!(await fileExists(configFile))) {
     const config = {
       projectName: project.name,
+      runtime: { mode: 'native' },
       dashboard: { port: 4400 },
       collector: { maxSpans: 5_000, retentionMs: 600_000 },
       instrumentation: { verbose: false, captureFetch: true, captureErrors: true },

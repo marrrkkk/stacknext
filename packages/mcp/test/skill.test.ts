@@ -68,7 +68,7 @@ describe('stacknext-debugging Agent Skill', () => {
     expect(fields.get('license')).toBe('MIT')
     expect(fields.get('compatibility')).toContain('Next.js')
     expect(source).toContain('metadata:')
-    expect(source).toContain('version: "0.6.1"')
+    expect(source).toContain('version: "0.7.0"')
   })
 
   it('keeps SKILL.md concise and points to every reference', async () => {

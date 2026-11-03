@@ -93,6 +93,14 @@ export interface StartCollectorOptions {
   projectDir?: string
   /** Overrides environment/config inference, mainly for tests and `stacknext dev`. */
   nextOtelVerbose?: NextOtelVerboseStatus
+  /**
+   * Docker-only escape hatch: the container must bind its internal interface so
+   * Docker can publish the port on host loopback. This never permits a
+   * non-loopback host-published service and is rejected for normal callers.
+   */
+  allowDockerBind?: boolean
+  /** Host-published port used for Origin validation and dashboard URLs. */
+  publicPort?: number
 }
 
 export interface CollectorHandle {
@@ -443,8 +451,23 @@ function listen(server: Server, port: number, host: string): Promise<number> {
 
 export async function startCollector(options: StartCollectorOptions): Promise<CollectorHandle> {
   const host = options.host ?? '127.0.0.1'
-  if (host !== '127.0.0.1' && host !== 'localhost') {
+  // The non-loopback bind exists only for the container entrypoint, which sets
+  // this environment marker. A normal caller cannot opt into a public bind.
+  const dockerBind =
+    options.allowDockerBind === true &&
+    host === '0.0.0.0' &&
+    process.env.STACKNEXT_DOCKER_CONTAINER === '1'
+  if (host !== '127.0.0.1' && host !== 'localhost' && !dockerBind) {
     throw new Error('StackNext collector may only bind to a loopback address')
+  }
+  if (
+    dockerBind &&
+    (options.publicPort === undefined ||
+      !Number.isInteger(options.publicPort) ||
+      options.publicPort < 1024 ||
+      options.publicPort > 65535)
+  ) {
+    throw new Error('Docker collector binding requires the host-published port')
   }
   if (options.token.length < 16) {
     throw new Error('Collector token must be at least 16 characters')
@@ -471,7 +494,10 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
   }
   let sequence = 0
   let port = options.port
-  let dashboardUrl = `http://${host}:${port}`
+  let originPort = options.publicPort ?? port
+  let dashboardUrl = `http://${
+    host === '0.0.0.0' ? '127.0.0.1' : host
+  }:${originPort}`
   let diagnosticCache: { revision: number; report: DiagnosticReport } | null = null
 
   const getConnections = (now: number): ConnectionInfo[] => {
@@ -1341,7 +1367,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
       return
     }
     const origin = request.headers.origin
-    if (origin && !originAllowed(origin, port)) {
+    if (origin && !originAllowed(origin, originPort)) {
       serverStats.rejectedRequests += 1
       sendError(response, 403, 'Cross-origin requests are not allowed')
       return
@@ -1437,7 +1463,10 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     )
   }
   port = actualPort
-  dashboardUrl = `http://${host === '127.0.0.1' ? '127.0.0.1' : host}:${port}`
+  originPort = options.publicPort ?? port
+  dashboardUrl = `http://${
+    host === '127.0.0.1' || host === '0.0.0.0' ? '127.0.0.1' : host
+  }:${originPort}`
 
   let closing = false
   const close = async (): Promise<void> => {

@@ -131,6 +131,24 @@ describe('stacknext uninstall', () => {
     await expect(readFile(path.join(root, 'stacknext.config.json'), 'utf8')).rejects.toThrow()
   })
 
+  it('removes the private Docker config and keeps the ignore file for leftovers', async () => {
+    const root = await project()
+    await runInit({}, root)
+    const runtime = path.join(root, '.stacknext')
+    const dockerDir = path.join(runtime, 'docker')
+    await mkdir(dockerDir, { recursive: true, mode: 0o700 })
+    await writeFile(path.join(dockerDir, 'config.json'), '{"token":"secret"}\n', {
+      mode: 0o600,
+    })
+    await writeFile(path.join(runtime, '.gitignore'), '*\n')
+    await writeFile(path.join(runtime, 'leftover.txt'), 'keep\n')
+
+    expect(await runUninstall({ yes: true }, root)).toBe(0)
+    await expect(readFile(path.join(dockerDir, 'config.json'), 'utf8')).rejects.toThrow()
+    expect(await readFile(path.join(runtime, '.gitignore'), 'utf8')).toBe('*\n')
+    expect(await readFile(path.join(runtime, 'leftover.txt'), 'utf8')).toBe('keep\n')
+  })
+
   it('keeps user instrumentation and --keep-config', async () => {
     const custom = 'export async function register() {}\n'
     const root = await project({ instrumentation: custom })
@@ -142,7 +160,12 @@ describe('stacknext uninstall', () => {
 
   it('refuses to remove runtime files while the recorded process is alive', async () => {
     const root = await project()
-    await mkdir(path.join(root, '.stacknext'), { recursive: true })
+    await mkdir(path.join(root, '.stacknext', 'docker'), { recursive: true })
+    await writeFile(
+      path.join(root, '.stacknext', 'docker', 'config.json'),
+      '{"token":"secret"}\n',
+      { mode: 0o600 },
+    )
     await writeRuntimeState(root, {
       version: 1,
       pid: process.pid,
@@ -153,9 +176,19 @@ describe('stacknext uninstall', () => {
       collectorUrl: 'http://127.0.0.1:4400',
       port: 4400,
       token: 'b'.repeat(32),
+      runtime: {
+        mode: 'docker',
+        containerId: 'c'.repeat(64),
+        containerName: 'stacknext-test',
+        image: 'ghcr.io/acme/stacknext:0.7.0',
+        hostPort: 4400,
+      },
     })
     expect(await runUninstall({ yes: true }, root)).toBe(1)
     expect(await readFile(runtimeStatePath(root), 'utf8')).toContain('token')
+    expect(
+      await readFile(path.join(root, '.stacknext', 'docker', 'config.json'), 'utf8'),
+    ).toContain('secret')
   })
 })
 

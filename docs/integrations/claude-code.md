@@ -6,7 +6,7 @@ project skills in `.claude/skills/`.
 Setup was verified with Claude Code `2.1.303` on Linux: the project skill was
 discovered and the MCP server connected over stdio. The model-driven workflows
 were not run because the test environment was not logged in; see
-[agent-testing.md](../agent-testing.md) for the exact result. StackNext 0.6
+[agent-testing.md](../agent-testing.md) for the exact result. StackNext 0.7
 includes six read-only regression tools; they were verified at the protocol and
 e2e level, but no new model-driven Claude Code scenario was run. Check
 `claude --version`; command flags can change between releases.

@@ -10,6 +10,8 @@ not require an account, a hosted service or an AI provider.
 - Next.js **15 or 16** with the **App Router** and the **Node.js runtime**.
   Edge runtime and the Pages Router are not supported.
 - npm, pnpm, yarn or bun. npm and pnpm are the validated installers.
+- Docker Engine or Docker Desktop only if you choose the optional
+  [Docker runtime](docker.md). Native mode does not inspect or require Docker.
 
 Install inside the application directory, not in a parent folder.
 
@@ -124,6 +126,41 @@ the configured range.
 Use the dashboard and make a request to your app. Use `--open` to open the
 dashboard in the default browser.
 
+### Optional Docker runtime
+
+Native mode is the default and needs no Docker. To run only the collector and
+dashboard in a container, set the mode in `stacknext.config.json`:
+
+```json
+{
+  "runtime": {
+    "mode": "docker"
+  }
+}
+```
+
+Then start normally:
+
+```bash
+npx stacknext dev
+```
+
+Or override the config for one run:
+
+```bash
+npx stacknext dev --runtime docker
+```
+
+`--runtime native` forces native mode. The CLI pulls the matching
+`ghcr.io/<owner>/stacknext:<version>` image on first use, publishes the
+collector only on `127.0.0.1`, and keeps Next.js, Playwright and MCP on the host.
+The container mounts only `<project>/.stacknext` and receives its token through a
+private `0600` config file, not command-line arguments. If a previous container
+was left behind, `stacknext stop` removes only this project's managed container.
+
+See [Docker runtime](docker.md) for requirements, image overrides, security
+details and troubleshooting.
+
 ## Verify the installation
 
 With `stacknext dev` running in another terminal:
@@ -142,7 +179,9 @@ only what the current retention window observed; it is not a health score.
 
 `stacknext.config.json` is created by `init` and read by `stacknext dev`. The
 defaults and each field are documented in
-[getting started](getting-started.md#configuration).
+[getting started](getting-started.md#configuration). `runtime.mode` defaults to
+`native`; set it to `docker` only when you want the optional
+[Docker runtime](docker.md).
 
 Keep these privacy settings at `false`; StackNext rejects attempts to capture
 request headers, bodies or SQL bind parameters:

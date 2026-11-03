@@ -29,7 +29,7 @@ function options(
 ): DiagnosticEngineOptions {
   return {
     projectName: 'diagnostics-test',
-    collectorVersion: '0.6.1',
+    collectorVersion: '0.7.0',
     config: config().diagnostics,
     generatedAt: 10_000,
     connected: true,
@@ -475,7 +475,7 @@ describe('report generation', () => {
     const report = reportFor(value)
     expect(report.format).toBe('stacknext-diagnostics')
     expect(report.version).toBe(1)
-    expect(report.engineVersion).toBe('0.6.1')
+    expect(report.engineVersion).toBe('0.7.0')
     expect(report.ruleSetVersion).toBe(1)
     expect(report.projectName).toBe('diagnostics-test')
     expect(report.sample).toMatchObject({

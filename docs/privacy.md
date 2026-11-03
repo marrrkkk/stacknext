@@ -5,7 +5,8 @@ produced by your app, sent over loopback to the collector on this machine, and
 kept in memory. Explicit capture runs, baselines and comparisons are redacted
 JSON records under the project's `.stacknext` directory; they are never
 uploaded. There is no cloud service, account, analytics endpoint or outbound
-ingestion.
+ingestion. The optional Docker runtime may pull its collector image from a
+container registry; that is a normal image download, not telemetry.
 
 ## What is collected
 
@@ -26,7 +27,7 @@ ingestion.
 | Playwright scenario identity and result | Redacted yes | Annotation/title, normalized file, project, tags, status, retry/repeat index, test duration and capture time. |
 | Regression run, baseline and comparison records | Derived yes | Stored as private JSON under `.stacknext`; contain redacted scenario, trace, query, error, environment and command data. |
 | Playwright screenshots, videos or trace archives | **No** | Never read, referenced or stored by the regression fixture. |
-| Collector bearer token | **No** | Only in `.stacknext/run.json` (mode `0600`); never written into a regression record. |
+| Collector bearer token | **No** | Only in `.stacknext/run.json` (mode `0600`), plus `.stacknext/docker/config.json` (mode `0600`) while Docker mode is running; never written into a regression record, image metadata, container arguments or logs. |
 | Service name, version, runtime | Yes | Used to identify the connected app instance. |
 | Machine/user identifiers | **No** | Not collected by StackNext. |
 
@@ -97,11 +98,19 @@ sharing it.
 ## Local network boundary
 
 - The collector and dashboard share one HTTP server bound to **`127.0.0.1`** or
-  `localhost` only. Startup rejects any other host.
+  `localhost` only. Startup rejects any other host. The Docker entrypoint binds
+  `0.0.0.0` inside its own container, but Docker publishes that port only as
+  `127.0.0.1:<port>:4400`; there is no host non-loopback bind.
 - Ingestion requires an `Authorization: Bearer <token>` header. The token is
   generated with 32 random bytes by `stacknext dev` and stored in
   `.stacknext/run.json` with mode `0600`. Plain HTTP is used because traffic
   never leaves the loopback interface.
+- Docker mode writes the same token to `.stacknext/docker/config.json` with mode
+  `0600` and mounts only `.stacknext` read-only into the container. The token is
+  not passed in Docker arguments, container environment values, image labels or
+  logs. The container does not receive the project source, `node_modules`, the
+  Docker socket or the host home directory. Pulling the image from GHCR is an
+  ordinary registry request, not telemetry upload.
 - Read APIs and the SSE stream require either that bearer token or an
   `HttpOnly`, `SameSite=Strict` session cookie issued when the dashboard HTML is
   loaded. Sessions expire after 24 hours and are capped at 100.
@@ -117,6 +126,9 @@ sharing it.
 - The dashboard sends a restrictive CSP (`default-src 'self'`), `nosniff`,
   `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` and no CORS headers.
 - The MCP server's API client refuses collector URLs that are not loopback.
+- Docker containers run with `--read-only`, a small `noexec,nosuid` tmpfs,
+  `--cap-drop ALL`, `no-new-privileges`, `--init` and a non-root user on POSIX.
+  The Docker daemon itself remains a privileged local trust boundary.
 - `stacknext export` writes with mode `0600`; the data is redacted, but it is
   still a full local trace dump.
 

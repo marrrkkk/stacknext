@@ -10,6 +10,13 @@ import { detectProject } from '../project.js'
 import { isProcessAlive, readRuntimeState, runtimeStatePath } from '../runtime.js'
 import { resolveDashboardDir } from '../collector/server.js'
 import { requireRunningState } from '../session.js'
+import {
+  checkDockerAvailability,
+  dockerContainerStatus,
+} from '../docker/runtime.js'
+import { resolveDockerImage } from '../docker/image.js'
+import { dockerRunner } from '../docker/runner.js'
+import { CLI_VERSION } from '../version.js'
 
 type CheckStatus = 'pass' | 'warn' | 'fail'
 
@@ -141,6 +148,34 @@ export async function runDoctor(
         'Install it with the package manager command printed by "stacknext init"',
       )
 
+    if (config?.runtime.mode === 'docker') {
+      try {
+        const docker = await checkDockerAvailability()
+        add('Docker', 'pass', `Docker ${docker.version}`)
+        const image = await resolveDockerImage({ cliVersion: CLI_VERSION })
+        const inspected = await dockerRunner.run(['image', 'inspect', image], {
+          timeoutMs: 10_000,
+        })
+        if (inspected.code === 0) {
+          add('Docker', 'pass', 'Runtime image is available locally', image)
+        } else {
+          add(
+            'Docker',
+            'warn',
+            'Runtime image is not present locally',
+            `"stacknext dev --runtime docker" will pull ${image}`,
+          )
+        }
+      } catch (error) {
+        add(
+          'Docker',
+          'fail',
+          'Docker runtime is not ready',
+          error instanceof Error ? error.message : String(error),
+        )
+      }
+    }
+
     if (config) {
       if (config.database.drizzle && !project.hasDrizzle) {
         add('Adapters', 'warn', 'Drizzle is enabled but drizzle-orm is not installed')
@@ -184,22 +219,49 @@ export async function runDoctor(
     )
   }
 
-  try {
-    const dashboardDir = await resolveDashboardDir()
-    add('Dashboard', 'pass', 'Dashboard build found', dashboardDir)
-  } catch (error) {
+  if (config?.runtime.mode === 'docker') {
     add(
       'Dashboard',
-      'warn',
-      'Dashboard build not found',
-      error instanceof Error ? error.message : String(error),
+      'pass',
+      'Dashboard is served by the Docker image',
+      'a host dashboard build is not required in Docker mode',
     )
+  } else {
+    try {
+      const dashboardDir = await resolveDashboardDir()
+      add('Dashboard', 'pass', 'Dashboard build found', dashboardDir)
+    } catch (error) {
+      add(
+        'Dashboard',
+        'warn',
+        'Dashboard build not found',
+        error instanceof Error ? error.message : String(error),
+      )
+    }
   }
 
   const runtime = await readRuntimeState(cwd).catch(() => null)
+  const dockerState =
+    runtime?.runtime?.mode === 'docker' && runtime.runtime.containerId
+      ? await dockerContainerStatus(runtime.runtime.containerId)
+      : null
   if (!runtime) {
     add('Collector', 'warn', 'StackNext is not running', 'Start it with "stacknext dev"')
-  } else if (!isProcessAlive(runtime.pid)) {
+  } else if (dockerState === 'stopped') {
+    add(
+      'Collector',
+      'warn',
+      'Stale Docker runtime state',
+      `Container ${runtime.runtime?.containerId?.slice(0, 12) ?? '(unknown)'} is not running; restart with "stacknext dev --runtime docker"`,
+    )
+  } else if (dockerState === 'unknown') {
+    add(
+      'Collector',
+      'warn',
+      'Could not verify the Docker collector',
+      'Check that Docker is running; runtime state was kept',
+    )
+  } else if (dockerState === null && !isProcessAlive(runtime.pid)) {
     add(
       'Collector',
       'warn',
@@ -225,7 +287,12 @@ export async function runDoctor(
         '/api/health',
         state.token,
       )
-      add('Collector', 'pass', `Collector healthy on port ${state.port}`)
+      add(
+        'Collector',
+        'pass',
+        `Collector healthy on port ${state.port}`,
+        state.runtime?.mode === 'docker' ? 'docker container' : 'native process',
+      )
       add(
         'Collector',
         health.connected ? 'pass' : 'warn',

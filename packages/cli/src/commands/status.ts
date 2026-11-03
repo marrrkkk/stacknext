@@ -45,10 +45,16 @@ export async function runStatus(
   }
 
   const connected = health.connections.filter((connection) => connection.connected)
+  const mode = state.runtime?.mode ?? 'native'
   console.log(`${style.bold('StackNext')} ${style.dim(`v${health.version}`)} — ${health.projectName}`)
+  console.log(`Runtime     ${mode === 'docker' ? 'docker' : 'native'}`)
   console.log(`Dashboard   ${style.cyan(health.dashboardUrl)}`)
   console.log(
-    `Collector   ${state.collectorUrl} ${style.dim(`(pid ${state.pid}, up ${formatDuration(health.uptimeMs)})`)}`,
+    `Collector   ${state.collectorUrl} ${style.dim(
+      mode === 'docker' && state.runtime?.containerId
+        ? `(container ${state.runtime.containerId.slice(0, 12)}, up ${formatDuration(health.uptimeMs)})`
+        : `(pid ${state.pid}, up ${formatDuration(health.uptimeMs)})`,
+    )}`,
   )
   if (connected.length === 0) {
     console.log(

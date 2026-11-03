@@ -6,7 +6,7 @@ initialization, so the StackNext workflow is available even without the skill.
 
 Verified with Codex CLI `0.164.0` on Linux. The eight-scenario record in
 [agent-testing.md](../agent-testing.md) includes the 0.3 baseline and the 0.4
-diagnostics scenario run with this client. StackNext 0.6 includes six read-only
+diagnostics scenario run with this client. StackNext 0.7 includes six read-only
 regression tools; they were verified at the protocol and e2e level, not through
 a new model-driven Codex scenario. Check `codex --version`; config keys can
 change between releases.

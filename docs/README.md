@@ -8,10 +8,11 @@ Start with the [README](../README.md) for the package quick start and the
 | Document | What it covers |
 | --- | --- |
 | [Installation](installation.md) | Install, initialize, verify, upgrade and monorepo setup. |
+| [Docker runtime](docker.md) | Optional containerized collector, image tags and security boundary. |
 | [Uninstall and cleanup](uninstall.md) | Safe removal of generated files, data and packages. |
 | [Getting started](getting-started.md) | Configuration, dashboard routes, adapters and commands. |
 | [Compatibility](compatibility.md) | Tested Node.js/Next.js/package-manager combinations. |
-| [Troubleshooting](troubleshooting.md) | Missing telemetry, ports, MCP, regression and Windows/WSL issues. |
+| [Troubleshooting](troubleshooting.md) | Missing telemetry, ports, Docker, MCP, regression and Windows/WSL issues. |
 | [Privacy and redaction](privacy.md) | Data captured, redaction layers and network boundary. |
 | [Limitations](limitations.md) | Unsupported runtimes, heuristics and known gaps. |
 | [Benchmark](benchmark.md) | Ingest, diagnostics and verbose-tracing measurements. |
@@ -52,7 +53,7 @@ Start with the [README](../README.md) for the package quick start and the
 | Document | What it covers |
 | --- | --- |
 | [Contributing](../CONTRIBUTING.md) | Development setup, gates and review expectations. |
-| [Releasing](releasing.md) | Versioning, package validation, trusted publishing and rollback. |
+| [Releasing](releasing.md) | Versioning, package validation, trusted publishing, GHCR images and rollback. |
 | [Changelog](../CHANGELOG.md) | Release history and breaking changes. |
 | [Security policy](../SECURITY.md) | Private vulnerability reporting and threat model. |
 | [Support](../SUPPORT.md) | Where to ask for help and what to include. |

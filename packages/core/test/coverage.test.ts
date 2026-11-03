@@ -22,7 +22,7 @@ function connection(overrides: Partial<ConnectionInfo> = {}): ConnectionInfo {
     instanceId: 'test-instance',
     serviceName: 'test-app',
     projectName: 'test-project',
-    sdkVersion: '0.6.1',
+    sdkVersion: '0.7.0',
     lastSeen: 2_000,
     connected: true,
     ...overrides,
@@ -119,7 +119,7 @@ describe('coverage evidence', () => {
     )
     const report = computeCoverage({
       projectName: 'test-project',
-      collectorVersion: '0.6.1',
+      collectorVersion: '0.7.0',
       now: 5_000,
       config: config(),
       connections: [connection()],
@@ -139,7 +139,7 @@ describe('computeCoverage', () => {
     store.ingest(envelope(), 5_000)
     const report = computeCoverage({
       projectName: 'test-project',
-      collectorVersion: '0.6.1',
+      collectorVersion: '0.7.0',
       now: 5_000,
       config: config(),
       connections: [connection()],
@@ -173,7 +173,7 @@ describe('computeCoverage', () => {
   it('reports configured rather than observed when nothing is connected', () => {
     const report = computeCoverage({
       projectName: 'test-project',
-      collectorVersion: '0.6.1',
+      collectorVersion: '0.7.0',
       now: 5_000,
       config: config(),
       connections: [],
@@ -193,7 +193,7 @@ describe('computeCoverage', () => {
     store.ingest(envelope(), 5_000)
     const report = computeCoverage({
       projectName: 'test-project',
-      collectorVersion: '0.6.1',
+      collectorVersion: '0.7.0',
       now: 5_000,
       config: config({ captureFetch: false, captureErrors: false }),
       connections: [connection()],
@@ -224,7 +224,7 @@ describe('computeCoverage', () => {
     const serialized = JSON.stringify(
       computeCoverage({
         projectName: 'test-project',
-        collectorVersion: '0.6.1',
+        collectorVersion: '0.7.0',
         now: 5_000,
         config: config(),
         connections: [connection()],
@@ -278,7 +278,7 @@ describe('NEXT_OTEL_VERBOSE status', () => {
     )
     const disabled = computeCoverage({
       projectName: 'test-project',
-      collectorVersion: '0.6.1',
+      collectorVersion: '0.7.0',
       now: 5_000,
       config: config(),
       connections: [connection()],
@@ -292,7 +292,7 @@ describe('NEXT_OTEL_VERBOSE status', () => {
 
     const enabled = computeCoverage({
       projectName: 'test-project',
-      collectorVersion: '0.6.1',
+      collectorVersion: '0.7.0',
       now: 5_000,
       config: config(),
       connections: [connection()],

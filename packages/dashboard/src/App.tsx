@@ -261,7 +261,7 @@ export function App(): React.ReactElement {
 
         <div className="sidebar__footer">
           <div className="sidebar__footer-row">
-            <span className="mono">v{pageHealth?.version ?? '0.6.0'}</span>
+            <span className="mono">v{pageHealth?.version ?? '0.7.0'}</span>
             <div className="sidebar__footer-actions">
               <button
                 type="button"

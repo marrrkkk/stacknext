@@ -531,11 +531,11 @@ async function runMcpChecks(runtime, errorId, diagnosticId, traceId, regression)
     const initialize = await session.request('initialize', {
       protocolVersion: '2025-06-18',
       capabilities: {},
-      clientInfo: { name: 'stacknext-e2e', version: '0.6.1' },
+      clientInfo: { name: 'stacknext-e2e', version: '0.7.0' },
     })
     assert(initialize.serverInfo?.name === 'stacknext', 'MCP server name mismatch')
     assert(
-      initialize.serverInfo?.version === '0.6.1',
+      initialize.serverInfo?.version === '0.7.0',
       `MCP server version mismatch: ${initialize.serverInfo?.version}`,
     )
     assert(
@@ -1077,7 +1077,7 @@ async function main() {
 
     const diagnostics = await api('/api/diagnostics?limit=100')
     assert(diagnostics.format === undefined || diagnostics.engineVersion, 'diagnostics response is malformed')
-    assert(diagnostics.engineVersion === '0.6.1', 'diagnostics engine version mismatch')
+    assert(diagnostics.engineVersion === '0.7.0', 'diagnostics engine version mismatch')
     assert(diagnostics.ruleSetVersion === 1, 'diagnostics rule set version mismatch')
     assert(diagnostics.sample.requests > 0, 'diagnostics sample has no requests')
     assert(diagnostics.counts.total === diagnostics.items.length, 'diagnostics counts are inconsistent')

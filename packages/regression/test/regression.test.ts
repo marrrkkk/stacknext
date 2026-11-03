@@ -61,7 +61,7 @@ const environment: EnvironmentSnapshot = {
     captureFetch: true,
     captureErrors: true,
   },
-  sdkVersion: '0.6.1',
+  sdkVersion: '0.7.0',
   playwrightVersion: '1.58.2',
 }
 
@@ -175,7 +175,7 @@ function run(input: {
       durationMs: 500,
     },
     environment: input.environment ?? environment,
-    collector: { version: '0.6.1', connected: true },
+    collector: { version: '0.7.0', connected: true },
     scenarios,
     warnings: [],
     notes: [],

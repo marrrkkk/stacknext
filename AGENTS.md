@@ -26,6 +26,7 @@ pnpm lint           # eslint over the whole repo
 pnpm typecheck      # per-package tsc --noEmit against source paths
 pnpm test           # vitest unit/integration tests
 pnpm test:e2e       # real CLI + collector + example app + dashboard + MCP + regression flow
+pnpm test:docker -- --image <tag> --require-docker # runtime checks for a built image
 pnpm benchmark      # synthetic ingest and read API benchmark (docs/benchmark.md)
 pnpm benchmark:diagnostics # synthetic findings + diagnostics read benchmark
 pnpm benchmark:verbose # real-app verbose-tracing overhead comparison
@@ -40,6 +41,8 @@ pnpm --filter @stacknext/playwright build
 pnpm --filter @stacknext/cli build
 pnpm --filter @stacknext/example-next-app dev
 pnpm exec stacknext dev --open       # from an app directory after build
+pnpm exec stacknext dev --runtime docker # optional collector container
+pnpm exec stacknext stop             # project-scoped Docker cleanup
 pnpm exec stacknext doctor
 pnpm exec stacknext coverage [--json]
 pnpm exec stacknext diagnose [--json]
@@ -64,12 +67,13 @@ uses `http://127.0.0.1:4400` by default. `stacknext dev` writes
 | `packages/next` | `instrumentation.ts` registration, OTel provider/exporter, error hook. |
 | `packages/drizzle` | Drizzle `Logger` adapter. |
 | `packages/prisma` | Prisma `$on('query')` adapter. |
-| `packages/cli` | `stacknext` binary, collector HTTP server, regression capture/compare commands, dashboard hosting. |
+| `packages/cli` | `stacknext` binary, collector HTTP server, regression capture/compare commands, dashboard hosting, optional Docker runtime lifecycle. |
 | `packages/dashboard` | React/Vite static dashboard, including run/baseline/comparison views. |
 | `packages/mcp` | Read-only stdio MCP server, output schemas, prompts, telemetry and regression metadata. |
 | `skills/stacknext-debugging` | Portable Agent Skill with tool reference and evidence-first workflows. |
 | `apps/example-next-app` | Tasklight demo with Drizzle/better-sqlite3, slow, error, N+1, slow-DB and repeated-fetch routes plus annotated Playwright scenarios. |
-| `scripts/` | Real e2e and benchmark scripts, including the capture → baseline → candidate → compare flow. |
+| `docker/` | Multi-stage production collector/dashboard image. |
+| `scripts/` | Real e2e, Docker integration and benchmark scripts, including the capture → baseline → candidate → compare flow. |
 
 Dependency direction: `core` is the base. `diagnostics`, `next`, `drizzle`,
 `prisma`, `mcp` and `cli` may depend on `core`; `regression` depends on `core`
@@ -87,9 +91,19 @@ import CLI, Next.js, React, Playwright or adapter code from `core`.
   existing file and print manual instructions. `registerStackNext()` must yield
   to an already-registered OpenTelemetry provider instead of replacing it.
 - **Local-only network.** Bind the collector to `127.0.0.1`/`localhost` and
-  reject other hosts. Ingestion requires the bearer token; read APIs/SSE accept
-  the bearer token or the dashboard session cookie. Keep Host/Origin/
-  `Sec-Fetch-Site` checks, CSP and security headers intact.
+  reject other hosts. The Docker entrypoint may bind `0.0.0.0` only inside its
+  container, and only when the CLI publishes `127.0.0.1:<port>:4400`. Ingestion
+  requires the bearer token; read APIs/SSE accept the bearer token or the
+  dashboard session cookie. Keep Host/Origin/`Sec-Fetch-Site` checks, CSP and
+  security headers intact.
+- **Docker runtime stays optional and isolated.** Native mode is the default and
+  must never require Docker. Docker mode runs exactly one collector/dashboard
+  container, publishes only host loopback, mounts only `<project>/.stacknext`
+  read-only, has no Docker socket, Compose requirement or separate dashboard
+  container, and keeps Next.js, Playwright, MCP and regression writes on the
+  host. Pass the token through the private `0600` mounted config, never Docker
+  arguments, environment values, image labels or logs. Run non-root with a
+  read-only root filesystem, dropped capabilities and `no-new-privileges`.
 - **Validate at the boundary.** Every ingest envelope is Zod-validated, body
   size is capped, and counts are bounded before entering the store.
 - **Bounded memory.** The store is in memory with capacity/retention limits and
@@ -169,8 +183,11 @@ or Playwright artifact. If a change touches captured data, update
 `docs/privacy.md`, the config schema and the tests that assert secrets do not
 appear in API/export/regression output.
 
-Tokens live in `.stacknext/run.json` with mode `0600`. Do not log tokens, put
-them in fixtures, commit runtime state or add a remote transport.
+Tokens live in `.stacknext/run.json` with mode `0600`. Docker mode also writes
+`.stacknext/docker/config.json` with mode `0600` for the read-only container
+mount; remove it with `stacknext stop` or shutdown. Do not log tokens, put them
+in fixtures, commit runtime state, pass them in Docker arguments/environment
+values or add a remote transport.
 
 ## Build and typecheck layout
 
@@ -211,6 +228,10 @@ Before declaring a change complete:
    itself. It must cover capture → baseline → candidate → compare, the
    collector regression APIs, CLI records, MCP regression tools and dashboard
    deep links.
+6. When Docker is available, build `docker/Dockerfile` and run
+   `pnpm test:docker -- --image <tag> --require-docker`. Docker is unavailable
+   on some development machines; CI still runs the image build and integration
+   test. Do not claim Docker behavior was verified locally when it was not.
 6. For user-facing changes, exercise `stacknext dev` manually and check the
    dashboard Overview coverage and diagnostics cards, request/trace timelines,
    database, errors, `/diagnostics` and `/diagnostics/:id`, `/runs`, `/runs/:id`,

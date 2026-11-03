@@ -1,5 +1,6 @@
 import { readRuntimeState, isProcessAlive, removeRuntimeState } from './runtime.js'
 import type { RuntimeState } from './runtime.js'
+import { dockerContainerStatus } from './docker/runtime.js'
 
 export class NotRunningError extends Error {
   constructor(message: string) {
@@ -18,6 +19,21 @@ export async function requireRunningState(projectDir: string): Promise<RuntimeSt
     throw new NotRunningError(
       'StackNext is not running for this project. Start it with "stacknext dev".',
     )
+  }
+  if (state.runtime?.mode === 'docker' && state.runtime.containerId) {
+    const status = await dockerContainerStatus(state.runtime.containerId)
+    if (status === 'stopped') {
+      await removeRuntimeState(projectDir)
+      throw new NotRunningError(
+        'The StackNext Docker collector is no longer running. Start it with "stacknext dev --runtime docker" or clean up with "stacknext stop".',
+      )
+    }
+    if (status === 'unknown') {
+      throw new NotRunningError(
+        'Could not verify the StackNext Docker collector. Check that Docker is running, then retry. Runtime state was kept so "stacknext stop" can still clean up.',
+      )
+    }
+    return state
   }
   if (!isProcessAlive(state.pid)) {
     await removeRuntimeState(projectDir)

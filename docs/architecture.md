@@ -15,7 +15,7 @@ dashboard, CLI and MCP server read from that collector.
 | `packages/next` | Next.js `instrumentation.ts` integration, OpenTelemetry provider/exporter, error normalization. |
 | `packages/drizzle` | Drizzle `Logger` adapter. |
 | `packages/prisma` | Prisma `$on('query')` adapter. |
-| `packages/cli` | `stacknext` binary: `init`, `dev`, `status`, `doctor`, `coverage`, `diagnose`, `capture`, `runs`, `baseline`, `compare`, `export`, `mcp`; collector HTTP server and dashboard static hosting. |
+| `packages/cli` | `stacknext` binary: `init`, `dev`, `stop`, `status`, `doctor`, `coverage`, `diagnose`, `capture`, `runs`, `baseline`, `compare`, `export`, `mcp`; collector HTTP server, dashboard static hosting and optional Docker lifecycle. |
 | `packages/dashboard` | React + Vite local dashboard, built to static assets and served by the collector, including run/baseline/comparison views. |
 | `packages/mcp` | Read-only MCP server, telemetry/regression APIs client and output schemas. |
 | `skills/stacknext-debugging` | Portable Agent Skill with tool reference and evidence-first workflows. |
@@ -56,6 +56,13 @@ Playwright + stacknext capture
   ├─ CLI saves run records under .stacknext/runs
   ├─ baseline save copies a completed run under .stacknext/baselines
   └─ compare writes .stacknext/comparisons
+
+Optional Docker runtime
+  ├─ CLI checks Docker, starts one collector/dashboard container
+  ├─ publishes 127.0.0.1:<port>:4400 only
+  ├─ mounts <project>/.stacknext read-only
+  ├─ passes the token in .stacknext/docker/config.json (0600)
+  └─ keeps Next.js, Playwright, MCP and saved regression writes on the host
 ```
 
 ## Instrumentation
@@ -287,7 +294,10 @@ unlike the telemetry store, they survive collector restarts.
 ## Collector
 
 `startCollector()` creates one `http.Server` for both dashboard and ingestion.
-It binds `127.0.0.1` (or `localhost`) and rejects other bind hosts. If the
+It binds `127.0.0.1` (or `localhost`) and rejects other bind hosts. The only
+exception is the Docker entrypoint, which may bind `0.0.0.0` inside the
+container with an explicit `allowDockerBind` flag and a host `publicPort` used
+for Origin validation; Docker publishes that port only on host loopback. If the
 configured port is busy, `stacknext dev` asks the collector to try the next 25
 ports; the chosen URL is printed and written to runtime state.
 
@@ -343,7 +353,9 @@ The store is in memory only. `TelemetryStore` keeps spans (capacity
 lazily for reads; there is no database or on-disk telemetry file. Regression
 runs, baselines and comparisons are the exception: they are explicit,
 user-created JSON records under `.stacknext`, not part of the telemetry store,
-and they are never pruned automatically.
+and they are never pruned automatically. The collector only reads saved records;
+`capture`, `baseline` and `compare` write them from the host. That is why the
+Docker mount can stay read-only.
 
 ## Runtime state and CLI lifecycle
 
@@ -351,23 +363,59 @@ and they are never pruned automatically.
 
 1. Detects the project, Next.js version, App Router directory and package
    manager.
-2. Loads `stacknext.config.json`.
-3. Resolves the built dashboard, generates a bearer token, and starts the
-   collector.
+2. Loads `stacknext.config.json` and resolves the runtime mode. The
+   `--runtime` flag overrides `runtime.mode`, which defaults to `native`.
+3. In native mode, resolves the built dashboard, generates a bearer token and
+   starts the collector in the CLI process. In Docker mode, checks Docker,
+   resolves/pulls the versioned image, removes stale project containers, writes
+   the private Docker config and starts one container.
 4. Writes `.stacknext/run.json` (`0600`, with a `.gitignore`) containing the pid,
-   URLs, port, token, project name and Next.js version.
+   URLs, port, token, project name and Next.js version. Docker mode adds a
+   `runtime` object with the container id, name, image and host port; old state
+   without that object remains valid and means native.
 5. Builds the child environment (`STACKNEXT_COLLECTOR_URL`, token, project name,
    capture flags, debug flag, effective `NEXT_OTEL_VERBOSE`) and spawns the
-   project's `dev` script.
-6. Forwards SIGINT/SIGTERM to the child, closes the collector, removes runtime
-   state and exits.
+   project's `dev` script on the host.
+6. Forwards SIGINT/SIGTERM to the child, closes the collector or stops the
+   container, removes runtime state and exits.
+
+`stacknext stop` is the recovery path for Docker resources left by an abnormal
+exit. It finds containers by the `stacknext.managed=true` and project-hash
+labels, removes only those, deletes `.stacknext/docker` and removes runtime
+state. It never stops a live native process or a live Docker runtime; both are
+stopped with SIGINT/SIGTERM.
 
 `status`, `doctor`, `export`, `capture` and `mcp` read runtime state and refuse
-to operate when the recorded process is dead. `capture` can also start an
-ephemeral collector when no live runtime exists; `--attach` disables that
+to operate when the recorded process is dead. Docker state is checked against
+the container state instead of the CLI pid. `capture` can also start an
+ephemeral native collector when no live runtime exists; `--attach` disables that
 fallback. `doctor` also checks Node/Next versions, App
 Router, config validity, instrumentation imports, adapter/config mismatches,
-dashboard build presence, token file permissions and collector health.
+dashboard build presence, token file permissions and collector health. Docker
+checks run only when the config selects Docker mode.
+
+### Docker runtime
+
+`packages/cli/src/docker/runtime.ts` owns the lifecycle and uses an injectable
+`DockerRunner` so unit tests never need a daemon. The container entrypoint
+(`docker-entrypoint.ts`) parses the private mounted config, resolves the
+dashboard assets from the deployed package and calls the same `startCollector()`
+used by native mode. There is no second collector implementation.
+
+The image is built by `docker/Dockerfile`: a multi-stage build installs the
+filtered workspace, builds the CLI/dashboard graph, deploys production
+dependencies and runs as the non-root `node` user. The release workflow builds
+`linux/amd64` and `linux/arm64` images tagged with the CLI version (and `latest`
+for stable releases). The CLI derives the default image repository from the
+installed package manifest, so forks are not tied to a hard-coded account.
+
+Container arguments are fixed in code: loopback-only publishing, a read-only
+`.stacknext` bind mount, `--read-only`, a `noexec,nosuid` tmpfs, `--cap-drop
+ALL`, `no-new-privileges`, `--init` and a non-root user on POSIX. The token is
+never placed in arguments, environment values or image metadata; it is written
+to `.stacknext/docker/config.json` with mode `0600` and passed only through the
+read-only mount. The collector still applies Host, Origin, `Sec-Fetch-Site`,
+bearer auth, CSP and payload checks.
 
 ## Dashboard
 

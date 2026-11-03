@@ -35,6 +35,16 @@ exists. `dev` starts the loopback collector and your app's own `dev` script.
 Open the dashboard URL it prints, usually `http://127.0.0.1:4400`, and make a
 request to your app.
 
+Docker is optional. To run only the collector and dashboard in one container
+while Next.js, Playwright and MCP stay on the host:
+
+```bash
+npx stacknext dev --runtime docker
+```
+
+Native mode remains the default. See [Docker runtime](docs/docker.md) for
+requirements, image selection and the security boundary.
+
 Already have `instrumentation.ts`, middleware, a proxy or an OpenTelemetry
 provider? StackNext preserves them and prints the hook to add manually. It yields
 to an existing tracer provider instead of replacing it.
@@ -105,6 +115,8 @@ the request, waterfall, database queries and errors on your machine.
 - npm, pnpm, yarn or bun to install the CLI and run your app.
 - Next.js **15 or 16** with the **App Router**, on the **Node.js runtime**.
 - Playwright **1.40+** only if you use runtime regression testing.
+- Docker Engine or Docker Desktop only if you choose the optional
+  [Docker runtime](docs/docker.md). Native mode needs no Docker.
 
 > 0.6 is the first public package release. All ten packages are published under
 > `@stacknext/cli` and `@stacknext/*`; the dashboard and regression packages are
@@ -222,7 +234,8 @@ Server Actions: [docs/server-actions.md](docs/server-actions.md).
 
 ```bash
 stacknext init [--install]
-stacknext dev [--open] [--quiet] [--token <token>] [nextArgs...]
+stacknext dev [--open] [--quiet] [--runtime native|docker] [--token <token>] [nextArgs...]
+stacknext stop [--json]
 stacknext status [--json]
 stacknext doctor [--json]
 stacknext coverage [--json]
@@ -242,13 +255,41 @@ stacknext mcp [--collector <url>] [--token <token>]
 
 `dev` starts the loopback collector, writes runtime state to
 `.stacknext/run.json` (`0600`), then runs the app's own `dev` script with the
-collector URL and token in its environment. `status`, `doctor`, `coverage`,
-`diagnose`, `export` and `mcp` use that runtime state. `doctor` is the first stop
-when data is missing; `coverage` shows what the current sample actually observed;
-`diagnose` lists or opens deterministic findings with filters. Set
-`instrumentation.verbose` or `NEXT_OTEL_VERBOSE=1` for the documented expanded
-Next.js span set; `dev` prints the effective state because verbose tracing adds
-span volume and dev-server overhead.
+collector URL and token in its environment. The runtime is native by default;
+`--runtime docker` runs the collector and dashboard in one container, and
+`stacknext stop` removes that project's container after an abnormal exit.
+`status`, `doctor`, `coverage`, `diagnose`, `export` and `mcp` use the runtime
+state in either mode. `doctor` is the first stop when data is missing; `coverage`
+shows what the current sample actually observed; `diagnose` lists or opens
+deterministic findings with filters. Set `instrumentation.verbose` or
+`NEXT_OTEL_VERBOSE=1` for the documented expanded Next.js span set; `dev` prints
+the effective state because verbose tracing adds span volume and dev-server
+overhead.
+
+## Docker runtime (optional)
+
+Docker mode keeps the same collector, dashboard, auth, redaction, diagnostics and
+regression APIs. It publishes only `127.0.0.1:<port>:4400`, mounts only
+`<project>/.stacknext` read-only, drops Linux capabilities, uses a read-only root
+filesystem and runs as a non-root user. The bearer token is passed in a private
+`0600` config file, not in Docker arguments or environment values.
+
+```json
+{
+  "runtime": { "mode": "docker" }
+}
+```
+
+```bash
+npx stacknext dev --runtime docker
+npx stacknext status
+npx stacknext stop
+```
+
+The default image is `ghcr.io/<repository-owner>/stacknext:<CLI_VERSION>`.
+Override it with `STACKNEXT_DOCKER_IMAGE` or `STACKNEXT_DOCKER_REPOSITORY` for a
+locally built image. See [Docker runtime](docs/docker.md) for the full lifecycle,
+image tags and troubleshooting.
 
 ## Runtime regression testing
 
@@ -399,10 +440,12 @@ URLs and known secret formats are replaced with `[redacted]`.
 The collector binds to `127.0.0.1`, requires a bearer token for ingestion and
 read APIs, issues a `HttpOnly`/`SameSite=Strict` dashboard session cookie,
 validates payloads with Zod, rejects cross-site requests and enforces 2 MiB
-ingest payloads. Telemetry is in memory, bounded and retention-pruned. Capture
-runs, baselines and comparisons are redacted JSON records under `.stacknext`
-with private permissions; they are not uploaded and are never pruned
-automatically.
+ingest payloads. In Docker mode the same server is published only on host
+loopback; the container receives only a read-only `.stacknext` mount and the
+private token config. Telemetry is in memory, bounded and retention-pruned.
+Capture runs, baselines and comparisons are redacted JSON records under
+`.stacknext` with private permissions; they are not uploaded and are never
+pruned automatically.
 
 Read [docs/privacy.md](docs/privacy.md) for the full data table and caveats.
 Redaction is pattern-based, not a formal secret scanner: review exports before
@@ -436,6 +479,7 @@ packages/prisma     Prisma query adapter
 packages/cli        stacknext binary + collector HTTP server
 packages/dashboard  React/Vite dashboard served by the collector
 packages/mcp        read-only stdio MCP server
+docker/             production collector/dashboard image
 skills/             portable Agent Skills for coding agents
 apps/example-next-app  Tasklight demo
 ```
@@ -452,6 +496,7 @@ pnpm typecheck
 pnpm test
 pnpm build
 pnpm test:e2e      # starts the built example app and checks the real stack
+pnpm test:docker -- --image stacknext:local --require-docker # runtime checks for a built image
 pnpm test:packages # packs and validates all ten public archives
 pnpm test:consumer # installs archives in an external Next.js fixture
 pnpm check:docs    # checks internal links and documented commands
@@ -474,10 +519,10 @@ machine-specific. See [docs/benchmark.md](docs/benchmark.md) for the measured
 collector, diagnostics and verbose-tracing results and methodology.
 
 GitHub Actions runs lint, typecheck, unit tests and build across Node.js 22, 24
-and 26, validates real package archives, and runs the e2e and external-consumer
-smoke tests. A separate scheduled compatibility workflow covers Next.js 15/16
-with npm and pnpm, plus Windows and macOS smoke runs. See
-[docs/releasing.md](docs/releasing.md) and
+and 26, validates real package archives, builds and exercises the Docker image,
+and runs the e2e and external-consumer smoke tests. A separate scheduled
+compatibility workflow covers Next.js 15/16 with npm and pnpm, plus Windows and
+macOS smoke runs. See [docs/releasing.md](docs/releasing.md) and
 [docs/compatibility.md](docs/compatibility.md).
 
 See [AGENTS.md](AGENTS.md) for the repository conventions, invariants and

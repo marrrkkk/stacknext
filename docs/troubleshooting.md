@@ -124,6 +124,109 @@ If the process was killed without cleanup, the file can remain. Verify that the
 recorded pid is not running, then remove `.stacknext/run.json` and start again.
 Never copy a token from this file into source control or a bug report.
 
+## Docker runtime
+
+### Docker mode says the CLI or daemon is unavailable
+
+Docker is optional. `stacknext dev` without `--runtime docker` never checks for
+it. When Docker mode is selected, confirm that Docker is installed and running:
+
+```bash
+docker --version
+docker info
+```
+
+On Windows and macOS, start Docker Desktop and wait until it reports that the
+engine is running. On Linux, start the Docker service. In WSL2, enable Docker
+Desktop's WSL integration for the distro that runs StackNext. If `docker` is not
+on `PATH`, fix the shell environment or use native mode.
+
+### The image cannot be pulled
+
+The default image matches the installed CLI version:
+
+```text
+ghcr.io/<repository-owner>/stacknext:<version>
+```
+
+Check the version with `stacknext --version` and inspect the registry:
+
+```bash
+docker pull ghcr.io/marrrkkk/stacknext:0.7.0
+```
+
+If the package is private, run `docker login ghcr.io` first. If the version does
+not exist, the release did not publish that image; upgrade the CLI or point
+`STACKNEXT_DOCKER_IMAGE` at a locally built image:
+
+```bash
+docker build -f docker/Dockerfile -t stacknext:local .
+STACKNEXT_DOCKER_IMAGE=stacknext:local pnpm exec stacknext dev --runtime docker
+```
+
+Do not use `latest` as a substitute for the matching version in normal
+development; the CLI and image versions are expected to agree.
+
+### The container starts but readiness times out
+
+`stacknext dev` prints bounded container logs when the health check fails. The
+collector must be able to read
+`.stacknext/docker/config.json` through the read-only mount. Check:
+
+- the project is inside a path shared with Docker Desktop;
+- the config file exists and is mode `0600`;
+- the container is running (`docker ps --all`);
+- the published port is still bound to `127.0.0.1`;
+- Docker has enough memory to start the container.
+
+The CLI refuses to run Docker mode as root because the private config is mounted
+with `0600` permissions. Run it as your normal development user.
+
+### A stale container holds the dashboard port
+
+An abnormal exit can leave a managed container behind. Start Docker mode again;
+the CLI removes project-labelled stale containers before probing the port. You
+can also run:
+
+```bash
+npx stacknext stop
+```
+
+`stop` only removes containers labelled with the current project hash. It never
+prunes unrelated containers, images or volumes. It also removes
+`.stacknext/docker` and `.stacknext/run.json`. Saved runs, baselines and
+comparisons are not deleted.
+
+### `stacknext stop` refuses to stop a live runtime
+
+That is intentional. Native mode runs inside the `stacknext dev` process and is
+stopped with Ctrl+C (SIGINT/SIGTERM). `stacknext stop` manages Docker resources
+only and also refuses to stop a live Docker runtime or a startup that still holds
+the project runtime lock. If an old `run.json` has no `runtime` field, it is
+treated as native.
+
+### Docker mode works but native mode stopped working
+
+The two modes share the same `.stacknext` directory and port range. Stop the
+Docker runtime before switching back, then check for orphaned `next dev`
+processes:
+
+```bash
+npx stacknext stop
+npx stacknext status
+```
+
+Telemetry is in memory in both modes, so a restart starts a new sample.
+Regression records are host files and remain available in either mode.
+
+### Docker Desktop reports a file-sharing or permission error
+
+Keep the project on a drive or path shared with Docker Desktop and run
+`stacknext dev` as the same user that owns the project. On Windows, the image's
+non-root `node` user is used; on POSIX the CLI passes the host uid/gid so the
+read-only mount remains readable. Do not work around the error by mounting the
+project root or running the container as root.
+
 ## No telemetry
 
 ### No requests or spans

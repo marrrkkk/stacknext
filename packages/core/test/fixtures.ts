@@ -15,7 +15,7 @@ export const instance: StackNextInstance = {
   instanceId: 'test-instance',
   serviceName: 'test-app',
   projectName: 'test-project',
-  sdkVersion: '0.6.1',
+  sdkVersion: '0.7.0',
   runtime: 'nodejs',
 }
 

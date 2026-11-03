@@ -1,6 +1,6 @@
 # Runtime regression testing
 
-StackNext 0.6 includes a local regression loop on top of the existing telemetry
+StackNext 0.7 includes a local regression loop on top of the existing telemetry
 sample. Playwright tests exercise the App Router; the optional StackNext
 Playwright fixture correlates each browser scenario with the server traces it
 produced; a capture run stores that evidence; a saved baseline and a later

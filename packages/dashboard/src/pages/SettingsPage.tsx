@@ -293,7 +293,7 @@ export function SettingsPage({
         </Card>
       </div>
 
-      <Card title="Limitations" subtitle="Honest boundaries of StackNext 0.6">
+      <Card title="Limitations" subtitle="Honest boundaries of StackNext 0.7">
         <ul className="limitations">
           {config.limitations.map((limitation) => (
             <li key={limitation}>

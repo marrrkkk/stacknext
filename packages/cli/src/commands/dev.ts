@@ -11,21 +11,51 @@ import {
 } from '../project.js'
 import { printBanner, printCheck, printSection, style } from '../output.js'
 import {
+  acquireRuntimeLock,
   generateToken,
   isProcessAlive,
   readRuntimeState,
   removeRuntimeState,
   runtimeStatePath,
   writeRuntimeState,
+  type RuntimeLock,
   type RuntimeState,
 } from '../runtime.js'
-import { resolveDashboardDir, startCollector } from '../collector/server.js'
+import {
+  resolveDashboardDir,
+  startCollector,
+  type CollectorHandle,
+} from '../collector/server.js'
+import {
+  removeDockerConfigSync,
+  removeDockerContainerSync,
+  startDockerCollector,
+  type DockerCollectorHandle,
+} from '../docker/runtime.js'
 import { CLI_VERSION } from '../version.js'
+
+export type RuntimeMode = 'native' | 'docker'
 
 export interface DevOptions {
   open?: boolean
   quiet?: boolean
   token?: string
+  runtime?: string
+}
+
+export function resolveRuntimeMode(
+  cliValue: string | undefined,
+  configMode: RuntimeMode | undefined,
+): RuntimeMode {
+  if (cliValue !== undefined) {
+    if (cliValue !== 'native' && cliValue !== 'docker') {
+      throw new Error(
+        `Invalid --runtime value "${cliValue}". Use "--runtime native" or "--runtime docker".`,
+      )
+    }
+    return cliValue
+  }
+  return configMode ?? 'native'
 }
 
 function openBrowser(url: string): void {
@@ -102,6 +132,21 @@ export async function runDev(
   cwd = process.cwd(),
 ): Promise<number> {
   const project = await detectProject(cwd)
+  await assertNotAlreadyRunning(project.dir)
+  const lock = await acquireRuntimeLock(project.dir)
+  try {
+    return await runDevLocked(options, nextArgs, project, lock)
+  } finally {
+    await lock.release()
+  }
+}
+
+async function runDevLocked(
+  options: DevOptions,
+  nextArgs: string[],
+  project: ProjectInfo,
+  lock: RuntimeLock,
+): Promise<number> {
   if (!project.scripts.dev) {
     throw new Error(
       `No "dev" script found in ${project.dir}/package.json. Add one that starts Next.js.`,
@@ -110,9 +155,8 @@ export async function runDev(
   if (options.token !== undefined && options.token.length < 16) {
     throw new Error('--token must be at least 16 characters')
   }
-  await assertNotAlreadyRunning(project.dir)
   const config = await loadConfig(project.dir)
-  const dashboardDir = await resolveDashboardDir()
+  const runtimeMode = resolveRuntimeMode(options.runtime, config.runtime.mode)
   const token = options.token ?? generateToken()
   const projectName = config.projectName ?? project.name
   const startedAt = Date.now()
@@ -122,36 +166,92 @@ export async function runDev(
   )
 
   printBanner(CLI_VERSION)
-  printSection(`Starting collector for ${projectName}`)
-  const collector = await startCollector({
-    port: config.dashboard.port,
-    token,
-    projectName,
-    config,
-    dashboardDir,
-    projectDir: project.dir,
-    autoPort: true,
-    nextOtelVerbose,
-    log: (message) => console.error(style.dim(message)),
-  })
+  printSection(
+    runtimeMode === 'docker'
+      ? `Starting Docker collector for ${projectName}`
+      : `Starting collector for ${projectName}`,
+  )
 
-  const collectorUrl = `http://127.0.0.1:${collector.port}`
+  let collector: CollectorHandle | null = null
+  let docker: DockerCollectorHandle | null = null
+  let collectorUrl: string
+  let dashboardUrl: string
+  let collectorPort: number
+
+  if (runtimeMode === 'docker') {
+    docker = await startDockerCollector({
+      projectDir: project.dir,
+      config,
+      token,
+      projectName,
+      version: CLI_VERSION,
+      nextOtelVerbose,
+      log: (message) => console.error(style.dim(message)),
+    })
+    collectorUrl = docker.url
+    dashboardUrl = docker.url
+    collectorPort = docker.port
+  } else {
+    const dashboardDir = await resolveDashboardDir()
+    const nativeCollector = await startCollector({
+      port: config.dashboard.port,
+      token,
+      projectName,
+      config,
+      dashboardDir,
+      projectDir: project.dir,
+      autoPort: true,
+      nextOtelVerbose,
+      log: (message) => console.error(style.dim(message)),
+    })
+    collector = nativeCollector
+    collectorUrl = `http://127.0.0.1:${nativeCollector.port}`
+    dashboardUrl = nativeCollector.url
+    collectorPort = nativeCollector.port
+  }
+
   const state: RuntimeState = {
     version: 1,
     pid: process.pid,
     startedAt,
     projectDir: project.dir,
     projectName,
-    dashboardUrl: collector.url,
+    dashboardUrl,
     collectorUrl,
-    port: collector.port,
+    port: collectorPort,
     token,
     ...(project.nextVersion ? { nextVersion: project.nextVersion } : {}),
     command: nextDevCommand(project, nextArgs).command,
+    runtime:
+      runtimeMode === 'docker' && docker
+        ? {
+            mode: 'docker',
+            containerId: docker.containerId,
+            containerName: docker.containerName,
+            image: docker.image,
+            hostPort: docker.port,
+          }
+        : { mode: 'native' },
   }
-  await writeRuntimeState(project.dir, state)
+  try {
+    await writeRuntimeState(project.dir, state)
+  } catch (error) {
+    await Promise.allSettled([
+      collector ? collector.close() : Promise.resolve(),
+      docker ? docker.close() : Promise.resolve(),
+    ])
+    throw error
+  }
 
-  printCheck('pass', `Dashboard ${collector.url}`)
+  printCheck('pass', `Runtime ${runtimeMode === 'docker' ? 'docker' : 'native'}`)
+  if (docker) {
+    printCheck(
+      'pass',
+      `Container ${docker.containerName}`,
+      `${docker.image} (${docker.containerId.slice(0, 12)})`,
+    )
+  }
+  printCheck('pass', `Dashboard ${dashboardUrl}`)
   printCheck(
     'pass',
     `Ingestion ${collectorUrl}/__stacknext/v1/ingest`,
@@ -187,7 +287,7 @@ export async function runDev(
     printCheck('pass', `${path.relative(project.dir, project.instrumentationPath)} detected`)
   }
 
-  if (options.open) openBrowser(collector.url)
+  if (options.open) openBrowser(dashboardUrl)
 
   const devCommand = nextDevCommand(project, nextArgs)
   const env = buildDevEnvironment(
@@ -207,12 +307,59 @@ export async function runDev(
     resolveExit = resolve
   })
 
+  let cleanupFailed = false
+  let detachHandlers: (() => void) | null = null
   const shutdown = async (exitCode: number): Promise<void> => {
     if (shuttingDown) return
     shuttingDown = true
-    await terminateChild(child)
-    await collector.close()
-    await removeRuntimeState(project.dir)
+    try {
+      await terminateChild(child)
+    } catch (error) {
+      cleanupFailed = true
+      console.error(
+        style.red('Next.js cleanup failed:'),
+        error instanceof Error ? error.message : String(error),
+      )
+    }
+    try {
+      await collector?.close()
+    } catch (error) {
+      cleanupFailed = true
+      console.error(
+        style.red('Collector cleanup failed:'),
+        error instanceof Error ? error.message : String(error),
+      )
+    }
+    try {
+      await docker?.close()
+    } catch (error) {
+      cleanupFailed = true
+      console.error(
+        style.red('Docker cleanup failed:'),
+        error instanceof Error ? error.message : String(error),
+      )
+    }
+    if (!cleanupFailed) {
+      try {
+        await removeRuntimeState(project.dir)
+      } catch (error) {
+        cleanupFailed = true
+        console.error(
+          style.red('Could not remove runtime state:'),
+          error instanceof Error ? error.message : String(error),
+        )
+      }
+    }
+    if (cleanupFailed) {
+      console.error(
+        style.yellow(
+          `Runtime state was kept so "stacknext stop" can retry cleanup (${runtimeStatePath(project.dir)}).`,
+        ),
+      )
+    }
+    // Remove listeners so a later run in the same process does not inherit
+    // this run's container, child or lock cleanup closures.
+    detachHandlers?.()
     // An IPC channel created by a programmatic launcher keeps the event loop
     // alive after cleanup; close it before reporting the exit.
     try {
@@ -223,20 +370,23 @@ export async function runDev(
     resolveExit?.(exitCode)
   }
 
-  process.once('SIGINT', () => {
+  const onSigint = (): void => {
     void shutdown(130)
-  })
-  process.once('SIGTERM', () => {
+  }
+  const onSigterm = (): void => {
     void shutdown(143)
-  })
+  }
   // Windows cannot deliver SIGINT/SIGTERM to another console process, so a
   // programmatic launcher can request the same graceful shutdown over the IPC
   // channel it created. Parent processes are always trusted; no network API.
-  process.on('message', (message: unknown) => {
+  const onMessage = (message: unknown): void => {
     if ((message as { type?: unknown } | null)?.type === 'shutdown') {
       void shutdown(0)
     }
-  })
+  }
+  process.once('SIGINT', onSigint)
+  process.once('SIGTERM', onSigterm)
+  process.on('message', onMessage)
 
   if (!options.quiet) {
     printSection(`Starting Next.js (${devCommand.command} ${devCommand.args.join(' ')})`)
@@ -252,18 +402,37 @@ export async function runDev(
   })
 
   const activeChild = child
-  process.once('exit', () => {
+  const activeDocker = docker
+  const onExit = (): void => {
     // Last-resort synchronous cleanup for unexpected exits. SIGKILL cannot be
-    // intercepted; the next `stacknext dev` removes stale runtime state.
+    // intercepted; the next `stacknext dev` removes stale runtime state and
+    // `stacknext stop` removes a leftover managed container.
     if (activeChild.pid && processGroupAlive(activeChild.pid)) {
       terminateChildSync(activeChild)
     }
-    try {
-      rmSync(runtimeStatePath(project.dir), { force: true })
-    } catch {
-      // Best effort during process exit.
+    if (!cleanupFailed && activeDocker) {
+      const removed = removeDockerContainerSync(
+        project.dir,
+        activeDocker.containerId,
+      )
+      if (removed) removeDockerConfigSync(project.dir)
     }
-  })
+    if (!cleanupFailed) {
+      try {
+        rmSync(runtimeStatePath(project.dir), { force: true })
+      } catch {
+        // Best effort during process exit.
+      }
+    }
+    lock.releaseSync()
+  }
+  process.once('exit', onExit)
+  detachHandlers = () => {
+    process.off('SIGINT', onSigint)
+    process.off('SIGTERM', onSigterm)
+    process.off('message', onMessage)
+    process.off('exit', onExit)
+  }
 
   child.once('error', (error) => {
     console.error(style.red(`Could not start Next.js: ${error.message}`))
@@ -276,7 +445,15 @@ export async function runDev(
   const exitCode = await finished
   if (!options.quiet) {
     printSection('StackNext stopped')
-    console.log(style.dim(`Runtime state removed (${runtimeStatePath(project.dir)})`))
+    if (cleanupFailed) {
+      console.log(
+        style.yellow(
+          `Runtime state kept at ${runtimeStatePath(project.dir)}; run "stacknext stop" to retry cleanup.`,
+        ),
+      )
+    } else {
+      console.log(style.dim(`Runtime state removed (${runtimeStatePath(project.dir)})`))
+    }
   }
   return exitCode
 }
@@ -361,6 +538,7 @@ export function registerDevCommand(program: Command, cwd: string): void {
     .description('Start the local collector and the project dev server')
     .option('--open', 'open the dashboard in the default browser')
     .option('--quiet', 'reduce startup output')
+    .option('--runtime <mode>', 'runtime mode: native or docker (default: config or native)')
     .option('--token <token>', 'use an existing collector token (16+ characters)')
     .argument('[nextArgs...]', 'arguments forwarded to the Next.js dev server')
     .action(async (nextArgs: string[], options: DevOptions) => {

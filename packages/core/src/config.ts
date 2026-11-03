@@ -2,9 +2,17 @@ import { z } from 'zod'
 
 const portSchema = z.number().int().min(1024).max(65535)
 
+export const runtimeModeSchema = z.enum(['native', 'docker'])
+
 export const stackNextConfigSchema = z
   .object({
     projectName: z.string().min(1).max(200).optional(),
+    runtime: z
+      .object({
+        mode: runtimeModeSchema.default('native'),
+      })
+      .strict()
+      .default({ mode: 'native' }),
     dashboard: z
       .object({
         port: portSchema.default(4400),

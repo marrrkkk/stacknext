@@ -3,6 +3,7 @@ import { errorLine, style } from './output.js'
 import { registerInitCommand } from './commands/init.js'
 import { registerDevCommand } from './commands/dev.js'
 import { registerStatusCommand } from './commands/status.js'
+import { registerStopCommand } from './commands/stop.js'
 import { registerDoctorCommand } from './commands/doctor.js'
 import { registerExportCommand } from './commands/export.js'
 import { registerCoverageCommand } from './commands/coverage.js'
@@ -32,6 +33,7 @@ export function createProgram(cwd = process.cwd()): Command {
   registerInitCommand(program, cwd)
   registerDevCommand(program, cwd)
   registerStatusCommand(program, cwd)
+  registerStopCommand(program, cwd)
   registerDoctorCommand(program, cwd)
   registerExportCommand(program, cwd)
   registerCoverageCommand(program, cwd)

@@ -17,6 +17,7 @@ Last validation: **2026-11-03**.
 | Module format | ESM packages; CommonJS `require()` is not supported |
 | Operating system | Linux (full e2e); Windows and macOS (package smoke in CI) |
 | Package managers | npm and pnpm (validated); yarn and bun detection is best-effort |
+| Docker runtime (optional) | Docker Engine/Desktop; `linux/amd64` and `linux/arm64` images. Linux CI build + integration; Docker Desktop on Windows/macOS is not in the recorded matrix |
 
 The supported Next.js peer range is `>=15.0.0 <17`. A newer major prints a
 warning in `stacknext init`; it is not treated as supported until it is added to
@@ -29,6 +30,9 @@ the validation matrix.
   transport.
 - Hosted or multi-user deployments. The collector binds to loopback and is
   designed for one developer machine.
+- Docker socket mounts, Docker Compose stacks, remote Docker contexts or a
+  separate dashboard container. Docker mode runs one collector/dashboard
+  container and publishes it only on host loopback.
 - Parallel Playwright workers during a captured regression run.
 - CommonJS consumers. `@stacknext/cli` and all `@stacknext/*` packages are ESM-only.
 - Statistical significance or causal claims from regression comparisons.
@@ -122,6 +126,9 @@ See [regression testing](regression-testing.md),
 ## What release validation covers
 
 - Lint, typecheck, unit/integration tests and a topological build.
+- A production Docker image build and a container integration check covering
+  health, dashboard assets, auth, ingest, read APIs, SSE, the read-only
+  regression mount, loopback-only publishing and shutdown.
 - Archive inspection for all ten packages: version alignment, exports,
   declarations, README/LICENSE, executable bit, forbidden files, secrets,
   unresolved `workspace:*` ranges and size limits.
@@ -132,7 +139,8 @@ See [regression testing](regression-testing.md),
   diagnostic and MCP output.
 - A production dependency audit.
 
-See [releasing](releasing.md) for the exact gate list and
+See [releasing](releasing.md) for the exact gate list,
+[Docker runtime](docker.md) for the optional container mode and
 [agent testing](agent-testing.md) for the protocol-level agent record.
 
 ## Reporting a compatibility problem
