@@ -13,6 +13,7 @@ import {
   dockerConfigPath,
   dockerContainerName,
   dockerContainerStatus,
+  dockerNetworkName,
   findAvailablePort,
   isPortAvailable,
   projectDockerKey,
@@ -72,10 +73,16 @@ class FakeDocker implements DockerRunner {
   readonly calls: string[][] = []
   readonly labels = new Map<string, { managed: string; project: string }>()
   readonly containers: string[] = []
+  readonly networks = new Map<
+    string,
+    { name: string; managed: string; project: string }
+  >()
   failRun = false
   failInfo = false
   failPull = false
   leaveFailedContainer = false
+  networkInUse = false
+  private nextNetworkId = 1
 
   async run(args: string[], _options?: unknown): Promise<DockerResult> {
     this.calls.push(args)
@@ -84,6 +91,61 @@ class FakeDocker implements DockerRunner {
       return this.failInfo
         ? result({ code: 1, stderr: 'Cannot connect to the Docker daemon' })
         : result({ stdout: '27.0.0\n' })
+    }
+    if (args[0] === 'network') {
+      if (args[1] === 'create') {
+        const name = args.at(-1) ?? ''
+        if ([...this.networks.values()].some((entry) => entry.name === name)) {
+          return result({
+            code: 1,
+            stderr: `network with name ${name} already exists`,
+          })
+        }
+        const labels = new Map<string, string>()
+        for (let index = 0; index < args.length; index += 1) {
+          if (args[index] !== '--label') continue
+          const [key, value = ''] = (args[index + 1] ?? '').split('=')
+          if (key) labels.set(key, value)
+        }
+        const id = this.nextNetworkId.toString(16).padStart(64, '0')
+        this.nextNetworkId += 1
+        this.networks.set(id, {
+          name,
+          managed: labels.get('stacknext.managed') ?? '',
+          project: labels.get('stacknext.project') ?? '',
+        })
+        return result({ stdout: `${id}\n` })
+      }
+      if (args[1] === 'ls') {
+        return result({
+          stdout: `${[...this.networks.keys()].join('\n')}\n`,
+        })
+      }
+      if (args[1] === 'inspect') {
+        const target = args.at(-1) ?? ''
+        const entry = [...this.networks.entries()].find(
+          ([id, network]) => id === target || network.name === target,
+        )
+        return entry
+          ? result({
+              stdout: `${entry[1].managed}|${entry[1].project}\n`,
+            })
+          : result({ code: 1, stderr: 'no such network' })
+      }
+      if (args[1] === 'rm') {
+        const target = args.at(-1) ?? ''
+        if (this.networkInUse) {
+          return result({
+            code: 1,
+            stderr: `network ${target} has active endpoints`,
+          })
+        }
+        const entry = [...this.networks.entries()].find(
+          ([id, network]) => id === target || network.name === target,
+        )
+        if (entry) this.networks.delete(entry[0])
+        return result()
+      }
     }
     if (args[0] === 'image' && args[1] === 'inspect') return result()
     if (args[0] === 'pull') {
@@ -296,6 +358,11 @@ describe('stacknext stop', () => {
       managed: 'true',
       project: projectDockerKey(projectDir),
     })
+    docker.networks.set('e'.repeat(64), {
+      name: dockerNetworkName(projectDir),
+      managed: 'true',
+      project: projectDockerKey(projectDir),
+    })
     await writeRuntimeState(projectDir, {
       version: 1,
       pid: 999_999,
@@ -317,6 +384,47 @@ describe('stacknext stop', () => {
 
     expect(await runStop({ json: true, runner: docker }, projectDir)).toBe(0)
     expect(docker.containers).not.toContain(id)
+    expect(docker.networks.size).toBe(0)
+    await expect(readFile(runtimeStatePath(projectDir), 'utf8')).rejects.toThrow()
+  })
+
+  it('leaves a project network with active endpoints and still removes state', async () => {
+    const projectDir = await nextProject()
+    const docker = new FakeDocker()
+    docker.networkInUse = true
+    const id = 'c'.repeat(64)
+    docker.containers.push(id)
+    docker.labels.set(id, {
+      managed: 'true',
+      project: projectDockerKey(projectDir),
+    })
+    docker.networks.set('e'.repeat(64), {
+      name: dockerNetworkName(projectDir),
+      managed: 'true',
+      project: projectDockerKey(projectDir),
+    })
+    await writeRuntimeState(projectDir, {
+      version: 1,
+      pid: 999_999,
+      startedAt: Date.now(),
+      projectDir,
+      projectName: 'docker-test-app',
+      dashboardUrl: 'http://127.0.0.1:4400',
+      collectorUrl: 'http://127.0.0.1:4400',
+      port: 4400,
+      token: 'a'.repeat(32),
+      runtime: {
+        mode: 'docker',
+        containerId: id,
+        containerName: 'stacknext-test',
+        image: 'ghcr.io/acme/stacknext:0.7.0',
+        hostPort: 4400,
+      },
+    })
+
+    expect(await runStop({ json: true, runner: docker }, projectDir)).toBe(0)
+    expect(docker.containers).not.toContain(id)
+    expect(docker.networks.size).toBe(1)
     await expect(readFile(runtimeStatePath(projectDir), 'utf8')).rejects.toThrow()
   })
 
@@ -425,6 +533,7 @@ describe('Docker command construction', () => {
     const args = buildDockerRunArgs({
       image: 'ghcr.io/acme/stacknext:0.7.0',
       name: 'stacknext-test',
+      network: 'stacknext-net-test',
       projectDir: '/tmp/my app',
       hostPort: 4401,
       version: '0.7.0',
@@ -440,6 +549,9 @@ describe('Docker command construction', () => {
     expect(args).toContain('1000:1000')
     expect(args).toContain('stacknext.managed=true')
     expect(args).toContain(`stacknext.project=${projectDockerKey('/tmp/my app')}`)
+    const networkIndex = args.indexOf('--network')
+    expect(networkIndex).toBeGreaterThan(-1)
+    expect(args[networkIndex + 1]).toBe('stacknext-net-test')
     expect(args.join(' ')).not.toContain('token')
     expect(args.join(' ')).not.toContain('STACKNEXT_TOKEN')
     expect(args.at(-1)).toBe('ghcr.io/acme/stacknext:0.7.0')
@@ -455,6 +567,7 @@ describe('Docker command construction', () => {
     const args = buildDockerRunArgs({
       image: 'ghcr.io/acme/stacknext:0.7.0',
       name: 'stacknext-test',
+      network: 'stacknext-net-test',
       projectDir,
       hostPort: 4401,
       version: '0.7.0',
@@ -476,6 +589,7 @@ describe('Docker command construction', () => {
         buildDockerRunArgs({
           image: 'ghcr.io/acme/stacknext:0.7.0',
           name: 'stacknext-test',
+      network: 'stacknext-net-test',
           projectDir,
           hostPort: 4401,
           version: '0.7.0',
@@ -533,11 +647,75 @@ describe('Docker collector lifecycle', () => {
     const runArgs = docker.calls.find((args) => args[0] === 'run') ?? []
     expect(runArgs.join(' ')).not.toContain('test-token-that-is-long-enough-123456')
     expect(runArgs).toContain('127.0.0.1:' + hostPort + ':4400')
+    expect(runArgs).toContain(dockerNetworkName(projectDir))
+    expect(docker.networks.size).toBe(1)
 
     await handle.close()
     await expect(readFile(configFile, 'utf8')).rejects.toThrow()
     expect(docker.calls.some((args) => args[0] === 'stop')).toBe(true)
     expect(docker.calls.some((args) => args[0] === 'rm')).toBe(true)
+    expect(docker.networks.size).toBe(0)
+  })
+
+  it('reuses an existing owned project network', async () => {
+    const projectDir = await tempProject()
+    const hostPort = await freePort()
+    const docker = new FakeDocker()
+    const id = 'e'.repeat(64)
+    docker.networks.set(id, {
+      name: dockerNetworkName(projectDir),
+      managed: 'true',
+      project: projectDockerKey(projectDir),
+    })
+    const handle = await startDockerCollector({
+      projectDir,
+      config: parseStackNextConfig({ dashboard: { port: hostPort } }),
+      token: 'test-token-that-is-long-enough-123456',
+      projectName: 'docker-test',
+      version: '0.7.0',
+      nextOtelVerbose: { enabled: false, source: 'disabled' },
+      runner: docker,
+      hostPort,
+      user: '1000:1000',
+      probe: async () => true,
+    })
+    expect(
+      docker.calls.some(
+        (args) => args[0] === 'network' && args[1] === 'create',
+      ),
+    ).toBe(false)
+    expect(docker.calls.find((args) => args[0] === 'run')).toContain(
+      dockerNetworkName(projectDir),
+    )
+    await handle.close()
+    expect(docker.networks.size).toBe(0)
+  })
+
+  it('refuses to attach to an unmanaged network with the deterministic name', async () => {
+    const projectDir = await tempProject()
+    const hostPort = await freePort()
+    const docker = new FakeDocker()
+    docker.networks.set('f'.repeat(64), {
+      name: dockerNetworkName(projectDir),
+      managed: 'false',
+      project: 'someone-else',
+    })
+    await expect(
+      startDockerCollector({
+        projectDir,
+        config: parseStackNextConfig({ dashboard: { port: hostPort } }),
+        token: 'test-token-that-is-long-enough-123456',
+        projectName: 'docker-test',
+        version: '0.7.0',
+        nextOtelVerbose: { enabled: false, source: 'disabled' },
+        runner: docker,
+        hostPort,
+        user: '1000:1000',
+        probe: async () => true,
+      }),
+    ).rejects.toThrow(/not managed by StackNext/)
+    expect(docker.calls.some((args) => args[0] === 'run')).toBe(false)
+    expect(docker.networks.size).toBe(1)
   })
 
   it('removes a failed container and reports its logs', async () => {

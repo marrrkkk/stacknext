@@ -60,6 +60,7 @@ Playwright + stacknext capture
 Optional Docker runtime
   ├─ CLI checks Docker, starts one collector/dashboard container
   ├─ publishes 127.0.0.1:<port>:4400 only
+  ├─ attaches the container to a dedicated project bridge network
   ├─ mounts <project>/.stacknext read-only
   ├─ passes the token in .stacknext/docker/config.json (0600)
   └─ keeps Next.js, Playwright, MCP and saved regression writes on the host
@@ -385,7 +386,7 @@ labels, removes only those, deletes `.stacknext/docker` and removes runtime
 state. It never stops a live native process or a live Docker runtime; both are
 stopped with SIGINT/SIGTERM.
 
-`status`, `doctor`, `export`, `capture` and `mcp` read runtime state and refuse
+`status`, `doctor`, `export` and `mcp` read runtime state and refuse
 to operate when the recorded process is dead. Docker state is checked against
 the container state instead of the CLI pid. `capture` can also start an
 ephemeral native collector when no live runtime exists; `--attach` disables that
@@ -409,11 +410,14 @@ dependencies and runs as the non-root `node` user. The release workflow builds
 for stable releases). The CLI derives the default image repository from the
 installed package manifest, so forks are not tied to a hard-coded account.
 
-Container arguments are fixed in code: loopback-only publishing, a read-only
-`.stacknext` bind mount, `--read-only`, a `noexec,nosuid` tmpfs, `--cap-drop
-ALL`, `no-new-privileges`, `--init` and a non-root user on POSIX. The token is
-never placed in arguments, environment values or image metadata; it is written
-to `.stacknext/docker/config.json` with mode `0600` and passed only through the
+Container arguments are fixed in code: loopback-only publishing, a dedicated
+per-project bridge network, a read-only `.stacknext` bind mount, `--read-only`,
+a `noexec,nosuid` tmpfs, `--cap-drop ALL`, `no-new-privileges`, `--init` and a
+non-root user on POSIX. The network carries the StackNext project labels and is
+removed with the container, so unrelated containers on the default bridge cannot
+reach the collector's container-internal listener. The token is never placed in
+arguments, environment values or image metadata; it is written to
+`.stacknext/docker/config.json` with mode `0600` and passed only through the
 read-only mount. The collector still applies Host, Origin, `Sec-Fetch-Site`,
 bearer auth, CSP and payload checks.
 

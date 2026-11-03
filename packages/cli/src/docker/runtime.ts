@@ -81,6 +81,10 @@ export function dockerContainerName(projectDir: string): string {
   return `${CONTAINER_PREFIX}-${projectDockerKey(projectDir)}`
 }
 
+export function dockerNetworkName(projectDir: string): string {
+  return `${CONTAINER_PREFIX}-net-${projectDockerKey(projectDir)}`
+}
+
 const CONTAINER_DATA_PATH = '/data/.stacknext'
 
 function normalizeMountPath(value: string): string {
@@ -116,6 +120,7 @@ function dataMountArgs(projectDir: string): string[] {
 export function buildDockerRunArgs(input: {
   image: string
   name: string
+  network: string
   projectDir: string
   hostPort: number
   version: string
@@ -137,6 +142,11 @@ export function buildDockerRunArgs(input: {
     `${VERSION_LABEL}=${input.version}`,
     '--publish',
     `127.0.0.1:${input.hostPort}:${DOCKER_INTERNAL_PORT}`,
+    // A dedicated user-defined network keeps other containers on the default
+    // bridge away from the collector, which must bind 0.0.0.0 inside the
+    // container for port publishing.
+    '--network',
+    input.network,
     ...dataMountArgs(input.projectDir),
     '--env',
     'STACKNEXT_DOCKER_CONTAINER=1',
@@ -366,6 +376,147 @@ async function removeOwnedContainer(
   return true
 }
 
+/**
+ * Reads the StackNext labels from a network. Returns null when Docker reports
+ * that the network does not exist, and throws for daemon/permission failures so
+ * callers never treat an unreadable network as disposable.
+ */
+async function networkOwnership(
+  runner: DockerRunner,
+  network: string,
+): Promise<{ managed: string; project: string } | null> {
+  const result = await runner.run(
+    [
+      'network',
+      'inspect',
+      '--format',
+      `{{index .Labels "${MANAGED_LABEL}"}}|{{index .Labels "${PROJECT_LABEL}"}}`,
+      network,
+    ],
+    { timeoutMs: 10_000 },
+  )
+  if (result.code !== 0) {
+    const detail = `${result.stderr}\n${result.stdout}`.toLowerCase()
+    if (
+      detail.includes('no such network') ||
+      detail.includes('no such object') ||
+      detail.includes('not found')
+    ) {
+      return null
+    }
+    throw new Error(
+      `Could not inspect StackNext network ${network}: ${dockerResultMessage(result)}`,
+    )
+  }
+  const [managed = '', project = ''] = result.stdout.trim().split('|')
+  return { managed, project }
+}
+
+async function ensureDockerNetwork(
+  runner: DockerRunner,
+  projectDir: string,
+  version: string,
+): Promise<string> {
+  const name = dockerNetworkName(projectDir)
+  const key = projectDockerKey(projectDir)
+  const existing = await networkOwnership(runner, name)
+  if (existing) {
+    if (existing.managed !== 'true' || existing.project !== key) {
+      throw new Error(
+        `A Docker network named ${name} already exists but is not managed by StackNext for this project. Remove or rename it, then retry.`,
+      )
+    }
+    return name
+  }
+  const created = await runner.run(
+    [
+      'network',
+      'create',
+      '--label',
+      `${MANAGED_LABEL}=true`,
+      '--label',
+      `${PROJECT_LABEL}=${key}`,
+      '--label',
+      `${RUNTIME_LABEL}=docker`,
+      '--label',
+      `${VERSION_LABEL}=${version}`,
+      name,
+    ],
+    { timeoutMs: 20_000 },
+  )
+  if (created.code !== 0) {
+    // A concurrent create may have won the race; accept it only when the
+    // existing network is ours.
+    const raced = await networkOwnership(runner, name)
+    if (raced?.managed === 'true' && raced.project === key) return name
+    throw new Error(
+      `Could not create the StackNext Docker network: ${dockerResultMessage(created)}`,
+    )
+  }
+  return name
+}
+
+/**
+ * Removes only networks carrying both StackNext labels for this project. A
+ * network is left in place when its labels cannot be read or it still has an
+ * attached container.
+ */
+export async function removeManagedNetworks(
+  runner: DockerRunner,
+  projectDir: string,
+): Promise<string[]> {
+  const key = projectDockerKey(projectDir)
+  const listed = await runner.run(
+    [
+      'network',
+      'ls',
+      '--filter',
+      `label=${MANAGED_LABEL}=true`,
+      '--filter',
+      `label=${PROJECT_LABEL}=${key}`,
+      '--format',
+      '{{.ID}}',
+    ],
+    { timeoutMs: 15_000 },
+  )
+  if (listed.code !== 0) {
+    throw new Error(
+      `Could not list StackNext networks: ${dockerResultMessage(listed)}`,
+    )
+  }
+  const removed: string[] = []
+  for (const id of lines(listed.stdout).filter((line) =>
+    /^[0-9a-f]{12,64}$/i.test(line),
+  )) {
+    const labels = await networkOwnership(runner, id)
+    if (labels?.managed !== 'true' || labels.project !== key) continue
+    const result = await runner.run(['network', 'rm', id], {
+      timeoutMs: 20_000,
+    })
+    if (result.code === 0) {
+      removed.push(id)
+      continue
+    }
+    const detail = `${result.stderr}\n${result.stdout}`.toLowerCase()
+    if (detail.includes('no such network') || detail.includes('not found')) {
+      continue
+    }
+    // A network with active endpoints is left in place. This can only happen
+    // when something outside StackNext attached to the project network.
+    if (
+      detail.includes('active endpoints') ||
+      detail.includes('is connected to network') ||
+      detail.includes('has active endpoints')
+    ) {
+      continue
+    }
+    throw new Error(
+      `Could not remove StackNext network ${id.slice(0, 12)}: ${dockerResultMessage(result)}`,
+    )
+  }
+  return removed
+}
+
 export function dockerConfigPath(projectDir: string): string {
   return path.join(
     projectDir,
@@ -486,6 +637,11 @@ export async function startDockerCollector(
     )
   }
 
+  const network = await ensureDockerNetwork(
+    runner,
+    options.projectDir,
+    options.version,
+  )
   await removeDockerConfig(options.projectDir)
   const config: DockerCollectorConfig = {
     version: 1,
@@ -503,6 +659,7 @@ export async function startDockerCollector(
   const args = buildDockerRunArgs({
     image,
     name: containerName,
+    network,
     projectDir: options.projectDir,
     hostPort,
     version: options.version,
@@ -516,10 +673,11 @@ export async function startDockerCollector(
     let cleanupError: string | null = null
     try {
       await removeOwnedContainer(runner, options.projectDir, containerName)
+      await removeDockerConfig(options.projectDir)
+      await removeManagedNetworks(runner, options.projectDir)
     } catch (error) {
       cleanupError = error instanceof Error ? error.message : String(error)
     }
-    if (cleanupError === null) await removeDockerConfig(options.projectDir)
     throw new Error(
       `Could not start the StackNext container: ${dockerResultMessage(started)}${
         cleanupError ? `\nCleanup also failed: ${cleanupError}` : ''
@@ -531,10 +689,11 @@ export async function startDockerCollector(
     let cleanupError: string | null = null
     try {
       await removeOwnedContainer(runner, options.projectDir, containerName)
+      await removeDockerConfig(options.projectDir)
+      await removeManagedNetworks(runner, options.projectDir)
     } catch (error) {
       cleanupError = error instanceof Error ? error.message : String(error)
     }
-    if (cleanupError === null) await removeDockerConfig(options.projectDir)
     throw new Error(
       `Docker did not return a container id (output: ${started.stdout.trim().slice(0, 200)})${
         cleanupError ? `\nCleanup also failed: ${cleanupError}` : ''
@@ -552,6 +711,7 @@ export async function startDockerCollector(
         })
         await removeContainer(runner, containerId)
         await removeDockerConfig(options.projectDir)
+        await removeManagedNetworks(runner, options.projectDir)
       })().catch((error: unknown) => {
         // Allow a later stop/cleanup attempt to retry after a transient
         // Docker failure instead of caching the rejected promise.
@@ -615,6 +775,7 @@ export async function stopDockerCollector(
   if (removed.length === 0) {
     removed.push(...(await removeManagedContainers(runner, projectDir)))
   }
+  await removeManagedNetworks(runner, projectDir)
   await removeDockerConfig(projectDir)
   return { removed }
 }
@@ -695,4 +856,34 @@ export function removeDockerConfigSync(projectDir: string): void {
   } catch {
     // Best effort during process exit.
   }
+}
+
+/**
+ * Last-resort network cleanup for the process `exit` hook. It verifies the
+ * managed labels first and never removes an unrelated network.
+ */
+export function removeDockerNetworkSync(projectDir: string): boolean {
+  const name = dockerNetworkName(projectDir)
+  const labels = spawnSync(
+    'docker',
+    [
+      'network',
+      'inspect',
+      '--format',
+      `{{index .Labels "${MANAGED_LABEL}"}}|{{index .Labels "${PROJECT_LABEL}"}}`,
+      name,
+    ],
+    { encoding: 'utf8', windowsHide: true, timeout: 10_000 },
+  )
+  if (labels.status !== 0) return false
+  const [managed = '', project = ''] = labels.stdout.trim().split('|')
+  if (managed !== 'true' || project !== projectDockerKey(projectDir)) {
+    return false
+  }
+  const removed = spawnSync('docker', ['network', 'rm', name], {
+    encoding: 'utf8',
+    windowsHide: true,
+    timeout: 20_000,
+  })
+  return removed.status === 0
 }

@@ -17,8 +17,8 @@ All notable changes to StackNext are documented here. The format follows
   container. Next.js, Playwright, MCP, the CLI and saved regression records stay
   on the host.
 - `stacknext stop` removes only the current project's StackNext-managed Docker
-  container, its private config and the runtime state. It refuses to stop a live
-  native runtime, a live Docker runtime, or a startup in progress.
+  container and network, its private config and the runtime state. It refuses to
+  stop a live native runtime, a live Docker runtime, or a startup in progress.
 - Production multi-stage image published to
   `ghcr.io/<repository-owner>/stacknext:<version>` for `linux/amd64` and
   `linux/arm64`, with a health check, graceful shutdown and non-root execution.
@@ -49,6 +49,10 @@ All notable changes to StackNext are documented here. The format follows
 - Docker mode mounts only `<project>/.stacknext`, read-only, and passes the
   bearer token through a `0600` config file rather than command-line arguments,
   container environment values or image labels.
+- The collector runs on a dedicated per-project bridge network instead of the
+  default bridge, so unrelated containers cannot reach its container-internal
+  listener. The network carries the same project labels and is removed with the
+  container.
 - The container runs with a read-only root filesystem, a `noexec,nosuid` tmpfs,
   all capabilities dropped, `no-new-privileges`, an init process and the host
   uid/gid on POSIX. Docker mode refuses to run as root and never mounts the

@@ -98,12 +98,13 @@ import CLI, Next.js, React, Playwright or adapter code from `core`.
   security headers intact.
 - **Docker runtime stays optional and isolated.** Native mode is the default and
   must never require Docker. Docker mode runs exactly one collector/dashboard
-  container, publishes only host loopback, mounts only `<project>/.stacknext`
-  read-only, has no Docker socket, Compose requirement or separate dashboard
-  container, and keeps Next.js, Playwright, MCP and regression writes on the
-  host. Pass the token through the private `0600` mounted config, never Docker
-  arguments, environment values, image labels or logs. Run non-root with a
-  read-only root filesystem, dropped capabilities and `no-new-privileges`.
+  container, publishes only host loopback, attaches it to a dedicated
+  per-project bridge network, mounts only `<project>/.stacknext` read-only, has
+  no Docker socket, Compose requirement or separate dashboard container, and
+  keeps Next.js, Playwright, MCP and regression writes on the host. Pass the
+  token through the private `0600` mounted config, never Docker arguments,
+  environment values, image labels or logs. Run non-root with a read-only root
+  filesystem, dropped capabilities and `no-new-privileges`.
 - **Validate at the boundary.** Every ingest envelope is Zod-validated, body
   size is capped, and counts are bounded before entering the store.
 - **Bounded memory.** The store is in memory with capacity/retention limits and
@@ -232,7 +233,7 @@ Before declaring a change complete:
    `pnpm test:docker -- --image <tag> --require-docker`. Docker is unavailable
    on some development machines; CI still runs the image build and integration
    test. Do not claim Docker behavior was verified locally when it was not.
-6. For user-facing changes, exercise `stacknext dev` manually and check the
+7. For user-facing changes, exercise `stacknext dev` manually and check the
    dashboard Overview coverage and diagnostics cards, request/trace timelines,
    database, errors, `/diagnostics` and `/diagnostics/:id`, `/runs`, `/runs/:id`,
    `/baselines`, `/baselines/:id`, `/comparisons`, `/comparisons/:id`, the
@@ -241,16 +242,16 @@ Before declaring a change complete:
    `stacknext coverage`, `stacknext diagnose`, `stacknext capture`,
    `stacknext runs`, `stacknext baseline`, `stacknext compare` and the MCP
    summary/diagnostics/regression tools.
-7. Warm `/`, `/projects/1` and `/api/n-plus-one` before a baseline capture.
+8. Warm `/`, `/projects/1` and `/api/n-plus-one` before a baseline capture.
    Cold route-module spans can appear on only one side and make a comparison
    inconclusive. Use one Playwright worker and at least three samples.
-8. If captured data changed, verify the example error route still redacts
+9. If captured data changed, verify the example error route still redacts
    `demo-url-secret`, `super-secret-demo-token` and `hunter2`, that action and
    custom-span attributes do not leak `action-attribute-secret`,
    `custom-attribute-secret`, `custom-url-secret` or `e2e-url-secret`, and that
    diagnostic evidence, regression records, comparisons and export output do not
    contain those values either.
-9. Check explicit `NEXT_OTEL_VERBOSE=0` still overrides
+10. Check explicit `NEXT_OTEL_VERBOSE=0` still overrides
    `instrumentation.verbose: true`, and that `NEXT_OTEL_VERBOSE=1` is reported
    with its performance caveat.
 

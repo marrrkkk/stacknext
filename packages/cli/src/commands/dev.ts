@@ -29,6 +29,7 @@ import {
 import {
   removeDockerConfigSync,
   removeDockerContainerSync,
+  removeDockerNetworkSync,
   startDockerCollector,
   type DockerCollectorHandle,
 } from '../docker/runtime.js'
@@ -416,6 +417,7 @@ async function runDevLocked(
         activeDocker.containerId,
       )
       if (removed) removeDockerConfigSync(project.dir)
+      removeDockerNetworkSync(project.dir)
     }
     if (!cleanupFailed) {
       try {

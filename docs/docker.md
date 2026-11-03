@@ -74,27 +74,28 @@ the host, so those records survive container restarts.
 2. Resolves the image for the installed CLI version and pulls it when missing.
 3. Removes a stale StackNext container for the same project, if one exists.
 4. Chooses an available loopback port, starting at `dashboard.port`.
-5. Writes the private runtime config to
+5. Creates or reuses the project's dedicated bridge network.
+6. Writes the private runtime config to
    `.stacknext/docker/config.json` with mode `0600`.
-6. Starts one container with project labels and a deterministic
+7. Starts one container with project labels and a deterministic
    `stacknext-<project-hash>` name.
-7. Waits for `GET /api/ping` and fails with bounded container logs if readiness
+8. Waits for `GET /api/ping` and fails with bounded container logs if readiness
    times out.
-8. Writes `.stacknext/run.json` with the normal runtime state plus
+9. Writes `.stacknext/run.json` with the normal runtime state plus
    `runtime.mode: "docker"`, the container id, image and host port.
-9. Starts the app's own `dev` script on the host with the collector URL and
-   bearer token.
+10. Starts the app's own `dev` script on the host with the collector URL and
+    bearer token.
 
 On SIGINT/SIGTERM, the CLI stops the Next.js child, stops and removes the
-container, removes the private Docker config and deletes `.stacknext/run.json`.
-An abnormal exit is cleaned up by the next `stacknext dev` or by
-`stacknext stop`.
+container, removes the private Docker config and the project network, and
+deletes `.stacknext/run.json`. An abnormal exit is cleaned up by the next
+`stacknext dev` or by `stacknext stop`.
 
 `stacknext stop` only manages Docker resources for the current project. It
-removes containers carrying the `stacknext.managed=true` and matching
-`stacknext.project` labels, removes `.stacknext/docker`, and deletes the runtime
-state. It refuses to stop a live native runtime, a live Docker runtime, or a
-startup that still holds the project runtime lock; stop those with
+removes containers and networks carrying the `stacknext.managed=true` and
+matching `stacknext.project` labels, removes `.stacknext/docker`, and deletes
+the runtime state. It refuses to stop a live native runtime, a live Docker
+runtime, or a startup that still holds the project runtime lock; stop those with
 SIGINT/SIGTERM instead.
 
 Telemetry is in memory inside the container, so it is lost when the container
@@ -115,12 +116,15 @@ mount. The existing Host, Origin, `Sec-Fetch-Site`, bearer-token, dashboard
 session-cookie, CSP, security-header, payload-limit and two-layer redaction
 checks are unchanged.
 
-The container-internal listener is reachable from other containers on the same
-Docker network. Keep StackNext on Docker's default bridge network and do not
-attach it to an untrusted user-defined network; the bearer token, session-cookie
-and origin checks still apply, but container-to-container traffic is outside the
-host loopback boundary. StackNext does not publish the port on a host interface
-and does not add a Docker socket or remote context.
+The container-internal listener is reachable only from containers attached to
+the project's dedicated user-defined bridge network. StackNext creates
+`stacknext-net-<project-hash>` with `stacknext.managed` and `stacknext.project`
+labels and attaches only the collector. Other containers on Docker's default
+bridge cannot reach it, and `stacknext stop` removes the network after the
+container. Do not attach unrelated containers to this network; the bearer token,
+session-cookie and origin checks still apply, but container-to-container traffic
+on the project network is inside the Docker boundary. StackNext does not publish
+the port on a host interface and does not add a Docker socket or remote context.
 
 The container runs with:
 
@@ -192,10 +196,10 @@ node scripts/docker-integration.mjs --image stacknext:local --require-docker
 
 The checks start one container with the same flags as `stacknext dev`, then
 verify health, dashboard assets, authentication, telemetry ingest, read APIs,
-SSE, the read-only regression mount, loopback-only publishing, container
-metadata, read-only filesystems, shutdown and project-file integrity. They do
-not require the CLI or a Next.js app. Without `--require-docker`, the script
-prints a skip message when Docker is unavailable.
+SSE, the dedicated network, the read-only regression mount, loopback-only
+publishing, container metadata, read-only filesystems, shutdown and project-file
+integrity. They do not require the CLI or a Next.js app. Without
+`--require-docker`, the script prints a skip message when Docker is unavailable.
 
 ## Limitations
 

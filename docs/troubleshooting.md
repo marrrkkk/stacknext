@@ -197,6 +197,11 @@ prunes unrelated containers, images or volumes. It also removes
 `.stacknext/docker` and `.stacknext/run.json`. Saved runs, baselines and
 comparisons are not deleted.
 
+`SIGKILL` cannot be intercepted. `stacknext stop` still recovers the managed
+container, network and runtime state, but the host Next.js child may keep
+running and hold the app port. Stop that process yourself before restarting the
+app.
+
 ### `stacknext stop` refuses to stop a live runtime
 
 That is intentional. Native mode runs inside the `stacknext dev` process and is

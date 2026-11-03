@@ -34,20 +34,18 @@ function assert(condition, message) {
 }
 
 function docker(args, options = {}) {
-  const result = spawnSync('docker', args, {
+  return spawnSync('docker', args, {
     encoding: 'utf8',
     timeout: options.timeout ?? 120_000,
     windowsHide: true,
   })
-  if (result.error) throw result.error
-  return result
 }
 
 function dockerOk(args) {
   const result = docker(args)
   assert(
     result.status === 0,
-    `docker ${args.join(' ')} failed (${result.status}): ${result.stderr || result.stdout}`,
+    `docker ${args.join(' ')} failed (${result.status ?? result.error?.message ?? 'spawn error'}): ${result.stderr || result.stdout}`,
   )
   return result.stdout
 }
@@ -147,6 +145,20 @@ async function main() {
   chmodSync(configFile, 0o600)
 
   const containerName = `stacknext-integration-${process.pid}`
+  const networkName = `stacknext-integration-${process.pid}-net`
+  const network = docker([
+    'network',
+    'create',
+    '--label',
+    'stacknext.managed=true',
+    '--label',
+    'stacknext.project=integration',
+    networkName,
+  ])
+  assert(
+    network.status === 0,
+    `docker network create failed: ${network.stderr || network.stdout}`,
+  )
   const uid = process.platform === 'win32' ? undefined : process.getuid?.()
   const gid = process.platform === 'win32' ? undefined : process.getgid?.()
   if (uid === 0) {
@@ -164,6 +176,8 @@ async function main() {
     'stacknext.project=integration',
     '--publish',
     `127.0.0.1:${hostPort}:4400`,
+    '--network',
+    networkName,
     '--mount',
     `type=bind,source=${stacknext},target=/data/.stacknext,readonly`,
     '--env',
@@ -320,6 +334,26 @@ async function main() {
     assert(!published.includes('0.0.0.0'), `port was published publicly: ${published}`)
     ok('host-loopback port binding')
 
+    const networkMode = dockerOk([
+      'inspect',
+      '--format',
+      '{{.HostConfig.NetworkMode}}',
+      containerName,
+    ]).trim()
+    assert(networkMode === networkName, `container network was ${networkMode}`)
+    const networkLabels = dockerOk([
+      'network',
+      'inspect',
+      '--format',
+      '{{index .Labels "stacknext.managed"}}|{{index .Labels "stacknext.project"}}',
+      networkName,
+    ]).trim()
+    assert(
+      networkLabels === 'true|integration',
+      `network labels were ${networkLabels || '(empty)'}`,
+    )
+    ok('dedicated container network')
+
     const metadata = dockerOk([
       'inspect',
       '--format',
@@ -420,7 +454,12 @@ async function main() {
     started = false
     const gone = docker(['inspect', containerName])
     assert(gone.status !== 0, 'container still exists after stop and remove')
-    ok('graceful shutdown and container removal')
+    const networkRemoved = docker(['network', 'rm', networkName])
+    assert(
+      networkRemoved.status === 0,
+      `docker network rm failed: ${networkRemoved.stderr}`,
+    )
+    ok('graceful shutdown, container and network removal')
 
     const markerAfter = spawnSync(process.execPath, [
       '-e',
@@ -430,6 +469,7 @@ async function main() {
     ok('project files remain intact')
   } finally {
     if (started) docker(['rm', '--force', containerName])
+    docker(['network', 'rm', networkName])
     rmSync(root, { recursive: true, force: true })
   }
 

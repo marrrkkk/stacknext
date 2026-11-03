@@ -99,8 +99,21 @@ If the CLI is no longer available:
    matches the generated StackNext template. If you edited it, remove the
    StackNext import and hook manually.
 3. Delete `.stacknext/run.json`. Keep `.stacknext/runs`, `.stacknext/baselines`
-   and `.stacknext/comparisons` if you still need the evidence. Delete
-   `.stacknext/docker` after `stacknext stop` if Docker mode was used.
+   and `.stacknext/comparisons` if you still need the evidence. If Docker mode
+   was used, run `stacknext stop` before removing the CLI so it can verify the
+   project labels and remove the container and network. Without the CLI, list
+   the project resources and remove only the matching rows:
+
+   ```bash
+   docker ps -a --filter label=stacknext.managed=true \
+     --format 'table {{.ID}}\t{{.Names}}\t{{.Label "stacknext.project"}}'
+   docker network ls --filter label=stacknext.managed=true \
+     --format 'table {{.ID}}\t{{.Name}}\t{{.Label "stacknext.project"}}'
+   docker rm --force <container-id>
+   docker network rm <network-id>
+   ```
+
+   Then delete `.stacknext/docker`.
 4. Delete the `.stacknext` directory only when you no longer need any saved
    records.
 5. Remove the packages with the package manager.
