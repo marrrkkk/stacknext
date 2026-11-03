@@ -57,9 +57,9 @@ pnpm exec stacknext dev --open
 ```
 
 Node 24 is pinned in `.nvmrc`; `.devcontainer/` provides the same toolchain and
-Playwright browsers for VS Code Dev Containers and Codespaces. See
+Playwright browsers for VS Code Dev Containers and the Dev Containers CLI. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the full development setup, including
-Playwright browser dependencies on Linux.
+Playwright browser dependencies on Linux and the Codespaces limitation.
 
 Then visit the demo routes listed below. This path is for contributors; the
 package quick start above is the normal user path.
