@@ -52,6 +52,7 @@ Start with the [README](../README.md) for the package quick start and the
 | Document | What it covers |
 | --- | --- |
 | [Contributing](../CONTRIBUTING.md) | Development setup, gates and review expectations. |
+| [ADR 0001: native-only runtime](adr/0001-native-only-runtime.md) | Why StackNext does not ship a managed container runtime. |
 | [Releasing](releasing.md) | Versioning, package validation, trusted publishing and rollback. |
 | [Changelog](../CHANGELOG.md) | Release history and breaking changes. |
 | [Security policy](../SECURITY.md) | Private vulnerability reporting and threat model. |

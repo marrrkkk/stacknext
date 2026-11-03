@@ -90,6 +90,10 @@ import CLI, Next.js, React, Playwright or adapter code from `core`.
   reject other hosts. Ingestion requires the bearer token; read APIs/SSE accept
   the bearer token or the dashboard session cookie. Keep Host/Origin/
   `Sec-Fetch-Site` checks, CSP and security headers intact.
+- **Native-only runtime.** The collector and dashboard run as a Node process
+  started by the CLI. Do not add a managed container runtime, a `runtime.mode`
+  configuration field or `--docker`/`--native` peer flags. See
+  `docs/adr/0001-native-only-runtime.md`.
 - **Validate at the boundary.** Every ingest envelope is Zod-validated, body
   size is capped, and counts are bounded before entering the store.
 - **Bounded memory.** The store is in memory with capacity/retention limits and
