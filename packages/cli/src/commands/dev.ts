@@ -11,12 +11,14 @@ import {
 } from '../project.js'
 import { printBanner, printCheck, printSection, style } from '../output.js'
 import {
+  acquireRuntimeLock,
   generateToken,
   isProcessAlive,
   readRuntimeState,
   removeRuntimeState,
   runtimeStatePath,
   writeRuntimeState,
+  type RuntimeLock,
   type RuntimeState,
 } from '../runtime.js'
 import { resolveDashboardDir, startCollector } from '../collector/server.js'
@@ -111,6 +113,20 @@ export async function runDev(
     throw new Error('--token must be at least 16 characters')
   }
   await assertNotAlreadyRunning(project.dir)
+  const lock = await acquireRuntimeLock(project.dir)
+  try {
+    return await runDevLocked(options, nextArgs, project, lock)
+  } finally {
+    await lock.release()
+  }
+}
+
+async function runDevLocked(
+  options: DevOptions,
+  nextArgs: string[],
+  project: ProjectInfo,
+  lock: RuntimeLock,
+): Promise<number> {
   const config = await loadConfig(project.dir)
   const dashboardDir = await resolveDashboardDir()
   const token = options.token ?? generateToken()
@@ -149,7 +165,12 @@ export async function runDev(
     ...(project.nextVersion ? { nextVersion: project.nextVersion } : {}),
     command: nextDevCommand(project, nextArgs).command,
   }
-  await writeRuntimeState(project.dir, state)
+  try {
+    await writeRuntimeState(project.dir, state)
+  } catch (error) {
+    await collector.close().catch(() => undefined)
+    throw error
+  }
 
   printCheck('pass', `Dashboard ${collector.url}`)
   printCheck(
@@ -207,12 +228,50 @@ export async function runDev(
     resolveExit = resolve
   })
 
+  let cleanupFailed = false
+  let detachHandlers: (() => void) | null = null
   const shutdown = async (exitCode: number): Promise<void> => {
     if (shuttingDown) return
     shuttingDown = true
-    await terminateChild(child)
-    await collector.close()
-    await removeRuntimeState(project.dir)
+    try {
+      await terminateChild(child)
+    } catch (error) {
+      cleanupFailed = true
+      console.error(
+        style.red('Next.js cleanup failed:'),
+        error instanceof Error ? error.message : String(error),
+      )
+    }
+    try {
+      await collector.close()
+    } catch (error) {
+      cleanupFailed = true
+      console.error(
+        style.red('Collector cleanup failed:'),
+        error instanceof Error ? error.message : String(error),
+      )
+    }
+    if (!cleanupFailed) {
+      try {
+        await removeRuntimeState(project.dir)
+      } catch (error) {
+        cleanupFailed = true
+        console.error(
+          style.red('Could not remove runtime state:'),
+          error instanceof Error ? error.message : String(error),
+        )
+      }
+    }
+    if (cleanupFailed) {
+      console.error(
+        style.yellow(
+          `Runtime state was kept at ${runtimeStatePath(project.dir)}; remove it after confirming no StackNext process is running.`,
+        ),
+      )
+    }
+    // Remove listeners so a later run in the same process does not inherit
+    // this run's child or lock cleanup closures.
+    detachHandlers?.()
     // An IPC channel created by a programmatic launcher keeps the event loop
     // alive after cleanup; close it before reporting the exit.
     try {
@@ -223,20 +282,23 @@ export async function runDev(
     resolveExit?.(exitCode)
   }
 
-  process.once('SIGINT', () => {
+  const onSigint = (): void => {
     void shutdown(130)
-  })
-  process.once('SIGTERM', () => {
+  }
+  const onSigterm = (): void => {
     void shutdown(143)
-  })
+  }
   // Windows cannot deliver SIGINT/SIGTERM to another console process, so a
   // programmatic launcher can request the same graceful shutdown over the IPC
   // channel it created. Parent processes are always trusted; no network API.
-  process.on('message', (message: unknown) => {
+  const onMessage = (message: unknown): void => {
     if ((message as { type?: unknown } | null)?.type === 'shutdown') {
       void shutdown(0)
     }
-  })
+  }
+  process.once('SIGINT', onSigint)
+  process.once('SIGTERM', onSigterm)
+  process.on('message', onMessage)
 
   if (!options.quiet) {
     printSection(`Starting Next.js (${devCommand.command} ${devCommand.args.join(' ')})`)
@@ -252,18 +314,28 @@ export async function runDev(
   })
 
   const activeChild = child
-  process.once('exit', () => {
+  const onExit = (): void => {
     // Last-resort synchronous cleanup for unexpected exits. SIGKILL cannot be
     // intercepted; the next `stacknext dev` removes stale runtime state.
     if (activeChild.pid && processGroupAlive(activeChild.pid)) {
       terminateChildSync(activeChild)
     }
-    try {
-      rmSync(runtimeStatePath(project.dir), { force: true })
-    } catch {
-      // Best effort during process exit.
+    if (!cleanupFailed) {
+      try {
+        rmSync(runtimeStatePath(project.dir), { force: true })
+      } catch {
+        // Best effort during process exit.
+      }
     }
-  })
+    lock.releaseSync()
+  }
+  process.once('exit', onExit)
+  detachHandlers = () => {
+    process.off('SIGINT', onSigint)
+    process.off('SIGTERM', onSigterm)
+    process.off('message', onMessage)
+    process.off('exit', onExit)
+  }
 
   child.once('error', (error) => {
     console.error(style.red(`Could not start Next.js: ${error.message}`))
@@ -276,7 +348,15 @@ export async function runDev(
   const exitCode = await finished
   if (!options.quiet) {
     printSection('StackNext stopped')
-    console.log(style.dim(`Runtime state removed (${runtimeStatePath(project.dir)})`))
+    if (cleanupFailed) {
+      console.log(
+        style.yellow(
+          `Runtime state kept at ${runtimeStatePath(project.dir)}; remove it after confirming no StackNext process is running.`,
+        ),
+      )
+    } else {
+      console.log(style.dim(`Runtime state removed (${runtimeStatePath(project.dir)})`))
+    }
   }
   return exitCode
 }

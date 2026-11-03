@@ -131,6 +131,19 @@ describe('stacknext uninstall', () => {
     await expect(readFile(path.join(root, 'stacknext.config.json'), 'utf8')).rejects.toThrow()
   })
 
+  it('keeps the ignore file when other runtime files survive', async () => {
+    const root = await project()
+    await runInit({}, root)
+    const runtime = path.join(root, '.stacknext')
+    await mkdir(runtime, { recursive: true })
+    await writeFile(path.join(runtime, '.gitignore'), '*\n')
+    await writeFile(path.join(runtime, 'leftover.txt'), 'keep\n')
+
+    expect(await runUninstall({ yes: true }, root)).toBe(0)
+    expect(await readFile(path.join(runtime, '.gitignore'), 'utf8')).toBe('*\n')
+    expect(await readFile(path.join(runtime, 'leftover.txt'), 'utf8')).toBe('keep\n')
+  })
+
   it('keeps user instrumentation and --keep-config', async () => {
     const custom = 'export async function register() {}\n'
     const root = await project({ instrumentation: custom })
@@ -143,6 +156,8 @@ describe('stacknext uninstall', () => {
   it('refuses to remove runtime files while the recorded process is alive', async () => {
     const root = await project()
     await mkdir(path.join(root, '.stacknext'), { recursive: true })
+    await mkdir(path.join(root, '.stacknext', 'runs'), { recursive: true })
+    await writeFile(path.join(root, '.stacknext', 'runs', 'saved.json'), '{}\n')
     await writeRuntimeState(root, {
       version: 1,
       pid: process.pid,
@@ -154,8 +169,11 @@ describe('stacknext uninstall', () => {
       port: 4400,
       token: 'b'.repeat(32),
     })
-    expect(await runUninstall({ yes: true }, root)).toBe(1)
+    expect(await runUninstall({ yes: true, removeData: true }, root)).toBe(1)
     expect(await readFile(runtimeStatePath(root), 'utf8')).toContain('token')
+    expect(
+      await readFile(path.join(root, '.stacknext', 'runs', 'saved.json'), 'utf8'),
+    ).toBe('{}\n')
   })
 })
 
