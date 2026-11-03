@@ -1,0 +1,29 @@
+{
+  "name": "StackNext",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "ubuntu",
+  "updateRemoteUserUID": true,
+  "postCreateCommand": "pnpm install --frozen-lockfile",
+  "forwardPorts": [4400, 4402],
+  "portsAttributes": {
+    "4400": {
+      "label": "StackNext collector and dashboard",
+      "onAutoForward": "notify"
+    },
+    "4402": {
+      "label": "Example Next.js app",
+      "onAutoForward": "notify"
+    }
+  },
+  "containerEnv": {
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "PLAYWRIGHT_BROWSERS_PATH": "/ms-playwright"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "ms-playwright.playwright"]
+    }
+  }
+}

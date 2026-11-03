@@ -22,15 +22,69 @@ not in a public issue.
 
 Requirements:
 
-- Node.js 22 or 24 (the published engine minimum is `>=20.9.0`).
-- pnpm 12.16.1.
+- Node.js 24, pinned in `.nvmrc`; current 24.x releases bundle Corepack 0.36,
+  which was verified with pnpm 12.16.1. Node.js 22 works after updating Corepack
+  to 0.36 or newer. The published engine minimum is `>=20.9.0`.
+- pnpm 12.16.1. The version is pinned by `packageManager`; use Corepack rather
+  than installing a global pnpm.
 - Playwright Chromium for the example app and e2e checks.
 
 ```bash
-pnpm install
+git clone https://github.com/marrrkkk/stacknext.git
+cd stacknext
+nvm use                  # or the equivalent for fnm, asdf or mise
+corepack enable          # activates pnpm 12.16.1 from package.json
+pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
 pnpm build
 ```
+
+On Linux, use `pnpm exec playwright install --with-deps chromium` to install the
+browser's system libraries as well; that step needs root or sudo. On macOS and
+Windows the plain `install chromium` is enough.
+
+If `corepack enable` cannot write to the Node.js install directory, prefix every
+pnpm command with `corepack`:
+
+```bash
+corepack pnpm install --frozen-lockfile
+corepack pnpm exec playwright install chromium
+corepack pnpm build
+```
+
+Alternatively, install the pinned version directly with
+`npm install --global pnpm@12.16.1`. If the Corepack bundled with your Node.js
+release does not recognize pnpm 12, update Corepack first
+(`npm install --global corepack@latest`) or use Node.js 24. Confirm `node -v`
+and `pnpm -v` match the pinned versions before opening a pull request.
+
+### Container development
+
+VS Code Dev Containers and the Dev Containers CLI can open the repository with
+`.devcontainer/`. The image includes Node 24, pnpm 12.16.1 and Playwright
+Chromium, and runs `pnpm install --frozen-lockfile` when the container is
+created. In VS Code, ports 4400 (collector and dashboard) and 4402 (example
+app) are forwarded to loopback.
+
+GitHub Codespaces is not supported: browser-forwarded URLs use `app.github.dev`
+Host headers, which the collector intentionally rejects. Use a local container
+instead.
+
+The container already provides the toolchain, so skip `nvm use`,
+`corepack enable`, `pnpm install` and the Playwright install step. Run the build
+and checks directly:
+
+```bash
+pnpm build
+pnpm test
+```
+
+In VS Code, do not use `stacknext dev --open` inside the container; open the
+forwarded dashboard URL instead. The Dev Containers CLI does not apply
+`forwardPorts`, so a CLI session reaches the dashboard only inside the container
+unless you map port 4400 yourself. The container does not mount the Docker
+socket. Native Node remains the canonical development and test path; the dev
+container is a convenience for reproducible setup.
 
 Useful commands:
 
