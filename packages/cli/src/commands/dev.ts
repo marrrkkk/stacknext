@@ -41,21 +41,19 @@ export interface DevOptions {
   open?: boolean
   quiet?: boolean
   token?: string
-  runtime?: string
+  docker?: boolean
+  native?: boolean
 }
 
 export function resolveRuntimeMode(
-  cliValue: string | undefined,
+  options: Pick<DevOptions, 'docker' | 'native'>,
   configMode: RuntimeMode | undefined,
 ): RuntimeMode {
-  if (cliValue !== undefined) {
-    if (cliValue !== 'native' && cliValue !== 'docker') {
-      throw new Error(
-        `Invalid --runtime value "${cliValue}". Use "--runtime native" or "--runtime docker".`,
-      )
-    }
-    return cliValue
+  if (options.docker && options.native) {
+    throw new Error('Use either --docker or --native, not both.')
   }
+  if (options.docker) return 'docker'
+  if (options.native) return 'native'
   return configMode ?? 'native'
 }
 
@@ -157,7 +155,7 @@ async function runDevLocked(
     throw new Error('--token must be at least 16 characters')
   }
   const config = await loadConfig(project.dir)
-  const runtimeMode = resolveRuntimeMode(options.runtime, config.runtime.mode)
+  const runtimeMode = resolveRuntimeMode(options, config.runtime.mode)
   const token = options.token ?? generateToken()
   const projectName = config.projectName ?? project.name
   const startedAt = Date.now()
@@ -540,7 +538,8 @@ export function registerDevCommand(program: Command, cwd: string): void {
     .description('Start the local collector and the project dev server')
     .option('--open', 'open the dashboard in the default browser')
     .option('--quiet', 'reduce startup output')
-    .option('--runtime <mode>', 'runtime mode: native or docker (default: config or native)')
+    .option('--docker', 'run the collector and dashboard in a Docker container')
+    .option('--native', 'run the collector and dashboard natively')
     .option('--token <token>', 'use an existing collector token (16+ characters)')
     .argument('[nextArgs...]', 'arguments forwarded to the Next.js dev server')
     .action(async (nextArgs: string[], options: DevOptions) => {

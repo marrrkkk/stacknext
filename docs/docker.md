@@ -36,12 +36,13 @@ Set the runtime in `stacknext.config.json`:
 Or select it for one run:
 
 ```bash
-npx stacknext dev --runtime docker
+npx stacknext dev --docker
 ```
 
-The command-line flag overrides the configuration. `--runtime native` forces
-native mode even when the config selects Docker. `runtime.mode` defaults to
-`native`, and Docker checks are skipped entirely in native mode.
+The command-line flags override the configuration. `--native` forces native mode
+even when the config selects Docker, and `--docker` selects Docker for one run.
+`runtime.mode` defaults to `native`, and Docker checks are skipped entirely in
+native mode.
 
 The first Docker run pulls the image if it is not present locally. This is the
 only new outbound request: StackNext still sends no telemetry, diagnostics or
@@ -68,7 +69,7 @@ the host, so those records survive container restarts.
 
 ## Lifecycle
 
-`stacknext dev --runtime docker`:
+`stacknext dev --docker`:
 
 1. Checks the Docker CLI and daemon only because Docker mode was selected.
 2. Resolves the image for the installed CLI version and pulls it when missing.
@@ -162,14 +163,14 @@ Use a locally built or alternate image without changing the package:
 
 ```bash
 STACKNEXT_DOCKER_IMAGE=stacknext:local \
-  npx stacknext dev --runtime docker
+  npx stacknext dev --docker
 ```
 
 Or set only the repository; the CLI appends its own version:
 
 ```bash
 STACKNEXT_DOCKER_REPOSITORY=acme/stacknext \
-  npx stacknext dev --runtime docker
+  npx stacknext dev --docker
 ```
 
 `STACKNEXT_DOCKER_IMAGE` accepts an explicit tag or digest and takes precedence.
@@ -181,7 +182,7 @@ To build the production image from a checkout:
 
 ```bash
 docker build -f docker/Dockerfile -t stacknext:local .
-STACKNEXT_DOCKER_IMAGE=stacknext:local pnpm exec stacknext dev --runtime docker
+STACKNEXT_DOCKER_IMAGE=stacknext:local pnpm exec stacknext dev --docker
 ```
 
 The image is published by the release workflow. If the GHCR package is private,

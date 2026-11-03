@@ -364,8 +364,8 @@ Docker mount can stay read-only.
 
 1. Detects the project, Next.js version, App Router directory and package
    manager.
-2. Loads `stacknext.config.json` and resolves the runtime mode. The
-   `--runtime` flag overrides `runtime.mode`, which defaults to `native`.
+2. Loads `stacknext.config.json` and resolves the runtime mode. `--docker` or
+   `--native` overrides `runtime.mode`, which defaults to `native`.
 3. In native mode, resolves the built dashboard, generates a bearer token and
    starts the collector in the CLI process. In Docker mode, checks Docker,
    resolves/pulls the versioned image, removes stale project containers, writes

@@ -163,7 +163,7 @@ export async function runDoctor(
             'Docker',
             'warn',
             'Runtime image is not present locally',
-            `"stacknext dev --runtime docker" will pull ${image}`,
+            `"stacknext dev --docker" will pull ${image}`,
           )
         }
       } catch (error) {
@@ -252,7 +252,7 @@ export async function runDoctor(
       'Collector',
       'warn',
       'Stale Docker runtime state',
-      `Container ${runtime.runtime?.containerId?.slice(0, 12) ?? '(unknown)'} is not running; restart with "stacknext dev --runtime docker"`,
+      `Container ${runtime.runtime?.containerId?.slice(0, 12) ?? '(unknown)'} is not running; restart with "stacknext dev --docker"`,
     )
   } else if (dockerState === 'unknown') {
     add(

@@ -39,7 +39,7 @@ Docker is optional. To run only the collector and dashboard in one container
 while Next.js, Playwright and MCP stay on the host:
 
 ```bash
-npx stacknext dev --runtime docker
+npx stacknext dev --docker
 ```
 
 Native mode remains the default. See [Docker runtime](docs/docker.md) for
@@ -234,7 +234,7 @@ Server Actions: [docs/server-actions.md](docs/server-actions.md).
 
 ```bash
 stacknext init [--install]
-stacknext dev [--open] [--quiet] [--runtime native|docker] [--token <token>] [nextArgs...]
+stacknext dev [--open] [--quiet] [--docker | --native] [--token <token>] [nextArgs...]
 stacknext stop [--json]
 stacknext status [--json]
 stacknext doctor [--json]
@@ -256,8 +256,9 @@ stacknext mcp [--collector <url>] [--token <token>]
 `dev` starts the loopback collector, writes runtime state to
 `.stacknext/run.json` (`0600`), then runs the app's own `dev` script with the
 collector URL and token in its environment. The runtime is native by default;
-`--runtime docker` runs the collector and dashboard in one container, and
-`stacknext stop` removes that project's container after an abnormal exit.
+`--docker` runs the collector and dashboard in one container, `--native`
+overrides a config that selects Docker, and `stacknext stop` removes that
+project's container after an abnormal exit.
 `status`, `doctor`, `coverage`, `diagnose`, `export` and `mcp` use the runtime
 state in either mode. `doctor` is the first stop when data is missing; `coverage`
 shows what the current sample actually observed; `diagnose` lists or opens
@@ -281,7 +282,7 @@ filesystem and runs as a non-root user. The bearer token is passed in a private
 ```
 
 ```bash
-npx stacknext dev --runtime docker
+npx stacknext dev --docker
 npx stacknext status
 npx stacknext stop
 ```

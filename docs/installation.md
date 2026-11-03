@@ -148,15 +148,16 @@ npx stacknext dev
 Or override the config for one run:
 
 ```bash
-npx stacknext dev --runtime docker
+npx stacknext dev --docker
 ```
 
-`--runtime native` forces native mode. The CLI pulls the matching
-`ghcr.io/<owner>/stacknext:<version>` image on first use, publishes the
-collector only on `127.0.0.1`, and keeps Next.js, Playwright and MCP on the host.
-The container mounts only `<project>/.stacknext` and receives its token through a
-private `0600` config file, not command-line arguments. If a previous container
-was left behind, `stacknext stop` removes only this project's managed container.
+`--native` forces native mode. `--docker` selects Docker for one run. The CLI
+pulls the matching `ghcr.io/<owner>/stacknext:<version>` image on first use,
+publishes the collector only on `127.0.0.1`, and keeps Next.js, Playwright and
+MCP on the host. The container mounts only `<project>/.stacknext` and receives
+its token through a private `0600` config file, not command-line arguments. If a
+previous container was left behind, `stacknext stop` removes only this project's
+managed container.
 
 See [Docker runtime](docker.md) for requirements, image overrides, security
 details and troubleshooting.

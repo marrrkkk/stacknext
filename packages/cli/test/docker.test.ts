@@ -228,12 +228,14 @@ async function freePort(): Promise<number> {
 }
 
 describe('runtime selection', () => {
-  it('defaults to native and gives the CLI argument precedence', () => {
-    expect(resolveRuntimeMode(undefined, undefined)).toBe('native')
-    expect(resolveRuntimeMode(undefined, 'docker')).toBe('docker')
-    expect(resolveRuntimeMode('native', 'docker')).toBe('native')
-    expect(resolveRuntimeMode('docker', 'native')).toBe('docker')
-    expect(() => resolveRuntimeMode('container', undefined)).toThrow(/Invalid --runtime/)
+  it('defaults to native and gives the CLI flags precedence', () => {
+    expect(resolveRuntimeMode({}, undefined)).toBe('native')
+    expect(resolveRuntimeMode({}, 'docker')).toBe('docker')
+    expect(resolveRuntimeMode({ native: true }, 'docker')).toBe('native')
+    expect(resolveRuntimeMode({ docker: true }, 'native')).toBe('docker')
+    expect(() =>
+      resolveRuntimeMode({ docker: true, native: true }, undefined),
+    ).toThrow(/either --docker or --native/)
   })
 })
 

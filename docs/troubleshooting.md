@@ -128,7 +128,7 @@ Never copy a token from this file into source control or a bug report.
 
 ### Docker mode says the CLI or daemon is unavailable
 
-Docker is optional. `stacknext dev` without `--runtime docker` never checks for
+Docker is optional. `stacknext dev` without `--docker` never checks for
 it. When Docker mode is selected, confirm that Docker is installed and running:
 
 ```bash
@@ -161,7 +161,7 @@ not exist, the release did not publish that image; upgrade the CLI or point
 
 ```bash
 docker build -f docker/Dockerfile -t stacknext:local .
-STACKNEXT_DOCKER_IMAGE=stacknext:local pnpm exec stacknext dev --runtime docker
+STACKNEXT_DOCKER_IMAGE=stacknext:local pnpm exec stacknext dev --docker
 ```
 
 Do not use `latest` as a substitute for the matching version in normal

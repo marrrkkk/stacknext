@@ -25,7 +25,7 @@ export async function requireRunningState(projectDir: string): Promise<RuntimeSt
     if (status === 'stopped') {
       await removeRuntimeState(projectDir)
       throw new NotRunningError(
-        'The StackNext Docker collector is no longer running. Start it with "stacknext dev --runtime docker" or clean up with "stacknext stop".',
+        'The StackNext Docker collector is no longer running. Start it with "stacknext dev --docker" or clean up with "stacknext stop".',
       )
     }
     if (status === 'unknown') {

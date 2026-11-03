@@ -41,7 +41,7 @@ pnpm --filter @stacknext/playwright build
 pnpm --filter @stacknext/cli build
 pnpm --filter @stacknext/example-next-app dev
 pnpm exec stacknext dev --open       # from an app directory after build
-pnpm exec stacknext dev --runtime docker # optional collector container
+pnpm exec stacknext dev --docker # optional collector container
 pnpm exec stacknext stop             # project-scoped Docker cleanup
 pnpm exec stacknext doctor
 pnpm exec stacknext coverage [--json]

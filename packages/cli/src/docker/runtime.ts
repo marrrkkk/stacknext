@@ -219,7 +219,7 @@ export async function checkDockerAvailability(
     (cli.code === null && !cli.stderr)
   ) {
     throw new DockerUnavailableError(
-      'Docker CLI was not found. Install Docker Desktop (Windows/macOS) or Docker Engine (Linux), make sure "docker" is on PATH, then retry "stacknext dev --runtime docker".',
+      'Docker CLI was not found. Install Docker Desktop (Windows/macOS) or Docker Engine (Linux), make sure "docker" is on PATH, then retry "stacknext dev --docker".',
     )
   }
   if (cli.code !== 0) {

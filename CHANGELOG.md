@@ -12,10 +12,10 @@ All notable changes to StackNext are documented here. The format follows
 
 - Optional Docker runtime for the collector and dashboard. Set
   `runtime.mode` to `"docker"` in `stacknext.config.json` or pass
-  `stacknext dev --runtime docker`; native mode remains the default and still
-  works without Docker. Only the collector and dashboard move into the
-  container. Next.js, Playwright, MCP, the CLI and saved regression records stay
-  on the host.
+  `stacknext dev --docker`; `--native` overrides a config that selects Docker.
+  Native mode remains the default and still works without Docker. Only the
+  collector and dashboard move into the container. Next.js, Playwright, MCP, the
+  CLI and saved regression records stay on the host.
 - `stacknext stop` removes only the current project's StackNext-managed Docker
   container and network, its private config and the runtime state. It refuses to
   stop a live native runtime, a live Docker runtime, or a startup in progress.

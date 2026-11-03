@@ -112,7 +112,7 @@ pnpm exec stacknext dev
 ```
 
 Native mode is the default. To run the collector and dashboard in Docker
-instead, use `stacknext dev --runtime docker` or set
+instead, use `stacknext dev --docker` or set
 `"runtime": { "mode": "docker" }`; see [Docker runtime](docker.md).
 
 `stacknext init`:
@@ -307,7 +307,7 @@ attributes.
 
 ```bash
 stacknext init [--install]
-stacknext dev [--open] [--quiet] [--runtime native|docker] [--token <token>] [nextArgs...]
+stacknext dev [--open] [--quiet] [--docker | --native] [--token <token>] [nextArgs...]
 stacknext stop [--json]
 stacknext status [--json]
 stacknext doctor [--json]

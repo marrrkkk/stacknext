@@ -316,7 +316,7 @@ ghcr.io/<repository-owner>/stacknext:<version>
 ```
 
 `@stacknext/cli` derives the same reference from its package repository
-metadata, so `stacknext dev --runtime docker` pulls the image that matches the
+metadata, so `stacknext dev --docker` pulls the image that matches the
 installed CLI version. The image contains the built collector, dashboard assets
 and the `docker-entrypoint.js` entrypoint. The CLI package is present only to run
 that collector entrypoint; Next.js, Playwright, MCP data and project files are
@@ -335,7 +335,7 @@ extra secret is required. Before the first Docker release:
 3. Set the package visibility to **Public** if users should pull it
    anonymously. This is a one-time GitHub package setting, not something the
    workflow can change. A private package requires every user to run
-   `docker login ghcr.io` before `stacknext dev --runtime docker`.
+   `docker login ghcr.io` before `stacknext dev --docker`.
 4. Check that the package is linked to the `stacknext` repository so its
    provenance and source links point at the right commit.
 
