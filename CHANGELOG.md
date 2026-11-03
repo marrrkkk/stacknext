@@ -15,6 +15,18 @@ All notable changes to StackNext are documented here. The format follows
 - The release archive check now fails when the bundled skill is missing or its
   `metadata.version` does not match the package version.
 
+### Fixed
+
+- Two overlapping `stacknext dev` runs can no longer start duplicate
+  collectors for the same project. A stale lock from a crashed run is reclaimed
+  on the next start.
+- Cleanup failures now keep the runtime state instead of reporting a successful
+  shutdown, and `stacknext uninstall` preserves saved regression data while the
+  recorded process is still alive.
+- The `.stacknext/.gitignore` file is created before the runtime token is
+  written and is kept while other runtime files remain, so `git add` cannot
+  expose them.
+
 ## [0.6.1] - 2026-11-03
 
 ### Fixed
