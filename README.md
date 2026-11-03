@@ -48,11 +48,18 @@ and [docs/uninstall.md](docs/uninstall.md). Supported combinations:
 From a checkout of this repository:
 
 ```bash
+nvm use                  # or the equivalent for fnm, asdf or mise
+corepack enable          # activates the pnpm version from package.json
 pnpm install
 pnpm build
 cd apps/example-next-app
 pnpm exec stacknext dev --open
 ```
+
+Node 24 is pinned in `.nvmrc`; `.devcontainer/` provides the same toolchain and
+Playwright browsers for VS Code Dev Containers and Codespaces. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the full development setup, including
+Playwright browser dependencies on Linux.
 
 Then visit the demo routes listed below. This path is for contributors; the
 package quick start above is the normal user path.

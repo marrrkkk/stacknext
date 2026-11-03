@@ -22,15 +22,43 @@ not in a public issue.
 
 Requirements:
 
-- Node.js 22 or 24 (the published engine minimum is `>=20.9.0`).
-- pnpm 12.16.1.
+- Node.js 22 or 24. The repository pins Node 24 in `.nvmrc`; the published
+  engine minimum is `>=20.9.0`.
+- pnpm 12.16.1. The version is pinned by `packageManager`; enable Corepack
+  rather than installing a global pnpm.
 - Playwright Chromium for the example app and e2e checks.
 
 ```bash
-pnpm install
+git clone https://github.com/marrrkkk/stacknext.git
+cd stacknext
+nvm use                  # or the equivalent for fnm, asdf or mise
+corepack enable          # activates pnpm 12.16.1 from package.json
+pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
 pnpm build
 ```
+
+On Linux, use `pnpm exec playwright install --with-deps chromium` to install the
+browser's system libraries as well; that step needs root or sudo. On macOS and
+Windows the plain `install chromium` is enough.
+
+If `corepack enable` cannot write to the Node.js install directory, run
+`corepack pnpm install --frozen-lockfile` instead, or install Corepack through
+your Node.js version manager. Confirm `node -v` and `pnpm -v` match the pinned
+versions before opening a pull request.
+
+### Container development
+
+VS Code Dev Containers, the Dev Containers CLI and GitHub Codespaces can open
+the repository with `.devcontainer/`. The image includes Node 24, pnpm 12.16.1
+and Playwright Chromium, and runs `pnpm install --frozen-lockfile` when the
+container is created. Ports 4400 (collector and dashboard) and 4402 (example
+app) are forwarded.
+
+Run the same commands as the native setup. Do not use `stacknext dev --open`
+inside the container; open the forwarded dashboard URL instead. The container
+does not mount the Docker socket. Native Node remains the canonical development
+and test path; the dev container is a convenience for reproducible setup.
 
 Useful commands:
 
