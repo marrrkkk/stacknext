@@ -77,6 +77,27 @@ function lockOwnerPid(contents: string): number | null {
 }
 
 /**
+ * Removes a lock only while it still has the contents the caller inspected.
+ * Node has no portable compare-and-swap for files, so the residual race is the
+ * few instructions between this read and `rm`; two starts would have to
+ * reclaim the same stale lock in that window to both proceed.
+ */
+async function removeLockIfUnchanged(
+  file: string,
+  expected: string,
+): Promise<void> {
+  let current: string
+  try {
+    current = await readFile(file, 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return
+    throw error
+  }
+  if (current !== expected) return
+  await rm(file, { force: true })
+}
+
+/**
  * Creates the private runtime directory and its ignore file before any
  * token-bearing file is written, so an interrupted start cannot leave a token
  * exposed to `git add`.
@@ -157,14 +178,14 @@ export async function acquireRuntimeLock(
             `StackNext is already starting or running for this project (pid ${pid}). Wait for it to finish or stop it with SIGINT/SIGTERM.`,
           )
         }
-        await rm(file, { force: true })
+        await removeLockIfUnchanged(file, existing)
         continue
       }
       if (Date.now() < emptyGraceDeadline) {
         await delay(LOCK_RETRY_DELAY_MS)
         continue
       }
-      await rm(file, { force: true })
+      await removeLockIfUnchanged(file, existing)
     }
   }
   throw new Error(
