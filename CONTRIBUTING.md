@@ -22,8 +22,9 @@ not in a public issue.
 
 Requirements:
 
-- Node.js 24, pinned in `.nvmrc`. Node.js 22 also works with a current
-  bundled Corepack; the published engine minimum is `>=20.9.0`.
+- Node.js 24, pinned in `.nvmrc`; current 24.x releases bundle Corepack 0.36,
+  which was verified with pnpm 12.16.1. Node.js 22 works after updating Corepack
+  to 0.36 or newer. The published engine minimum is `>=20.9.0`.
 - pnpm 12.16.1. The version is pinned by `packageManager`; use Corepack rather
   than installing a global pnpm.
 - Playwright Chromium for the example app and e2e checks.
