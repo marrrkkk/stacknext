@@ -48,7 +48,7 @@ export interface RuntimeLock {
 const LOCK_FILE_NAME = 'dev.lock'
 const LOCK_EMPTY_GRACE_MS = 1_000
 const LOCK_RETRY_DELAY_MS = 25
-const LOCK_MAX_ATTEMPTS = 40
+const LOCK_ACQUIRE_TIMEOUT_MS = 5_000
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -111,8 +111,11 @@ export async function acquireRuntimeLock(
     token,
   })}\n`
   const emptyGraceDeadline = Date.now() + LOCK_EMPTY_GRACE_MS
+  // Always wait past the grace period before giving up. A fixed attempt count
+  // can expire at the same time as the grace period on a slow or loaded host.
+  const acquireDeadline = emptyGraceDeadline + LOCK_ACQUIRE_TIMEOUT_MS
 
-  for (let attempt = 0; attempt < LOCK_MAX_ATTEMPTS; attempt += 1) {
+  while (Date.now() < acquireDeadline) {
     try {
       // Exclusive create-and-write. A reader can still observe the file between
       // create and write, so an empty or truncated lock gets a grace period
