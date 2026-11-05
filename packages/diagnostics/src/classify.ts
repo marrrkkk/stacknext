@@ -49,6 +49,7 @@ export function spanThresholdMs(
   if (category === 'database') return config.slowSpans.databaseMs
   if (category === 'http') return config.slowSpans.httpMs
   if (category === 'custom') return config.slowSpans.customMs
+  if (category === 'framework') return config.slowSpans.frameworkMs
   return config.slowSpans.otherMs
 }
 

@@ -10,6 +10,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { access, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { chromium } from '@playwright/test'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const APP_DIR = path.join(ROOT, 'apps', 'example-next-app')
@@ -516,7 +517,98 @@ async function runRegressionChecks(api, secrets) {
   }
 }
 
-async function runMcpChecks(runtime, errorId, diagnosticId, traceId, regression) {
+async function runSnapshotChecks(api, secrets) {
+  const saved = JSON.parse(
+    runCli(['snapshot', 'save', '--label', 'e2e snapshot', '--json']),
+  )
+  assert(saved.id?.startsWith('snap-'), 'snapshot save returned no id')
+  assert(saved.source === 'manual', `snapshot source is ${saved.source}`)
+  assert(saved.label === 'e2e snapshot', 'snapshot label was not preserved')
+  assert(saved.stats.spans > 0, 'snapshot contains no spans')
+  ok(`manual snapshot ${saved.id} saved with ${saved.stats.spans} spans`)
+
+  const list = await api('/api/snapshots?limit=200')
+  assert(
+    list.items.some((snapshot) => snapshot.id === saved.id),
+    'collector snapshot list is missing the saved snapshot',
+  )
+  const detail = await api(`/api/snapshots/${saved.id}`)
+  assert(detail.snapshot.id === saved.id, 'snapshot detail returned the wrong id')
+  assert(detail.config.collector.retentionMs > 0, 'snapshot has no captured config')
+  assert(detail.limitations.length > 0, 'snapshot has no limitations')
+  assert(detail.traces.length > 0, 'snapshot has no traces')
+  assert(detail.errors.length > 0, 'snapshot has no errors')
+  assert(detail.databaseQueries.length > 0, 'snapshot has no database queries')
+  assert(!('diagnostics' in detail), 'snapshot detail contains live diagnostics')
+  const traceId = detail.traces[0].traceId
+  const errorId = detail.errors[0].id
+
+  const traces = await api(`/api/snapshots/${saved.id}/traces?limit=200`)
+  assert(
+    traces.items.some((trace) => trace.traceId === traceId),
+    'snapshot trace list is missing the detail trace',
+  )
+  const trace = await api(`/api/snapshots/${saved.id}/traces/${traceId}`)
+  assert(trace.traceId === traceId, 'snapshot trace detail returned the wrong trace')
+  assert(trace.spans.length > 0, 'snapshot trace detail has no spans')
+  assert(!('diagnostics' in trace), 'snapshot trace detail contains live diagnostics')
+  const errors = await api(`/api/snapshots/${saved.id}/errors?limit=200`)
+  assert(
+    errors.items.some((error) => error.id === errorId),
+    'snapshot error list is missing the detail error',
+  )
+  const error = await api(`/api/snapshots/${saved.id}/errors/${errorId}`)
+  assert(error.error.id === errorId, 'snapshot error detail returned the wrong error')
+  const database = await api(`/api/snapshots/${saved.id}/database?limit=200`)
+  assert(database.items.length > 0, 'snapshot database list is empty')
+  ok(
+    `snapshot scoped reads return trace ${traceId.slice(0, 8)}…, error ${errorId} and ${database.items.length} queries`,
+  )
+
+  const exported = await api(`/api/snapshots/${saved.id}/export`)
+  assert(exported.format === 'stacknext-export', 'snapshot export format mismatch')
+  assert(exported.exportedAt === saved.createdAt, 'snapshot export time mismatch')
+  assert(!('diagnostics' in exported), 'snapshot export contains live diagnostics')
+
+  const cliList = JSON.parse(runCli(['snapshot', 'list', '--json', '--limit', '200']))
+  assert(
+    cliList.items.some((snapshot) => snapshot.id === saved.id),
+    'CLI snapshot list is missing the saved snapshot',
+  )
+  const cliShow = JSON.parse(runCli(['snapshot', 'show', saved.id, '--json']))
+  assert(cliShow.id === saved.id, 'CLI snapshot show returned the wrong snapshot')
+  const cliExport = JSON.parse(runCli(['snapshot', 'export', saved.id, '--stdout']))
+  assert(cliExport.format === 'stacknext-export', 'CLI snapshot export format mismatch')
+  ok('CLI snapshot save, list, show and export agree with the collector')
+
+  for (const secret of secrets) {
+    assert(
+      !JSON.stringify(detail).includes(secret),
+      `secret ${secret} leaked into snapshot detail`,
+    )
+    assert(
+      !JSON.stringify(trace).includes(secret),
+      `secret ${secret} leaked into snapshot trace`,
+    )
+    assert(
+      !JSON.stringify(exported).includes(secret),
+      `secret ${secret} leaked into snapshot export`,
+    )
+    assert(
+      !JSON.stringify(cliShow).includes(secret),
+      `secret ${secret} leaked into CLI snapshot show`,
+    )
+    assert(
+      !JSON.stringify(cliExport).includes(secret),
+      `secret ${secret} leaked into CLI snapshot export`,
+    )
+  }
+  ok('snapshot records contain no captured secrets')
+
+  return { snapshotId: saved.id, traceId, errorId }
+}
+
+async function runMcpChecks(runtime, errorId, diagnosticId, regression, snapshot) {
   const child = spawn(
     process.execPath,
     [CLI, 'mcp', '--collector', runtime.collectorUrl, '--token', runtime.token],
@@ -550,6 +642,10 @@ async function runMcpChecks(runtime, errorId, diagnosticId, traceId, regression)
       initialize.instructions?.includes('stacknext_list_test_runs'),
       'MCP server instructions do not mention regression runs',
     )
+    assert(
+      initialize.instructions?.includes('stacknext_list_snapshots'),
+      'MCP server instructions do not mention snapshots',
+    )
     session.send({ jsonrpc: '2.0', method: 'notifications/initialized' })
     ok('MCP initialize with instructions')
 
@@ -573,17 +669,20 @@ async function runMcpChecks(runtime, errorId, diagnosticId, traceId, regression)
       'stacknext_get_baseline',
       'stacknext_list_comparisons',
       'stacknext_get_comparison',
+      'stacknext_list_snapshots',
+      'stacknext_get_snapshot',
+      'stacknext_get_snapshot_trace',
     ]) {
       assert(names.has(name), `MCP tool ${name} is missing`)
     }
-    assert(tools.tools.length === 17, `MCP exposes ${tools.tools.length} tools, expected 17`)
+    assert(tools.tools.length === 20, `MCP exposes ${tools.tools.length} tools, expected 20`)
     const notReadOnly = tools.tools.find(
       (tool) => tool.annotations?.readOnlyHint !== true,
     )
     assert(!notReadOnly, `MCP tool ${notReadOnly?.name} is not marked read-only`)
     const withoutSchema = tools.tools.find((tool) => !tool.outputSchema)
     assert(!withoutSchema, `MCP tool ${withoutSchema?.name} has no output schema`)
-    ok('MCP exposes 17 read-only tools with output schemas')
+    ok('MCP exposes 20 read-only tools with output schemas')
 
     const prompts = await session.request('prompts/list', {})
     const promptNames = new Set(prompts.prompts.map((prompt) => prompt.name))
@@ -673,8 +772,10 @@ async function runMcpChecks(runtime, errorId, diagnosticId, traceId, regression)
       diagnosticDetail.finding?.id === diagnosticId,
       'MCP diagnostic detail returned the wrong finding',
     )
+    const relatedTraceId = diagnosticDetail.finding?.traceIds?.[0]
+    assert(relatedTraceId, 'MCP diagnostic finding has no related trace')
     assert(
-      diagnosticDetail.trace?.traceId === traceId,
+      diagnosticDetail.trace?.traceId === relatedTraceId,
       'MCP diagnostic detail is missing the related trace',
     )
     assert(
@@ -683,7 +784,7 @@ async function runMcpChecks(runtime, errorId, diagnosticId, traceId, regression)
     )
     const traceWithDiagnostics = await session.request('tools/call', {
       name: 'get_trace',
-      arguments: { traceId },
+      arguments: { traceId: relatedTraceId },
     })
     assert(
       traceWithDiagnostics.structuredContent?.diagnostics?.some(
@@ -772,6 +873,58 @@ async function runMcpChecks(runtime, errorId, diagnosticId, traceId, regression)
       'MCP comparison detail is missing the no-significance note',
     )
     ok('MCP regression runs, baselines and comparisons agree')
+
+    const snapshotList = await session.request('tools/call', {
+      name: 'stacknext_list_snapshots',
+      arguments: { limit: 200 },
+    })
+    assert(
+      snapshotList.structuredContent?.items?.some(
+        (entry) => entry.id === snapshot.snapshotId,
+      ),
+      'MCP snapshot list is missing the saved snapshot',
+    )
+    assert(
+      snapshotList.structuredContent.meta?.notes?.some((note) =>
+        note.includes('frozen copies'),
+      ),
+      'MCP snapshot list is missing the frozen-evidence note',
+    )
+    const snapshotDetail = await session.request('tools/call', {
+      name: 'stacknext_get_snapshot',
+      arguments: { snapshotId: snapshot.snapshotId },
+    })
+    assert(
+      snapshotDetail.structuredContent?.snapshot?.id === snapshot.snapshotId,
+      'MCP snapshot detail returned the wrong snapshot',
+    )
+    assert(
+      snapshotDetail.structuredContent.traces?.some(
+        (trace) => trace.traceId === snapshot.traceId,
+      ),
+      'MCP snapshot detail is missing the scoped trace',
+    )
+    assert(
+      snapshotDetail.structuredContent.meta?.identifiers?.snapshotId ===
+        snapshot.snapshotId,
+      'MCP snapshot detail metadata is missing its identifier',
+    )
+    const snapshotTrace = await session.request('tools/call', {
+      name: 'stacknext_get_snapshot_trace',
+      arguments: {
+        snapshotId: snapshot.snapshotId,
+        traceId: snapshot.traceId,
+      },
+    })
+    assert(
+      snapshotTrace.structuredContent?.traceId === snapshot.traceId,
+      'MCP snapshot trace returned the wrong trace',
+    )
+    assert(
+      !snapshotTrace.structuredContent.diagnostics,
+      'MCP snapshot trace contains live diagnostics',
+    )
+    ok('MCP snapshots, detail and scoped trace agree')
 
     if (errorId) {
       const listed = await session.request('tools/call', {
@@ -935,7 +1088,7 @@ async function main() {
     assert(failed.failed === true && failed.statusClass === '5xx', 'failing request status is wrong')
     ok('request list marks slow and failed requests')
 
-    const slowDetail = await api(`/api/requests/${slow.traceId}`)
+    const slowDetail = await api(`/api/traces/${slow.traceId}`)
     assert(slowDetail.spans.length >= 3, 'slow request trace has too few spans')
     assert(slowDetail.databaseQueries.length >= 1, 'slow request has no database query')
     assert(slowDetail.durationMs >= 250, 'slow request trace duration is too low')
@@ -943,7 +1096,7 @@ async function main() {
 
     const custom = requests.items.find((request) => request.route === '/api/custom-work')
     assert(custom, 'custom span request was not captured')
-    const customDetail = await api(`/api/requests/${custom.traceId}`)
+    const customDetail = await api(`/api/traces/${custom.traceId}`)
     const customSpans = customDetail.spans.filter((span) =>
       span.name.startsWith('demo.custom.'),
     )
@@ -979,7 +1132,7 @@ async function main() {
     )
     assert(actionRequests.length >= 6, 'Server Action scenarios were not all captured')
     const actionDetails = await Promise.all(
-      actionRequests.map((request) => api(`/api/requests/${request.traceId}`)),
+      actionRequests.map((request) => api(`/api/traces/${request.traceId}`)),
     )
     const actionSpans = actionDetails
       .flatMap((detail) => detail.spans)
@@ -1078,7 +1231,7 @@ async function main() {
     const diagnostics = await api('/api/diagnostics?limit=100')
     assert(diagnostics.format === undefined || diagnostics.engineVersion, 'diagnostics response is malformed')
     assert(diagnostics.engineVersion === '0.6.1', 'diagnostics engine version mismatch')
-    assert(diagnostics.ruleSetVersion === 1, 'diagnostics rule set version mismatch')
+    assert(diagnostics.ruleSetVersion === 2, 'diagnostics rule set version mismatch')
     assert(diagnostics.sample.requests > 0, 'diagnostics sample has no requests')
     assert(diagnostics.counts.total === diagnostics.items.length, 'diagnostics counts are inconsistent')
     assert(
@@ -1092,6 +1245,14 @@ async function main() {
     )
     assert(nPlusOneFinding, 'N+1 diagnostic finding is missing')
     assert(nPlusOneFinding.status === 'possible', 'N+1 finding status is not possible')
+    assert(
+      nPlusOneFinding.affectedTraceCount >= 1,
+      'N+1 finding has no affected trace count',
+    )
+    assert(
+      nPlusOneFinding.evidence.traces.length >= 1,
+      'N+1 finding has no trace occurrences',
+    )
     assert(nPlusOneFinding.evidence.queries.length >= 5, 'N+1 finding has too little query evidence')
     assert(
       nPlusOneFinding.evidence.queries.every((query) => query.sqlPreview.includes('?')),
@@ -1104,6 +1265,10 @@ async function main() {
     )
     assert(repeatedHttpFinding, 'repeated HTTP diagnostic finding is missing')
     assert(
+      repeatedHttpFinding.affectedTraceCount >= 1,
+      'repeated HTTP finding has no affected trace count',
+    )
+    assert(
       repeatedHttpFinding.evidence.spans.length >= 3,
       'repeated HTTP finding has too little span evidence',
     )
@@ -1113,14 +1278,31 @@ async function main() {
       ),
       'repeated HTTP finding has no normalized endpoint',
     )
+    const slowRequestFinding = diagnostics.items.find(
+      (finding) =>
+        finding.ruleId === 'slow-request' &&
+        finding.traceIds.includes(slowDbRequest.traceId),
+    )
     const slowDbFinding = diagnostics.items.find(
       (finding) =>
         finding.ruleId === 'slow-span' &&
         finding.traceIds.includes(slowDbRequest.traceId) &&
         finding.title.includes('database'),
     )
-    assert(slowDbFinding, 'slow database span finding is missing')
-    assert(slowDbFinding.status === 'observed', 'slow span status is not observed')
+    assert(
+      slowRequestFinding || slowDbFinding,
+      'slow request or slow database span finding is missing',
+    )
+    const slowFinding = slowRequestFinding ?? slowDbFinding
+    assert(slowFinding.status === 'observed', 'slow finding status is not observed')
+    assert(
+      slowFinding.evidence.contributors.length > 0,
+      'slow finding has no self-time contributors',
+    )
+    assert(
+      slowFinding.evidence.traces.length > 0,
+      'slow finding has no trace occurrences',
+    )
     const errorFinding = diagnostics.items.find(
       (finding) => finding.ruleId === 'error-fingerprint',
     )
@@ -1129,6 +1311,20 @@ async function main() {
     assert(
       errorFinding.evidence.errors.length >= 2,
       'repeated error finding has too little evidence',
+    )
+    assert(
+      errorFinding.affectedTraceCount >= 2,
+      'repeated error finding has too few affected traces',
+    )
+    assert(
+      errorFinding.evidence.traces.length >= 2,
+      'repeated error finding has too few trace occurrences',
+    )
+    assert(
+      errorFinding.evidence.errors.some(
+        (entry) => entry.route === '/api/error' && entry.statusCode === 500,
+      ),
+      'repeated error evidence is missing route or status context',
     )
     const serializedDiagnostics = JSON.stringify(diagnostics)
     for (const secret of secrets) {
@@ -1141,7 +1337,7 @@ async function main() {
       !serializedDiagnostics.includes('e2e-url-secret'),
       'URL query secret leaked into diagnostics',
     )
-    ok('diagnostics API reports deterministic N+1, HTTP, slow-span and error findings')
+    ok('diagnostics API reports deterministic grouped N+1, HTTP, slow-request and error findings')
 
     const traceDiagnostics = await api(
       `/api/diagnostics?traceId=${nPlusOneRequest.traceId}`,
@@ -1162,7 +1358,8 @@ async function main() {
       'diagnostic detail returned the wrong finding',
     )
     assert(
-      diagnosticDetail.trace?.traceId === nPlusOneRequest.traceId,
+      diagnosticDetail.finding.traceIds.length > 0 &&
+        diagnosticDetail.trace?.traceId === diagnosticDetail.finding.traceIds[0],
       'diagnostic detail is missing the related trace',
     )
     assert(
@@ -1171,7 +1368,7 @@ async function main() {
       'diagnostic detail has no verification or limitations',
     )
     const requestWithDiagnostics = await api(
-      `/api/requests/${nPlusOneRequest.traceId}`,
+      `/api/traces/${nPlusOneRequest.traceId}`,
     )
     assert(
       requestWithDiagnostics.diagnostics?.some(
@@ -1179,7 +1376,7 @@ async function main() {
       ),
       'request detail does not reference the diagnostic finding',
     )
-    const fixedDetail = await api(`/api/requests/${nPlusOneFixedRequest.traceId}`)
+    const fixedDetail = await api(`/api/traces/${nPlusOneFixedRequest.traceId}`)
     assert(
       !fixedDetail.diagnostics?.some(
         (reference) => reference.ruleId === 'n-plus-one-queries',
@@ -1282,12 +1479,14 @@ async function main() {
 
     const regression = await runRegressionChecks(api, secrets)
 
+    const snapshot = await runSnapshotChecks(api, secrets)
+
     await runMcpChecks(
       runtime,
       error.id,
       nPlusOneFinding.id,
-      nPlusOneRequest.traceId,
       regression,
+      snapshot,
     )
 
     const dashboard = await fetch(`${runtime.dashboardUrl}/`)
@@ -1317,13 +1516,66 @@ async function main() {
     )
     ok('dashboard serves diagnostics and finding detail deep links')
 
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+      const pageErrors = []
+      page.on('pageerror', (error) => pageErrors.push(error.message))
+      await page.goto(`${runtime.dashboardUrl}/diagnostics`, {
+        waitUntil: 'domcontentloaded',
+      })
+      await page.waitForSelector('.finding-row', { timeout: 20_000 })
+      assert(pageErrors.length === 0, `diagnostics dashboard threw: ${pageErrors.join('; ')}`)
+      assert(
+        (await page.locator('.finding-row').count()) > 0,
+        'diagnostics dashboard rendered no findings',
+      )
+      await page.goto(`${runtime.dashboardUrl}/diagnostics/${nPlusOneFinding.id}`, {
+        waitUntil: 'domcontentloaded',
+      })
+      await page.waitForSelector('h1', { timeout: 20_000 })
+      await page.waitForTimeout(500)
+      const detailText = await page.locator('body').innerText()
+      assert(
+        detailText.includes('not a confirmed root cause'),
+        'diagnostic detail is missing its evidence caveat',
+      )
+      assert(
+        detailText.includes('Trace occurrences'),
+        'diagnostic detail has no trace occurrences',
+      )
+      assert(pageErrors.length === 0, `diagnostic detail threw: ${pageErrors.join('; ')}`)
+      ok('diagnostics dashboard renders findings and detail without client errors')
+    } finally {
+      await browser.close()
+    }
+
     for (const [label, pathname] of [
+      ['traces', '/traces'],
+      ['trace detail', `/traces/${slow.traceId}`],
+      ['legacy requests', '/requests'],
+      ['legacy request detail', `/requests/${slow.traceId}`],
       ['runs', '/runs'],
       ['run detail', `/runs/${regression.candidateRunId}`],
       ['baselines', '/baselines'],
       ['baseline detail', `/baselines/${regression.baselineId}`],
       ['comparisons', '/comparisons'],
       ['comparison detail', `/comparisons/${regression.comparisonId}`],
+      ['snapshots', '/snapshots'],
+      ['snapshot detail', `/snapshots/${snapshot.snapshotId}`],
+      ['snapshot traces', `/snapshots/${snapshot.snapshotId}/traces`],
+      [
+        'snapshot trace detail',
+        `/snapshots/${snapshot.snapshotId}/traces/${snapshot.traceId}`,
+      ],
+      ['snapshot errors', `/snapshots/${snapshot.snapshotId}/errors`],
+      [
+        'snapshot error detail',
+        `/snapshots/${snapshot.snapshotId}/errors/${snapshot.errorId}`,
+      ],
+      ['snapshot database', `/snapshots/${snapshot.snapshotId}/database`],
+      ['settings', '/settings'],
+      ['mcp', '/mcp'],
     ]) {
       const page = await fetch(`${runtime.dashboardUrl}${pathname}`)
       assert(page.ok, `${label} dashboard route responded ${page.status}`)
@@ -1332,7 +1584,18 @@ async function main() {
         `${label} dashboard route is missing the React root`,
       )
     }
-    ok('dashboard serves testing list and detail deep links')
+    ok('dashboard serves testing, snapshot, settings and MCP deep links')
+
+    const deleted = JSON.parse(
+      runCli(['snapshot', 'delete', snapshot.snapshotId, '--yes', '--json']),
+    )
+    assert(deleted.deleted === true, 'CLI snapshot delete did not report success')
+    const afterDelete = await api('/api/snapshots?limit=200')
+    assert(
+      !afterDelete.items.some((entry) => entry.id === snapshot.snapshotId),
+      'snapshot is still listed after deletion',
+    )
+    ok('CLI snapshot delete removes the saved snapshot')
 
     completed = true
     console.log(`\n${passed} checks passed.`)

@@ -243,6 +243,15 @@ async function runDevLocked(
       )
     }
     try {
+      await collector.saveSnapshotOnExit()
+    } catch (error) {
+      cleanupFailed = true
+      console.error(
+        style.red('Snapshot save failed:'),
+        error instanceof Error ? error.message : String(error),
+      )
+    }
+    try {
       await collector.close()
     } catch (error) {
       cleanupFailed = true

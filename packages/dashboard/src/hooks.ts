@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export interface AsyncState<T> {
   data: T | null
@@ -9,14 +9,18 @@ export interface AsyncState<T> {
 /**
  * Loads data whenever the key or live refresh counter changes. The loader is
  * read through a ref so callers can pass inline closures without loops.
+ * `suspendInterval` pauses background interval loads without aborting an
+ * in-flight request or changing the refresh key.
  */
 export function useAsync<T>(
   loader: (signal: AbortSignal) => Promise<T>,
   key: string,
   refreshKey = 0,
   intervalMs?: number,
+  suspendInterval = false,
 ): AsyncState<T> & { reload: () => void } {
   const loaderRef = useRef(loader)
+  const suspendIntervalRef = useRef(suspendInterval)
   const [state, setState] = useState<AsyncState<T>>({
     data: null,
     error: null,
@@ -27,6 +31,10 @@ export function useAsync<T>(
   useEffect(() => {
     loaderRef.current = loader
   }, [loader])
+
+  useEffect(() => {
+    suspendIntervalRef.current = suspendInterval
+  }, [suspendInterval])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -54,7 +62,9 @@ export function useAsync<T>(
     load(true)
     let timer: number | undefined
     if (intervalMs && intervalMs > 0) {
-      timer = window.setInterval(() => load(false), intervalMs)
+      timer = window.setInterval(() => {
+        if (!suspendIntervalRef.current) load(false)
+      }, intervalMs)
     }
     return () => {
       cancelled = true
@@ -63,9 +73,13 @@ export function useAsync<T>(
     }
   }, [key, refreshKey, localRefresh, intervalMs])
 
+  const reload = useCallback((): void => {
+    setLocalRefresh((value) => value + 1)
+  }, [])
+
   return {
     ...state,
-    reload: () => setLocalRefresh((value) => value + 1),
+    reload,
   }
 }
 

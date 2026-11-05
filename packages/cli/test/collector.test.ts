@@ -36,6 +36,7 @@ async function createDashboardFixture(): Promise<string> {
     '<!doctype html><html><body><div id="root"></div><script src="/assets/app.js"></script></body></html>',
   )
   await writeFile(path.join(dir, 'assets', 'app.js'), 'console.log("dashboard")\n')
+  await writeFile(path.join(dir, 'site.webmanifest'), '{"name":"StackNext"}\n')
   return dir
 }
 
@@ -125,8 +126,19 @@ describe('local collector', () => {
     expect(requests.items).toHaveLength(1)
     expect(requests.items[0]?.errorCount).toBe(1)
 
+    const tracesResponse = await fetch(
+      `${collector.url}/api/traces?httpOnly=1&status=error&slow=1`,
+      { headers: { authorization: `Bearer ${TOKEN}` } },
+    )
+    const traces = (await tracesResponse.json()) as {
+      items: Array<{ traceId: string; request: { errorCount: number } | null }>
+    }
+    expect(traces.items).toHaveLength(1)
+    expect(traces.items[0]?.traceId).toBe(requests.items[0]?.traceId)
+    expect(traces.items[0]?.request?.errorCount).toBe(1)
+
     const detailResponse = await fetch(
-      `${collector.url}/api/requests/${requests.items[0]?.traceId}`,
+      `${collector.url}/api/traces/${requests.items[0]?.traceId}`,
       { headers: { authorization: `Bearer ${TOKEN}` } },
     )
     expect(detailResponse.status).toBe(200)
@@ -138,6 +150,12 @@ describe('local collector', () => {
     expect(detail.spans).toHaveLength(1)
     expect(detail.errors).toHaveLength(1)
     expect(detail.databaseQueries).toHaveLength(1)
+
+    const legacyDetailResponse = await fetch(
+      `${collector.url}/api/requests/${requests.items[0]?.traceId}`,
+      { headers: { authorization: `Bearer ${TOKEN}` } },
+    )
+    expect(legacyDetailResponse.status).toBe(404)
 
     const summaryResponse = await fetch(`${collector.url}/api/summary`, {
       headers: { authorization: `Bearer ${TOKEN}` },
@@ -265,6 +283,10 @@ describe('local collector', () => {
     const asset = await fetch(`${collector.url}/assets/app.js`)
     expect(asset.status).toBe(200)
     expect(asset.headers.get('cache-control')).toContain('immutable')
+
+    const manifest = await fetch(`${collector.url}/site.webmanifest`)
+    expect(manifest.status).toBe(200)
+    expect(manifest.headers.get('content-type')).toBe('application/manifest+json')
 
     const deepLink = await fetch(`${collector.url}/requests/abc`)
     expect(deepLink.status).toBe(200)
@@ -400,7 +422,7 @@ describe('local collector', () => {
     expect(response.status).toBe(200)
     const list = (await response.json()) as DiagnosticListResponse
     expect(list.engineVersion).toBe('0.6.1')
-    expect(list.ruleSetVersion).toBe(1)
+    expect(list.ruleSetVersion).toBe(2)
     expect(list.sample.spans).toBe(4)
     expect(list.sample.errors).toBe(2)
     expect(list.sample.databaseQueries).toBe(5)
@@ -409,7 +431,7 @@ describe('local collector', () => {
     expect(list.counts.bySeverity.error).toBeGreaterThanOrEqual(1)
     expect(list.items.map((finding) => finding.ruleId)).toEqual(
       expect.arrayContaining([
-        'slow-span',
+        'slow-request',
         'n-plus-one-queries',
         'repeated-external-http',
         'error-fingerprint',
@@ -446,6 +468,8 @@ describe('local collector', () => {
 
     const finding = list.items.find((entry) => entry.ruleId === 'error-fingerprint')
     expect(finding).toBeDefined()
+    expect(finding?.affectedTraceCount).toBeGreaterThanOrEqual(1)
+    expect(list.items.find((entry) => entry.ruleId === 'slow-request')?.evidence.contributors.length).toBeGreaterThan(0)
     const detailResponse = await fetch(
       `${collector.url}/api/diagnostics/${finding!.id}`,
       { headers: { authorization: `Bearer ${TOKEN}` } },
@@ -469,7 +493,7 @@ describe('local collector', () => {
     expect(malformed.status).toBe(400)
 
     const requestDetail = (await (
-      await fetch(`${collector.url}/api/requests/${TRACE}`, {
+      await fetch(`${collector.url}/api/traces/${TRACE}`, {
         headers: { authorization: `Bearer ${TOKEN}` },
       })
     ).json()) as { diagnostics?: Array<{ id: string }> }

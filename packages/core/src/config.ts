@@ -56,6 +56,7 @@ export const stackNextConfigSchema = z
             databaseMs: z.number().int().min(1).max(600_000).default(250),
             httpMs: z.number().int().min(1).max(600_000).default(500),
             customMs: z.number().int().min(1).max(600_000).default(300),
+            frameworkMs: z.number().int().min(1).max(600_000).default(500),
             otherMs: z.number().int().min(1).max(600_000).default(500),
           })
           .strict()
@@ -63,6 +64,7 @@ export const stackNextConfigSchema = z
             databaseMs: 250,
             httpMs: 500,
             customMs: 300,
+            frameworkMs: 500,
             otherMs: 500,
           }),
         repeatedHttpMin: z.number().int().min(2).max(100).default(3),
@@ -78,6 +80,7 @@ export const stackNextConfigSchema = z
           databaseMs: 250,
           httpMs: 500,
           customMs: 300,
+          frameworkMs: 500,
           otherMs: 500,
         },
         repeatedHttpMin: 3,
@@ -86,6 +89,25 @@ export const stackNextConfigSchema = z
         maxFindings: 100,
       }),
     slowRequestMs: z.number().int().min(1).max(600_000).default(500),
+    snapshots: z
+      .object({
+        autoOnExit: z.boolean().default(true),
+        autoOnError: z.boolean().default(true),
+        autoKeep: z.number().int().min(1).max(100).default(10),
+        maxBytes: z
+          .number()
+          .int()
+          .min(1_048_576)
+          .max(268_435_456)
+          .default(67_108_864),
+      })
+      .strict()
+      .default({
+        autoOnExit: true,
+        autoOnError: true,
+        autoKeep: 10,
+        maxBytes: 67_108_864,
+      }),
   })
   .strict()
 

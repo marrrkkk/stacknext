@@ -128,6 +128,35 @@ describe('TelemetryStore', () => {
     expect(store.listRequests({ limit: 1 }).items).toHaveLength(1)
   })
 
+  it('filters traces to HTTP requests and supports request filters', () => {
+    const store = new TelemetryStore({ now: () => 5_000 })
+    store.ingest(envelope(), 5_000)
+    store.ingest(
+      envelope({
+        spans: [
+          fetchSpan({
+            traceId: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+            spanId: '4444444444444444',
+            parentSpanId: '9999999999999999',
+          }),
+        ],
+        errors: [],
+        databaseQueries: [],
+      }),
+      5_000,
+    )
+
+    expect(store.listTraces({}).total).toBe(2)
+    expect(store.listTraces({ httpOnly: true }).total).toBe(1)
+    expect(store.listTraces({ httpOnly: true }).items[0]?.request?.traceId).toBe(TRACE_ID)
+    expect(store.listTraces({ q: 'test-app' }).total).toBe(2)
+    expect(store.listTraces({ method: 'GET' }).total).toBe(1)
+    expect(store.listTraces({ status: '2xx' }).total).toBe(1)
+    expect(store.listTraces({ slow: true }, 100).total).toBe(1)
+    expect(store.listTraces({ minDuration: 100 }).total).toBe(1)
+    expect(store.listRequests({ httpOnly: false }).total).toBe(1)
+  })
+
   it('drops the oldest events when capacity is reached', () => {
     const store = new TelemetryStore({ maxSpans: 2, now: () => 5_000 })
     store.ingest(envelope(), 5_000)

@@ -8,6 +8,7 @@ export default defineConfig({
     alias: {
       '@stacknext/core/transport': `${root}packages/core/src/transport.ts`,
       '@stacknext/core/config-file': `${root}packages/core/src/config-file.ts`,
+      '@stacknext/core/snapshots': `${root}packages/core/src/snapshots.ts`,
       '@stacknext/core': `${root}packages/core/src/index.ts`,
       '@stacknext/diagnostics': `${root}packages/diagnostics/src/index.ts`,
       '@stacknext/regression': `${root}packages/regression/src/index.ts`,

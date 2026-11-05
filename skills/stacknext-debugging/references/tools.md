@@ -1,6 +1,6 @@
 # StackNext MCP tool reference
 
-All seventeen tools are read-only, idempotent and restricted to the local
+All twenty tools are read-only, idempotent and restricted to the local
 collector. Tool text content is pretty-printed JSON; clients that support
 structured content also receive the same object in `structuredContent`. The
 object always contains the tool payload plus a top-level `meta` object.
@@ -79,11 +79,12 @@ immutable snapshots and are never deleted by these tools.
   `configured`, `notObserved`, `unsupported`, `unknown`,
   `requestsInSample`). It also returns the full `coverage` report.
 - Detail responses also include `meta.identifiers`, for example
-  `{ "traceId": "..." }`, `{ "runId": "run-..." }` or
-  `{ "comparisonId": "cmp-..." }`.
+  `{ "traceId": "..." }`, `{ "runId": "run-..." }`,
+  `{ "comparisonId": "cmp-..." }` or `{ "snapshotId": "snap-..." }`.
 - Times in payloads are Unix epoch milliseconds. Metadata times are ISO 8601
   strings. Regression records use their own `createdAt` timestamps and are not
-  limited by the telemetry retention window.
+  limited by the telemetry retention window. Snapshot records use their save
+  time and sample window.
 
 ## get_project_summary
 
@@ -119,9 +120,10 @@ counts, `failed`, `slow` and service name.
 
 Arguments: `traceId` (32 hexadecimal characters).
 
-Returns the request summary, every captured span, correlated errors and database
-queries, start/end/duration and `missingParentSpanIds`. The request may be
-`null` when the trace exists but no request root was derived.
+Compatibility alias for `get_trace`, kept for clients that use the request
+vocabulary. Returns the same detail: request summary (or `null` when no request
+root was derived), every captured span, correlated errors and database queries,
+start/end/duration and `missingParentSpanIds`.
 
 Use the span tree to find the longest span, the failing span, or the gap between
 request start and first child.
@@ -139,9 +141,8 @@ optional request summary.
 Arguments: `traceId` (32 hexadecimal characters).
 
 Returns the same detail shape as `get_request`, plus an additive `diagnostics`
-array of finding references that mention this trace. Prefer `get_trace` when you
-do not know whether the id has a request root; prefer `get_request` when the user
-gave you a request trace id.
+array of finding references that mention this trace. This is the canonical
+detail tool; `get_request` is a compatibility alias for the same data.
 
 Each reference has `id`, `ruleId`, `category`, `severity`, `status` and `title`.
 The array is a pointer, not a second full trace: call
@@ -201,22 +202,27 @@ ruleSetVersion, sample, counts, notes, limitations, meta }`.
 - `category`: `database`, `http`, `performance`, `errors` or `runtime`.
 - `severity`: `info`, `warning` or `error`.
 - `status`: `observed`, `possible` or `insufficient-evidence`.
-- `ruleId`: `n-plus-one-queries`, `slow-span`, `repeated-external-http` or
-  `error-fingerprint`.
+- `ruleId`: `n-plus-one-queries`, `slow-request`, `slow-span`,
+  `repeated-external-http`, `error-fingerprint` or `server-error-response`.
 - `since`/`until` are epoch milliseconds and filter the finding window.
 
 Findings are deterministic heuristics over the current retention window. Read
-`sample`, `notes` and `limitations` before drawing conclusions. `total` is the
-number of matching findings; `items` is the current page. Use
-`stacknext_get_diagnostic` to inspect one.
+`sample`, `notes` and `limitations` before drawing conclusions. `sample`
+includes request-trace and attribution integrity counts, so detached traces and
+ignored control-flow errors stay visible. `total` is the number of matching
+findings; `items` is the current page. Findings are already grouped by rule and
+canonical route; use `affectedTraceCount` and `evidence.traces` for occurrence
+evidence. Use `stacknext_get_diagnostic` to inspect one.
 
 ## stacknext_get_diagnostic
 
 Arguments: `diagnosticId` in the form `diag-xxxxxxxx-xxxxxxxx`.
 
 Returns `{ finding, trace, meta }`. `finding` contains the rule, category,
-severity, status, route, time window, fingerprint, bounded evidence,
-`verification` steps and `limitations`. `trace` is a related trace context
+severity, status, route, time window, affected trace count, fingerprint, bounded
+evidence, `verification` steps and `limitations`. Evidence may include self-time
+`contributors`, per-trace `traces` occurrences, span self time and Next.js
+`nextPhase` values. `trace` is a related trace context
 bounded by the server, or `null` when the evidence aged out. Use `get_trace` for
 the complete span tree when the detail response is truncated.
 
@@ -297,6 +303,39 @@ Comparisons use medians and explicit thresholds. They are not significance
 tests and do not prove causality. Read the reasons and metrics before explaining
 a result.
 
+## stacknext_list_snapshots
+
+Arguments: `limit`, `offset`.
+
+Returns `{ items, total, limit, offset, invalid, meta }`. Each item includes
+`id` (`snap-<16 hex>`), `createdAt`, `source` (`manual`, `exit`, `error` or
+`import`), `projectName`, `collectorVersion`, optional `label`, `sample`
+(`firstEventTime`, `lastEventTime`, `retentionMs`), `stats` and `bytes`.
+`invalid` counts unreadable summary files that are left on disk rather than
+repaired or deleted.
+
+## stacknext_get_snapshot
+
+Arguments: `snapshotId` (`snap-<16 hex>`).
+
+Returns `{ snapshot, config, limitations, traces, errors, databaseQueries,
+meta }`. The first 20 traces, errors and queries are included. `config` is the
+captured collector config, not current live config. `meta.identifiers` carries
+the `snapshotId`.
+
+A snapshot has no diagnostics or coverage and never updates. Use
+`stacknext_get_snapshot_trace` for one full scoped trace.
+
+## stacknext_get_snapshot_trace
+
+Arguments: `snapshotId` (`snap-<16 hex>`), `traceId` (32 hexadecimal
+characters).
+
+Returns the same trace detail shape as `get_trace`, scoped to the frozen
+snapshot, plus `meta`. It intentionally has no `diagnostics` array. A missing
+trace or snapshot returns `isError: true`; use the list/detail tools to find
+current ids.
+
 ## Error responses
 
 Tool failures return `isError: true` with a short text message and no structured
@@ -318,8 +357,13 @@ content. Typical messages:
 - `No baseline with id ... was found ...` — use `stacknext_list_baselines`.
 - `No comparison with id ... was found ...` — use
   `stacknext_list_comparisons`.
+- `No snapshot with id ... was found ...` — the snapshot id is wrong or the
+  record is outside the collector's project directory. Use
+  `stacknext_list_snapshots`.
+- `No trace ... was found in snapshot ...` — use `stacknext_get_snapshot` to
+  see the traces stored in that snapshot.
 
 Do not treat an empty result as a tool failure. Empty results are successful
-responses with `total: 0` and a completeness reason. Missing regression records
-mean the MCP server has nothing saved to read; they do not justify creating a
-record from telemetry.
+responses with `total: 0` and a completeness reason. Missing regression or
+snapshot records mean the MCP server has nothing saved to read; they do not
+justify creating a record from telemetry.

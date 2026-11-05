@@ -25,6 +25,9 @@ const TOOL_NAMES = [
   'stacknext_get_baseline',
   'stacknext_list_comparisons',
   'stacknext_get_comparison',
+  'stacknext_list_snapshots',
+  'stacknext_get_snapshot',
+  'stacknext_get_snapshot_trace',
 ]
 
 interface Frontmatter {
@@ -93,7 +96,7 @@ describe('stacknext-debugging Agent Skill', () => {
     }
   })
 
-  it('documents every MCP tool and all six workflows', async () => {
+  it('documents every MCP tool and all seven workflows', async () => {
     const skill = await readFile(SKILL_FILE, 'utf8')
     const tools = await readFile(path.join(SKILL_DIR, 'references', 'tools.md'), 'utf8')
     const workflows = await readFile(
@@ -112,6 +115,7 @@ describe('stacknext-debugging Agent Skill', () => {
       'Workflow D: general runtime investigation',
       'Workflow E: diagnostic findings',
       'Workflow F: runtime regression evidence',
+      'Workflow G: saved snapshot evidence',
     ]) {
       expect(skill).toContain(heading)
       expect(workflows).toContain(heading)
@@ -127,12 +131,15 @@ describe('stacknext-debugging Agent Skill', () => {
     }
     expect(skill).toContain('Mandatory reasoning rules')
     expect(skill).toContain('not confirmed root causes')
-    expect(skill).toContain('seventeen')
-    expect(tools).toContain('seventeen tools')
+    expect(skill).toContain('twenty')
+    expect(tools).toContain('twenty tools')
     expect(tools).toContain('run-<16 hex>')
     expect(tools).toContain('base-<16 hex>')
     expect(tools).toContain('cmp-<16 hex>')
+    expect(tools).toContain('snap-<16 hex>')
     expect(skill).toContain('inconclusive')
+    expect(skill).toContain('snapshot')
+    expect(workflows).toContain('saved snapshot evidence')
   })
 
   it('records the eight-scenario agent test results honestly', async () => {
@@ -186,7 +193,7 @@ describe('stacknext-debugging Agent Skill', () => {
     expect(setup).toMatch(/no cloud account/i)
     expect(setup).toContain('read-only')
     expect(setup).toContain('0600')
-    expect(setup).toContain('seventeen tools')
+    expect(setup).toContain('twenty tools')
     expect(setup).toContain('baseline save')
     expect(setup).toContain('MCP is read-only')
   })

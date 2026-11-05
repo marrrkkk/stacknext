@@ -62,6 +62,7 @@ const environment: EnvironmentSnapshot = {
     captureErrors: true,
   },
   sdkVersion: '0.6.1',
+  diagnostics: { ruleSetVersion: 2 },
   playwrightVersion: '1.58.2',
 }
 
@@ -655,6 +656,41 @@ describe('deterministic comparison', () => {
     expect(mismatch.status).toBe('inconclusive')
     expect(mismatch.environment.compatible).toBe(false)
     expect(mismatch.environment.differences[0]?.field).toBe('nodeVersion')
+  })
+
+  it('makes diagnostics rule set mismatches inconclusive even with an environment override', () => {
+    const base = baseline({
+      environment: { ...environment, diagnostics: { ruleSetVersion: 1 } },
+    })
+    const candidate = run()
+    const mismatch = compareBaseline(
+      base,
+      candidate,
+      { minSamples: 1, ignoreEnvironment: true },
+      { id: `cmp-${'d'.repeat(16)}`, now: 9_500 },
+    )
+    expect(mismatch.status).toBe('inconclusive')
+    expect(mismatch.environment.differences).toContainEqual({
+      field: 'diagnostics.ruleSetVersion',
+      baseline: '1',
+      candidate: '2',
+    })
+    expect(mismatch.warnings.join(' ')).toContain('rule set versions are different')
+
+    const unknown = baseline({
+      environment: {
+        ...environment,
+        diagnostics: undefined,
+      },
+    })
+    const missing = compareBaseline(
+      unknown,
+      candidate,
+      { minSamples: 1 },
+      { id: `cmp-${'e'.repeat(16)}`, now: 9_600 },
+    )
+    expect(missing.status).toBe('inconclusive')
+    expect(missing.warnings.join(' ')).toContain('rule set versions are unknown')
   })
 
   it('allows an explicit environment override with a warning', () => {

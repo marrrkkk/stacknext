@@ -69,6 +69,8 @@ export interface StackNextError {
   routerKind?: string
   routeType?: string
   renderSource?: string
+  /** Next.js 16 render type, for example dynamic or dynamic-resume. */
+  renderType?: string
   traceId?: string
   spanId?: string
   attributes: Record<string, unknown>
@@ -130,6 +132,7 @@ export type StackNextDatabaseQueryInput = Omit<StackNextDatabaseQuery, 'received
 export type RequestStatusClass = '2xx' | '3xx' | '4xx' | '5xx' | 'none'
 
 export interface RequestSummary {
+  /** @deprecated Always equals `traceId`. Use `traceId`. */
   id: string
   traceId: string
   name: string
@@ -261,6 +264,8 @@ export interface RequestFilters {
   status?: string
   slow?: boolean
   minDuration?: number
+  /** Restrict results to traces that have an HTTP request root. */
+  httpOnly?: boolean
   sort?: 'recent' | 'oldest' | 'slowest'
 }
 
@@ -377,6 +382,12 @@ export interface HealthResponse {
     errors: number
     databaseQueries: number
   }
+  /** Current live sample window. Additive in StackNext 0.7. */
+  sample: {
+    firstEventTime: number | null
+    lastEventTime: number | null
+    retentionMs: number
+  }
   store: {
     spansReceived: number
     errorsReceived: number
@@ -443,6 +454,67 @@ export interface ExportResponse {
   /** Additive deterministic diagnostic report (StackNext 0.4+). */
   diagnostics?: DiagnosticReport
   limitations: string[]
+}
+
+export const SNAPSHOT_SOURCES = ['manual', 'exit', 'error', 'import'] as const
+export type SnapshotSource = (typeof SNAPSHOT_SOURCES)[number]
+
+export interface SnapshotStats {
+  requests: number
+  errors: number
+  databaseQueries: number
+  spans: number
+}
+
+export interface SnapshotSample {
+  firstEventTime: number | null
+  lastEventTime: number | null
+  retentionMs: number
+}
+
+export interface SnapshotSummary {
+  id: string
+  createdAt: number
+  source: SnapshotSource
+  projectName: string
+  collectorVersion: string
+  label?: string
+  sample: SnapshotSample
+  stats: SnapshotStats
+  /** Serialized payload size in bytes. */
+  bytes: number
+}
+
+/** Frozen, redacted telemetry stored under .stacknext/snapshots. */
+export interface SnapshotPayload {
+  format: 'stacknext-snapshot'
+  version: 1
+  id: string
+  createdAt: number
+  source: SnapshotSource
+  projectName: string
+  collectorVersion: string
+  label?: string
+  config: StackNextConfig
+  sample: SnapshotSample
+  spans: StackNextSpan[]
+  errors: StackNextError[]
+  databaseQueries: StackNextDatabaseQuery[]
+  stats: SnapshotStats
+  limitations: string[]
+}
+
+export interface SnapshotListResponse extends PageResult<SnapshotSummary> {
+  invalid: number
+}
+
+export interface SnapshotDetailResponse {
+  snapshot: SnapshotSummary
+  config: StackNextConfig
+  limitations: string[]
+  traces: TraceSummary[]
+  errors: ErrorListItem[]
+  databaseQueries: DatabaseQueryListItem[]
 }
 
 export interface ApiErrorResponse {

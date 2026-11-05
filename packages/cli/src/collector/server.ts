@@ -42,7 +42,26 @@ import {
   type TraceDetail,
   type TraceListResult,
   type StackNextExporterDiagnostics,
+  type SnapshotDetailResponse,
+  type SnapshotListResponse,
+  type SnapshotPayload,
+  type SnapshotSummary,
 } from '@stacknext/core'
+import {
+  SnapshotStorageError,
+  createSnapshotPayload,
+  createSnapshotView,
+  importSnapshot,
+  listSnapshots,
+  loadSnapshotPayload,
+  removeSnapshot,
+  rotateAutomaticSnapshots,
+  saveSnapshot,
+  snapshotExport,
+  snapshotPath,
+  snapshotSummary,
+  isSnapshotId,
+} from '@stacknext/core/snapshots'
 import {
   diagnosticOverview as buildDiagnosticOverview,
   generateDiagnosticReport,
@@ -77,6 +96,16 @@ const CONNECTION_RETENTION_MS = 10 * 60 * 1_000
 const MAX_SSE_CLIENTS = 50
 const SSE_HEARTBEAT_MS = 15_000
 const MAX_SESSIONS = 100
+const AUTO_ERROR_COOLDOWN_MS = 60_000
+const MAX_SNAPSHOT_BODY_BYTES = 64 * 1024
+const MAX_SNAPSHOT_CACHE_ENTRIES = 3
+
+interface SnapshotCacheEntry {
+  mtimeMs: number
+  bytes: number
+  payload: SnapshotPayload
+  store: TelemetryStore
+}
 
 export interface StartCollectorOptions {
   port: number
@@ -101,6 +130,8 @@ export interface CollectorHandle {
   token: string
   store: TelemetryStore
   health: () => HealthResponse
+  /** Saves the current sample before shutdown when snapshots.autoOnExit is on. */
+  saveSnapshotOnExit: () => Promise<SnapshotSummary | null>
   close: () => Promise<void>
 }
 
@@ -253,6 +284,9 @@ function filtersFromSearch(searchParams: URLSearchParams): RequestFilters {
     ...(queryNumber(searchParams.get('minDuration')) !== undefined
       ? { minDuration: queryNumber(searchParams.get('minDuration')) }
       : {}),
+    ...(queryBoolean(searchParams.get('httpOnly')) !== undefined
+      ? { httpOnly: queryBoolean(searchParams.get('httpOnly')) }
+      : {}),
     ...(sort === 'recent' || sort === 'oldest' || sort === 'slowest' ? { sort } : {}),
   }
 }
@@ -377,6 +411,8 @@ function contentTypeFor(file: string): string {
       return 'text/css; charset=utf-8'
     case '.json':
       return 'application/json; charset=utf-8'
+    case '.webmanifest':
+      return 'application/manifest+json'
     case '.svg':
       return 'image/svg+xml'
     case '.png':
@@ -525,6 +561,11 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
         errors: summary.errorCount,
         databaseQueries: summary.databaseQueryCount,
       },
+      sample: {
+        firstEventTime: summary.firstEventTime,
+        lastEventTime: summary.lastEventTime,
+        retentionMs: store.retentionMs,
+      },
       store: storeStats,
       server: {
         ...serverStats,
@@ -566,6 +607,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
           projectName: options.projectName,
           collectorVersion: options.version ?? VERSION,
           config: options.config.diagnostics,
+          slowRequestMs: options.config.slowRequestMs,
           generatedAt: now,
           connected: connectionList.some((connection) => connection.connected),
           connectedInstances: connectionList.filter((connection) => connection.connected).length,
@@ -588,6 +630,339 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
   }
 
   const getDiagnosticReport = (): DiagnosticReport => getDiagnosticState().report
+
+  const snapshotCache = new Map<string, SnapshotCacheEntry>()
+  let autoSaveQueue: Promise<void> = Promise.resolve()
+  let lastAutoErrorSnapshotAt = 0
+
+  const projectDir = options.projectDir
+  const snapshotMaxBytes = options.config.snapshots.maxBytes
+
+  const snapshotHasData = (payload: SnapshotPayload): boolean =>
+    payload.spans.length > 0 ||
+    payload.errors.length > 0 ||
+    payload.databaseQueries.length > 0
+
+  const saveCurrentSnapshot = async (
+    source: SnapshotPayload['source'],
+    saveOptions: { label?: string; allowEmpty?: boolean } = {},
+  ): Promise<SnapshotSummary | null> => {
+    if (!projectDir) {
+      throw new SnapshotStorageError(
+        'invalid',
+        'Snapshot storage needs a project directory. Start StackNext with "stacknext dev" from the app directory.',
+      )
+    }
+    const payload = createSnapshotPayload({
+      store,
+      source,
+      projectName: options.projectName,
+      collectorVersion: options.version ?? VERSION,
+      config: options.config,
+      slowRequestMs: options.config.slowRequestMs,
+      ...(saveOptions.label ? { label: saveOptions.label } : {}),
+    })
+    if (!saveOptions.allowEmpty && !snapshotHasData(payload)) return null
+    const saved = await saveSnapshot(projectDir, payload, { maxBytes: snapshotMaxBytes })
+    if (source === 'exit' || source === 'error') {
+      await rotateAutomaticSnapshots(projectDir, options.config.snapshots.autoKeep).catch(
+        (error) => {
+          log(
+            `could not rotate automatic snapshots: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          )
+        },
+      )
+    }
+    return saved
+  }
+
+  const enqueueAutoErrorSnapshot = (): void => {
+    if (!options.config.snapshots.autoOnError) return
+    const now = Date.now()
+    if (now - lastAutoErrorSnapshotAt < AUTO_ERROR_COOLDOWN_MS) return
+    lastAutoErrorSnapshotAt = now
+    autoSaveQueue = autoSaveQueue
+      .then(async () => {
+        const saved = await saveCurrentSnapshot('error')
+        if (saved) log(`automatic error snapshot saved (${saved.id})`)
+      })
+      .catch((error) => {
+        log(
+          `automatic error snapshot failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        )
+      })
+  }
+
+  const snapshotView = async (id: string): Promise<SnapshotCacheEntry> => {
+    if (!projectDir) {
+      throw new SnapshotStorageError('not-found', 'Snapshot storage is not available.')
+    }
+    if (!isSnapshotId(id)) {
+      throw new SnapshotStorageError('invalid', `Invalid snapshot id "${id}".`)
+    }
+    const file = snapshotPath(projectDir, id)
+    let info
+    try {
+      info = await stat(file)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        throw new SnapshotStorageError('not-found', 'Snapshot not found.')
+      }
+      throw error
+    }
+    const cached = snapshotCache.get(id)
+    if (cached && cached.mtimeMs === info.mtimeMs) {
+      snapshotCache.delete(id)
+      snapshotCache.set(id, cached)
+      return cached
+    }
+    const payload = await loadSnapshotPayload(projectDir, id, { maxBytes: snapshotMaxBytes })
+    const entry: SnapshotCacheEntry = {
+      mtimeMs: info.mtimeMs,
+      bytes: info.size,
+      payload,
+      store: createSnapshotView(payload),
+    }
+    snapshotCache.set(id, entry)
+    while (snapshotCache.size > MAX_SNAPSHOT_CACHE_ENTRIES) {
+      const oldest = snapshotCache.keys().next().value
+      if (oldest === undefined) break
+      snapshotCache.delete(oldest)
+    }
+    return entry
+  }
+
+  const sendSnapshotError = (response: ServerResponse, error: unknown): void => {
+    if (error instanceof SnapshotStorageError) {
+      if (error.code === 'not-found') {
+        sendError(response, 404, error.message)
+      } else if (error.code === 'too-large') {
+        sendError(response, 413, error.message)
+      } else if (error.code === 'exists') {
+        sendError(response, 409, error.message)
+      } else {
+        sendError(response, 422, error.message)
+      }
+      return
+    }
+    log(
+      `snapshot operation failed: ${error instanceof Error ? error.message : String(error)}`,
+    )
+    sendError(response, 500, 'Snapshot operation failed')
+  }
+
+  const handleSnapshotWrite = async (
+    request: IncomingMessage,
+    response: ServerResponse,
+    url: URL,
+  ): Promise<void> => {
+    if (!isReadAuthorized(request)) {
+      serverStats.rejectedRequests += 1
+      sendError(response, 401, 'Unauthorized')
+      return
+    }
+    if (request.method === 'POST' && url.pathname === '/api/snapshots/import') {
+      if (!projectDir) {
+        sendSnapshotError(
+          response,
+          new SnapshotStorageError(
+            'invalid',
+            'Snapshot storage needs a project directory. Start StackNext with "stacknext dev" from the app directory.',
+          ),
+        )
+        return
+      }
+      const contentType = String(request.headers['content-type'] ?? '')
+      if (!contentType.toLowerCase().includes('application/json')) {
+        sendError(response, 415, 'Content-Type must be application/json')
+        return
+      }
+      const body = await readBody(request, snapshotMaxBytes)
+      if (!body.ok) {
+        sendError(response, 413, `Snapshot import exceeds ${snapshotMaxBytes} bytes.`)
+        return
+      }
+      try {
+        const snapshot = await importSnapshot(projectDir, body.body, {
+          maxBytes: snapshotMaxBytes,
+        })
+        sendJson(response, 201, { snapshot })
+      } catch (error) {
+        sendSnapshotError(response, error)
+      }
+      return
+    }
+    if (request.method === 'DELETE') {
+      const id = decodeURIComponent(url.pathname.slice('/api/snapshots/'.length))
+      if (!isSnapshotId(id)) {
+        sendError(response, 400, 'Invalid snapshot id')
+        return
+      }
+      if (!projectDir) {
+        sendError(response, 404, 'Snapshot not found')
+        return
+      }
+      try {
+        const removed = await removeSnapshot(projectDir, id)
+        snapshotCache.delete(id)
+        if (!removed) {
+          sendError(response, 404, 'Snapshot not found')
+          return
+        }
+        sendJson(response, 200, { deleted: true, id })
+      } catch (error) {
+        sendSnapshotError(response, error)
+      }
+      return
+    }
+
+    const contentType = String(request.headers['content-type'] ?? '')
+    if (!contentType.toLowerCase().includes('application/json')) {
+      sendError(response, 415, 'Content-Type must be application/json')
+      return
+    }
+    const body = await readBody(request, MAX_SNAPSHOT_BODY_BYTES)
+    if (!body.ok) {
+      sendError(response, 413, `Snapshot request exceeds ${MAX_SNAPSHOT_BODY_BYTES} bytes`)
+      return
+    }
+    let label: string | undefined
+    if (body.body.trim() !== '') {
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(body.body)
+      } catch {
+        sendError(response, 400, 'Malformed JSON payload')
+        return
+      }
+      if (parsed && typeof parsed === 'object' && 'label' in parsed) {
+        const value = (parsed as { label?: unknown }).label
+        if (value !== undefined && value !== null) {
+          if (typeof value !== 'string' || value.trim().length === 0 || value.length > 200) {
+            sendError(response, 422, 'Snapshot label must be 1-200 characters')
+            return
+          }
+          label = value.trim()
+        }
+      }
+    }
+    try {
+      const saved = await saveCurrentSnapshot('manual', {
+        ...(label ? { label } : {}),
+      })
+      if (!saved) {
+        sendError(response, 409, 'No telemetry in the current sample to save')
+        return
+      }
+      sendJson(response, 201, { snapshot: saved })
+    } catch (error) {
+      sendSnapshotError(response, error)
+    }
+  }
+
+  const handleSnapshotApi = async (
+    request: IncomingMessage,
+    response: ServerResponse,
+    url: URL,
+    id: string,
+    suffix: string,
+  ): Promise<void> => {
+    try {
+      if (suffix === '' || suffix === '/') {
+        const entry = await snapshotView(id)
+        const detail: SnapshotDetailResponse = {
+          snapshot: snapshotSummary(entry.payload, entry.bytes),
+          config: entry.payload.config,
+          limitations: entry.payload.limitations,
+          traces: entry.store.listTraces(
+            { limit: 20 },
+            options.config.slowRequestMs,
+          ).items,
+          errors: entry.store.listErrors({ limit: 20 }).items,
+          databaseQueries: entry.store.listDatabaseQueries({ limit: 20 }).items,
+        }
+        sendJson(response, 200, detail)
+        return
+      }
+      if (suffix === '/export') {
+        const entry = await snapshotView(id)
+        sendJson(response, 200, snapshotExport(entry.payload), {
+          'content-disposition': `attachment; filename="stacknext-${entry.payload.projectName.replace(/[^a-z0-9_-]+/gi, '-')}-${id}.json"`,
+        })
+        return
+      }
+      if (suffix === '/traces') {
+        const entry = await snapshotView(id)
+        sendJson(
+          response,
+          200,
+          entry.store.listTraces(
+            filtersFromSearch(url.searchParams),
+            options.config.slowRequestMs,
+          ),
+        )
+        return
+      }
+      if (suffix.startsWith('/traces/')) {
+        const traceId = decodeURIComponent(suffix.slice('/traces/'.length))
+        if (!/^[0-9a-f]{32}$/i.test(traceId)) {
+          sendError(response, 400, 'Invalid trace id')
+          return
+        }
+        const entry = await snapshotView(id)
+        const detail = entry.store.getTrace(traceId, options.config.slowRequestMs)
+        if (!detail) {
+          sendError(response, 404, 'Trace not found in snapshot')
+          return
+        }
+        sendJson(response, 200, detail)
+        return
+      }
+      if (suffix === '/errors') {
+        const entry = await snapshotView(id)
+        const result = entry.store.listErrors(errorFiltersFromSearch(url.searchParams))
+        const payload: ErrorListResponse = {
+          items: result.items,
+          total: result.total,
+          limit: result.limit,
+          offset: result.offset,
+          groups: result.groups,
+        }
+        sendJson(response, 200, payload)
+        return
+      }
+      if (suffix.startsWith('/errors/')) {
+        const errorId = decodeURIComponent(suffix.slice('/errors/'.length))
+        if (!errorId || errorId.length > 128) {
+          sendError(response, 400, 'Invalid error id')
+          return
+        }
+        const entry = await snapshotView(id)
+        const detail = entry.store.getError(errorId, options.config.slowRequestMs)
+        if (!detail) {
+          sendError(response, 404, 'Error not found in snapshot')
+          return
+        }
+        const payload: ErrorDetailResponse = detail
+        sendJson(response, 200, payload)
+        return
+      }
+      if (suffix === '/database') {
+        const entry = await snapshotView(id)
+        const result: PageResult<DatabaseQueryListItem> =
+          entry.store.listDatabaseQueries(databaseFiltersFromSearch(url.searchParams))
+        sendJson(response, 200, result)
+        return
+      }
+      sendError(response, 404, 'Not found')
+    } catch (error) {
+      sendSnapshotError(response, error)
+    }
+  }
 
   const testRuns = new TestRunRegistry({
     slowRequestMs: options.config.slowRequestMs,
@@ -838,6 +1213,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
         time: now,
       })
     }
+    if (envelope.errors.length > 0) enqueueAutoErrorSnapshot()
     sendJson(
       response,
       202,
@@ -1227,20 +1603,6 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
       )
       return
     }
-    if (pathname.startsWith('/api/requests/')) {
-      const traceId = pathname.slice('/api/requests/'.length)
-      if (!/^[0-9a-f]{32}$/i.test(traceId)) {
-        sendError(response, 400, 'Invalid trace id')
-        return
-      }
-      const detail = store.getRequest(traceId, options.config.slowRequestMs)
-      if (!detail) {
-        sendError(response, 404, 'Request not found')
-        return
-      }
-      sendJson(response, 200, traceWithDiagnostics(detail))
-      return
-    }
     if (pathname === '/api/traces') {
       const result: TraceListResult = store.listTraces(
         filtersFromSearch(url.searchParams),
@@ -1295,6 +1657,44 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
         databaseFiltersFromSearch(url.searchParams),
       )
       sendJson(response, 200, result)
+      return
+    }
+    if (pathname === '/api/snapshots') {
+      if (!projectDir) {
+        const empty: SnapshotListResponse = {
+          items: [],
+          total: 0,
+          limit: 50,
+          offset: 0,
+          invalid: 0,
+        }
+        sendJson(response, 200, empty)
+        return
+      }
+      try {
+        const page = await listSnapshots(projectDir, {
+          ...(queryNumber(url.searchParams.get('limit')) !== undefined
+            ? { limit: queryNumber(url.searchParams.get('limit')) }
+            : {}),
+          ...(queryNumber(url.searchParams.get('offset')) !== undefined
+            ? { offset: queryNumber(url.searchParams.get('offset')) }
+            : {}),
+        })
+        const payload: SnapshotListResponse = page
+        sendJson(response, 200, payload)
+      } catch (error) {
+        sendSnapshotError(response, error)
+      }
+      return
+    }
+    if (pathname.startsWith('/api/snapshots/')) {
+      const match = /^\/api\/snapshots\/([^/]+)(\/.*)?$/.exec(pathname)
+      const id = match?.[1] ? decodeURIComponent(match[1]) : ''
+      if (!isSnapshotId(id)) {
+        sendError(response, 400, 'Invalid snapshot id')
+        return
+      }
+      await handleSnapshotApi(request, response, url, id, match?.[2] ?? '')
       return
     }
     if (pathname === '/api/export') {
@@ -1366,14 +1766,36 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
         const testRunWrite =
           url.pathname === '/api/test-runs' ||
           url.pathname.startsWith('/api/test-runs/')
+        const snapshotWrite =
+          url.pathname === '/api/snapshots' ||
+          url.pathname.startsWith('/api/snapshots/')
         if (request.method === 'POST' && testRunWrite) {
           await handleTestRunWrite(request, response, url)
+          return
+        }
+        if (request.method === 'POST' && url.pathname === '/api/snapshots/import') {
+          await handleSnapshotWrite(request, response, url)
+          return
+        }
+        if (
+          request.method === 'POST' &&
+          (url.pathname === '/api/snapshots' || url.pathname === '/api/snapshots/')
+        ) {
+          await handleSnapshotWrite(request, response, url)
+          return
+        }
+        if (request.method === 'DELETE' && /^\/api\/snapshots\/[^/]+\/?$/.test(url.pathname)) {
+          await handleSnapshotWrite(request, response, url)
           return
         }
         if (request.method !== 'GET' && request.method !== 'HEAD') {
           response.setHeader(
             'allow',
-            testRunWrite ? 'GET, HEAD, POST' : 'GET, HEAD',
+            testRunWrite
+              ? 'GET, HEAD, POST'
+              : snapshotWrite
+                ? 'GET, HEAD, POST, DELETE'
+                : 'GET, HEAD',
           )
           sendError(response, 405, 'Method not allowed')
           return
@@ -1439,6 +1861,21 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
   port = actualPort
   dashboardUrl = `http://${host === '127.0.0.1' ? '127.0.0.1' : host}:${port}`
 
+  const saveSnapshotOnExit = async (): Promise<SnapshotSummary | null> => {
+    if (!options.config.snapshots.autoOnExit) return null
+    await autoSaveQueue
+    try {
+      const saved = await saveCurrentSnapshot('exit')
+      if (saved) log(`exit snapshot saved (${saved.id})`)
+      return saved
+    } catch (error) {
+      log(
+        `exit snapshot failed: ${error instanceof Error ? error.message : String(error)}`,
+      )
+      return null
+    }
+  }
+
   let closing = false
   const close = async (): Promise<void> => {
     if (closing) return
@@ -1478,6 +1915,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     token: options.token,
     store,
     health: getHealth,
+    saveSnapshotOnExit,
     close,
   }
 }

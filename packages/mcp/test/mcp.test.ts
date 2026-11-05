@@ -291,7 +291,7 @@ const DIAGNOSTIC_ID = 'diag-1234abcd-5678ef90'
 const DIAGNOSTIC_FINDING = {
   id: DIAGNOSTIC_ID,
   ruleId: 'slow-span' as const,
-  ruleVersion: 1,
+  ruleVersion: 2,
   category: 'performance' as const,
   severity: 'warning' as const,
   status: 'observed' as const,
@@ -301,6 +301,7 @@ const DIAGNOSTIC_FINDING = {
   route: '/api/users',
   method: 'GET',
   traceIds: [TRACE_A],
+  affectedTraceCount: 1,
   firstSeen: 1,
   lastSeen: 121,
   fingerprint: 'abcd1234',
@@ -316,10 +317,33 @@ const DIAGNOSTIC_FINDING = {
         status: 'ok',
         route: '/api/users',
         nextSpanType: 'AppRender.fetch',
+        selfDurationMs: 520,
+        nextPhase: 'fetch' as const,
+        isRequestRoot: false as const,
       },
     ],
     queries: [],
     errors: [],
+    contributors: [
+      {
+        traceId: TRACE_A,
+        spanId: SPAN_A_CHILD.spanId,
+        label: 'fetch GET https://api.example.test/users',
+        category: 'http' as const,
+        phase: 'fetch' as const,
+        selfMs: 520,
+        durationMs: 520,
+      },
+    ],
+    traces: [
+      {
+        traceId: TRACE_A,
+        timestamp: 1,
+        occurrences: 1,
+        durationMs: 520,
+        contributor: 'fetch GET https://api.example.test/users',
+      },
+    ],
     measurements: [
       { label: 'duration', value: 520, unit: 'ms' },
       { label: 'threshold', value: 500, unit: 'ms' },
@@ -350,6 +374,67 @@ const DIAGNOSTIC_TRACE = {
   missingParentSpanIds: [],
 }
 
+const SNAPSHOT_ID = 'snap-0123456789abcdef'
+
+const SNAPSHOT_SUMMARY = {
+  id: SNAPSHOT_ID,
+  createdAt: 500,
+  source: 'manual',
+  projectName: 'mcp-demo',
+  collectorVersion: '0.6.1',
+  label: 'before change',
+  sample: {
+    firstEventTime: 1,
+    lastEventTime: 121,
+    retentionMs: 600_000,
+  },
+  stats: {
+    requests: 1,
+    errors: 0,
+    databaseQueries: 1,
+    spans: 2,
+  },
+  bytes: 2_048,
+}
+
+const SNAPSHOT_CONFIG = {
+  collector: { maxSpans: 5_000, retentionMs: 600_000 },
+  slowRequestMs: 500,
+  snapshots: {
+    autoOnExit: true,
+    autoOnError: true,
+    autoKeep: 10,
+    maxBytes: 67_108_864,
+  },
+}
+
+const SNAPSHOT_DETAIL = {
+  snapshot: SNAPSHOT_SUMMARY,
+  config: SNAPSHOT_CONFIG,
+  limitations: [
+    'A snapshot is a frozen, redacted copy of one collector sample. It is not live telemetry.',
+    'Diagnostics and coverage are not stored in a snapshot.',
+  ],
+  traces: [
+    {
+      traceId: TRACE_A,
+      rootName: 'GET /api/users',
+      rootSpanId: 'span-a1',
+      serviceName: 'mcp-demo',
+      startTime: 1,
+      endTime: 121,
+      durationMs: 120,
+      spanCount: 2,
+      errorCount: 0,
+      databaseQueryCount: 1,
+      failed: false,
+      request: REQUEST_A,
+    },
+  ],
+  errors: [],
+  databaseQueries: [QUERY_A],
+}
+
 const DIAGNOSTICS = {
   items: [DIAGNOSTIC_FINDING],
   total: 1,
@@ -357,7 +442,7 @@ const DIAGNOSTICS = {
   offset: 0,
   generatedAt: 130,
   engineVersion: '0.6.1',
-  ruleSetVersion: 1,
+  ruleSetVersion: 2,
   sample: {
     firstEventTime: 1,
     lastEventTime: 121,
@@ -368,6 +453,12 @@ const DIAGNOSTICS = {
     databaseQueries: 2,
     connectedInstances: 1,
     connected: true,
+    requestTraces: 2,
+    tracesWithoutRequestRoot: 0,
+    tracesWithMissingParents: 0,
+    unattributedSpans: 0,
+    ignoredControlFlowErrors: 0,
+    serverErrorsWithoutError: 0,
   },
   counts: {
     total: 1,
@@ -403,6 +494,7 @@ const REGRESSION_ENVIRONMENT = {
     captureErrors: true,
   },
   sdkVersion: '0.6.1',
+  diagnostics: { ruleSetVersion: 2 },
   playwrightVersion: '1.58.2',
 }
 
@@ -722,6 +814,23 @@ async function startMockCollector(): Promise<MockCollector> {
       response.end('{"error":"Comparison not found"}')
       return
     }
+    if (url.pathname === '/api/snapshots') {
+      send({ ...page([SNAPSHOT_SUMMARY], url), invalid: 0 })
+      return
+    }
+    if (url.pathname === `/api/snapshots/${SNAPSHOT_ID}`) {
+      send(SNAPSHOT_DETAIL)
+      return
+    }
+    if (url.pathname === `/api/snapshots/${SNAPSHOT_ID}/traces/${TRACE_A}`) {
+      send(DIAGNOSTIC_TRACE)
+      return
+    }
+    if (url.pathname.startsWith('/api/snapshots/')) {
+      response.writeHead(404, { 'content-type': 'application/json' })
+      response.end('{"error":"Snapshot not found"}')
+      return
+    }
     if (url.pathname === '/api/requests') {
       const minDuration = Number(url.searchParams.get('minDuration') ?? 0)
       const q = url.searchParams.get('q')?.toLowerCase()
@@ -734,34 +843,6 @@ async function startMockCollector(): Promise<MockCollector> {
         items.sort((a, b) => (b.durationMs ?? 0) - (a.durationMs ?? 0))
       }
       send(page(items, url))
-      return
-    }
-    if (url.pathname === `/api/requests/${TRACE_A}`) {
-      send({
-        traceId: TRACE_A,
-        request: REQUEST_A,
-        spans: [SPAN_A_ROOT, SPAN_A_CHILD],
-        errors: [],
-        databaseQueries: [QUERY_A],
-        startTime: 1,
-        endTime: 121,
-        durationMs: 120,
-        missingParentSpanIds: [],
-      })
-      return
-    }
-    if (url.pathname === `/api/requests/${TRACE_B}`) {
-      send({
-        traceId: TRACE_B,
-        request: REQUEST_B,
-        spans: [SPAN_B_ROOT],
-        errors: [ERROR_WITH_STACK],
-        databaseQueries: [QUERY_B],
-        startTime: 30,
-        endTime: 70,
-        durationMs: 40,
-        missingParentSpanIds: ['missing-parent'],
-      })
       return
     }
     if (url.pathname === '/api/traces') {
@@ -814,7 +895,7 @@ async function startMockCollector(): Promise<MockCollector> {
         startTime: 30,
         endTime: 70,
         durationMs: 40,
-        missingParentSpanIds: [],
+        missingParentSpanIds: ['missing-parent'],
       })
       return
     }
@@ -941,10 +1022,13 @@ describe('read-only MCP server', () => {
       'stacknext_get_baseline',
       'stacknext_get_comparison',
       'stacknext_get_diagnostic',
+      'stacknext_get_snapshot',
+      'stacknext_get_snapshot_trace',
       'stacknext_get_test_run',
       'stacknext_list_baselines',
       'stacknext_list_comparisons',
       'stacknext_list_diagnostics',
+      'stacknext_list_snapshots',
       'stacknext_list_test_runs',
     ])
     for (const tool of tools) {
@@ -961,6 +1045,8 @@ describe('read-only MCP server', () => {
     expect(client.getInstructions()).toContain('stacknext_get_diagnostic')
     expect(client.getInstructions()).toContain('stacknext_list_test_runs')
     expect(client.getInstructions()).toContain('stacknext_get_comparison')
+    expect(client.getInstructions()).toContain('stacknext_list_snapshots')
+    expect(client.getInstructions()).toContain('stacknext_get_snapshot_trace')
 
     const { prompts } = await client.listPrompts()
     expect(prompts.map((prompt) => prompt.name).sort()).toEqual([
@@ -1223,6 +1309,80 @@ describe('read-only MCP server', () => {
     const invalid = await client.callTool({
       name: 'stacknext_get_comparison',
       arguments: { comparisonId: 'not-an-id' },
+    })
+    expect(invalid.isError).toBe(true)
+  })
+
+  it('serves snapshots as frozen evidence without live diagnostics', async () => {
+    const listed = await client.callTool({
+      name: 'stacknext_list_snapshots',
+      arguments: { limit: 10 },
+    })
+    expect(listed.isError).not.toBe(true)
+    const listedData = structuredOf(listed)
+    expect(listedData.total).toBe(1)
+    expect(listedData.invalid).toBe(0)
+    expect((listedData.items as Array<{ id: string }>)[0]?.id).toBe(SNAPSHOT_ID)
+    expect(listedData.meta).toMatchObject({
+      tool: 'stacknext_list_snapshots',
+      result: { found: 1, returned: 1, limit: 10, offset: 0, hasMore: false },
+    })
+    const listNotes = (listedData.meta as { notes: string[] }).notes.join(' ')
+    expect(listNotes).toContain('frozen copies')
+    expect(listNotes).toContain('not describe the current live sample')
+    expect(
+      collector.requests.some((entry) => entry.startsWith('GET /api/snapshots?')),
+    ).toBe(true)
+
+    const detail = await client.callTool({
+      name: 'stacknext_get_snapshot',
+      arguments: { snapshotId: SNAPSHOT_ID },
+    })
+    expect(detail.isError).not.toBe(true)
+    const detailData = structuredOf(detail)
+    expect((detailData.snapshot as { id: string }).id).toBe(SNAPSHOT_ID)
+    expect(detailData.traces).toHaveLength(1)
+    expect(detailData.errors).toHaveLength(0)
+    expect(detailData.databaseQueries).toHaveLength(1)
+    expect(detailData.meta).toMatchObject({
+      tool: 'stacknext_get_snapshot',
+      identifiers: { snapshotId: SNAPSHOT_ID },
+    })
+    const detailNotes = (detailData.meta as { notes: string[] }).notes.join(' ')
+    expect(detailNotes).toContain('frozen snapshot, not the live sample')
+    expect(detailNotes).toContain('not live telemetry')
+
+    const trace = await client.callTool({
+      name: 'stacknext_get_snapshot_trace',
+      arguments: { snapshotId: SNAPSHOT_ID, traceId: TRACE_A },
+    })
+    expect(trace.isError).not.toBe(true)
+    const traceData = structuredOf(trace)
+    expect(traceData.traceId).toBe(TRACE_A)
+    expect(traceData.spans).toHaveLength(2)
+    expect(traceData).not.toHaveProperty('diagnostics')
+    expect(traceData.meta).toMatchObject({
+      tool: 'stacknext_get_snapshot_trace',
+      identifiers: { snapshotId: SNAPSHOT_ID, traceId: TRACE_A },
+    })
+    expect(
+      collector.requests.some(
+        (entry) =>
+          entry === `GET /api/snapshots/${SNAPSHOT_ID}/traces/${TRACE_A}`,
+      ),
+    ).toBe(true)
+
+    const missing = await client.callTool({
+      name: 'stacknext_get_snapshot',
+      arguments: { snapshotId: 'snap-ffffffffffffffff' },
+    })
+    expect(missing.isError).toBe(true)
+    expect(textOf(missing)).toContain('No snapshot with id')
+    expect(textOf(missing)).toContain('stacknext_list_snapshots')
+
+    const invalid = await client.callTool({
+      name: 'stacknext_get_snapshot',
+      arguments: { snapshotId: 'not-an-id' },
     })
     expect(invalid.isError).toBe(true)
   })

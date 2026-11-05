@@ -47,6 +47,7 @@ interface ScenarioComparisonInput {
   options: ComparisonOptions
   environmentCompatible: boolean
   environmentIgnored: boolean
+  diagnosticsCompatible: boolean
   candidateStatus: TestRun['status']
 }
 
@@ -375,6 +376,9 @@ function compareScenario(input: ScenarioComparisonInput): ScenarioComparison {
   if (!input.environmentCompatible && !input.environmentIgnored) {
     forceInconclusive.push('environment-mismatch')
   }
+  if (!input.diagnosticsCompatible) {
+    forceInconclusive.push('diagnostics-rule-set-mismatch')
+  }
   if (input.candidateStatus !== 'completed') {
     forceInconclusive.push(`candidate-run-${input.candidateStatus}`)
   }
@@ -664,6 +668,21 @@ export function compareBaseline(
     ...options,
   })
   const differences = compareEnvironments(baseline.environment, candidate.environment)
+  const baselineRuleSet = baseline.environment.diagnostics?.ruleSetVersion ?? null
+  const candidateRuleSet = candidate.environment.diagnostics?.ruleSetVersion ?? null
+  const ruleSetKnown = baselineRuleSet !== null && candidateRuleSet !== null
+  const ruleSetCompatible = ruleSetKnown && baselineRuleSet === candidateRuleSet
+  if (!ruleSetCompatible) {
+    const field = 'diagnostics.ruleSetVersion'
+    if (!differences.some((difference) => difference.field === field)) {
+      differences.push({
+        field,
+        baseline: baselineRuleSet === null ? 'unknown' : String(baselineRuleSet),
+        candidate: candidateRuleSet === null ? 'unknown' : String(candidateRuleSet),
+      })
+      differences.sort((a, b) => compareStrings(a.field, b.field))
+    }
+  }
   if (baseline.projectName !== candidate.projectName) {
     differences.push({
       field: 'projectName',
@@ -674,6 +693,11 @@ export function compareBaseline(
   }
   const environmentCompatible = differences.length === 0
   const warnings: string[] = []
+  if (!ruleSetCompatible) {
+    warnings.push(
+      `Diagnostics rule set versions are ${ruleSetKnown ? 'different' : 'unknown'} (baseline ${baselineRuleSet ?? 'unknown'}, candidate ${candidateRuleSet ?? 'unknown'}); captured findings cannot be compared as equivalent.`,
+    )
+  }
   if (!environmentCompatible && resolved.ignoreEnvironment) {
     warnings.push(
       'Environment differences were explicitly ignored. Results are reported but remain environment-sensitive.',
@@ -711,6 +735,7 @@ export function compareBaseline(
       options: resolved,
       environmentCompatible,
       environmentIgnored: resolved.ignoreEnvironment,
+      diagnosticsCompatible: ruleSetCompatible,
       candidateStatus: candidate.status,
     }),
   )
@@ -718,7 +743,9 @@ export function compareBaseline(
   const summary = summaryOf(scenarios)
   let status: RegressionStatus
   let severity: RegressionSeverity = 'none'
-  if (!environmentCompatible && !resolved.ignoreEnvironment) {
+  if (!ruleSetCompatible) {
+    status = 'inconclusive'
+  } else if (!environmentCompatible && !resolved.ignoreEnvironment) {
     status = 'inconclusive'
   } else if (candidate.status !== 'completed') {
     status = 'inconclusive'

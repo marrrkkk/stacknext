@@ -37,7 +37,7 @@ export function sqlPreview(sql: string, maxLength = 500): string {
   return `${shape.slice(0, maxLength - suffix.length)}${suffix}`
 }
 
-function normalizePath(pathname: string): string {
+export function normalizePath(pathname: string): string {
   const segments = pathname.split('/').filter((segment) => segment.length > 0)
   const normalized = segments.map((segment) => {
     if (/^\d+$/.test(segment)) return ':id'
@@ -67,6 +67,27 @@ export function httpEndpoint(value: string | undefined): string | null {
     if (!stripped.startsWith('/')) return null
     return normalizePath(stripped)
   }
+}
+
+/** Best-effort table hint from a normalized SQL shape. Never used as proof. */
+export function sqlTableHint(sql: string): string | null {
+  const match =
+    /\b(?:from|join|into|update|delete\s+from)\s+"?([a-z_][a-z0-9_.]*)"?/i.exec(sql)
+  const table = match?.[1]?.trim()
+  return table ? table.slice(0, 120) : null
+}
+
+/** Next.js control-flow errors are not request failures for diagnostics. */
+export function isControlFlowError(error: StackNextError): boolean {
+  const digest = error.digest?.trim()
+  if (
+    digest &&
+    /^(?:NEXT_NOT_FOUND|NEXT_REDIRECT|NEXT_HTTP_ERROR_FALLBACK)(?:;|$)/i.test(digest)
+  ) {
+    return true
+  }
+  const text = `${error.name} ${error.message}`
+  return /\b(?:NEXT_NOT_FOUND|NEXT_REDIRECT|NEXT_HTTP_ERROR_FALLBACK)\b/i.test(text)
 }
 
 export function normalizeErrorMessage(message: string): string {

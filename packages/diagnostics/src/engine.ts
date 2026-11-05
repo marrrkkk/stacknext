@@ -13,9 +13,10 @@ import {
   type DiagnosticSnapshot,
   type DiagnosticTraceContext,
   type StackNextConfig,
-  type RequestSummary,
 } from '@stacknext/core'
+import { isControlFlowError } from './fingerprints.js'
 import { evaluateDiagnosticRules } from './rules.js'
+import { buildTraceIndex, type DiagnosticTraceIndex } from './trace.js'
 
 export const DIAGNOSTICS_ENGINE_VERSION = '0.6.1'
 
@@ -23,6 +24,8 @@ export interface DiagnosticEngineOptions {
   projectName: string
   collectorVersion: string
   config: StackNextConfig['diagnostics']
+  /** Top-level request threshold; defaults to 500 ms when omitted. */
+  slowRequestMs?: number
   generatedAt?: number
   connected?: boolean
   connectedInstances?: number
@@ -32,7 +35,8 @@ export interface DiagnosticEngineOptions {
 const REPORT_LIMITATIONS = [
   'Findings are deterministic heuristics over the current in-memory sample, not confirmed root causes.',
   'StackNext does not read application source, run EXPLAIN, inspect query plans or modify code.',
-  'Null durations are unknown, not zero, and span durations include child work.',
+  'Null durations are unknown, not zero. Self time subtracts the union of direct child intervals and is approximate.',
+  'Request-level rules only analyze traces with a captured request root; detached spans are excluded and noted.',
   'Only OpenTelemetry and adapter evidence received by the collector is analyzed.',
   'Redaction and truncation may reduce the specificity of SQL and error signatures.',
 ]
@@ -69,8 +73,22 @@ export function countFindings(findings: DiagnosticFinding[]): DiagnosticCounts {
 
 function sampleFor(
   snapshot: DiagnosticSnapshot,
+  index: DiagnosticTraceIndex,
   options: DiagnosticEngineOptions,
 ): DiagnosticSample {
+  const ignoredControlFlowErrors = snapshot.errors.filter(isControlFlowError).length
+  const errorTraceIds = new Set(
+    snapshot.errors
+      .filter((error) => !isControlFlowError(error))
+      .map((error) => error.resolvedTraceId ?? error.traceId ?? null)
+      .filter((traceId): traceId is string => Boolean(traceId)),
+  )
+  const serverErrorsWithoutError = index.requestTraces.filter(
+    (trace) =>
+      trace.statusCode !== null &&
+      trace.statusCode >= 500 &&
+      !errorTraceIds.has(trace.traceId),
+  ).length
   return {
     firstEventTime: snapshot.firstEventTime,
     lastEventTime: snapshot.lastEventTime,
@@ -81,11 +99,20 @@ function sampleFor(
     databaseQueries: snapshot.databaseQueries.length,
     connectedInstances: options.connectedInstances ?? 0,
     connected: options.connected ?? false,
+    requestTraces: index.requestTraces.length,
+    tracesWithoutRequestRoot: index.tracesWithoutRequestRoot.filter(
+      (trace) => trace.nodes.length > 0,
+    ).length,
+    tracesWithMissingParents: index.missingParentTraceIds.size,
+    unattributedSpans: index.unattributedSpans,
+    ignoredControlFlowErrors,
+    serverErrorsWithoutError,
   }
 }
 
 function buildNotes(
   snapshot: DiagnosticSnapshot,
+  sample: DiagnosticSample,
   totalFindings: number,
   visibleFindings: number,
   config: StackNextConfig['diagnostics'],
@@ -111,6 +138,32 @@ function buildNotes(
       `Showing the top ${visibleFindings} of ${totalFindings} findings. Narrow the filters or raise diagnostics.maxFindings to inspect the rest.`,
     )
   }
+  if (sample.tracesWithoutRequestRoot !== undefined && sample.tracesWithoutRequestRoot > 0) {
+    notes.push(
+      `${sample.tracesWithoutRequestRoot} trace${sample.tracesWithoutRequestRoot === 1 ? '' : 's'} had spans but no captured request root; request-level rules ignored them.`,
+    )
+  }
+  if (
+    sample.tracesWithMissingParents !== undefined &&
+    sample.tracesWithMissingParents > 0
+  ) {
+    notes.push(
+      `${sample.tracesWithMissingParents} request trace${sample.tracesWithMissingParents === 1 ? '' : 's'} contain spans whose parent is not in the sample; attribution may be incomplete.`,
+    )
+  }
+  if (sample.unattributedSpans !== undefined && sample.unattributedSpans > 0) {
+    notes.push(
+      `${sample.unattributedSpans} span${sample.unattributedSpans === 1 ? '' : 's'} could not be attributed to a request root and were excluded from request-level rules.`,
+    )
+  }
+  if (
+    sample.ignoredControlFlowErrors !== undefined &&
+    sample.ignoredControlFlowErrors > 0
+  ) {
+    notes.push(
+      `${sample.ignoredControlFlowErrors} Next.js control-flow error${sample.ignoredControlFlowErrors === 1 ? '' : 's'} (not-found/redirect) were ignored by the error rules.`,
+    )
+  }
   if (snapshot.databaseQueries.some((query) => query.durationMs === null)) {
     notes.push('One or more database queries have no measured duration; null is not treated as zero.')
   }
@@ -121,18 +174,18 @@ export function generateDiagnosticReport(
   snapshot: DiagnosticSnapshot,
   options: DiagnosticEngineOptions,
 ): DiagnosticReport {
-  const requestByTrace = new Map<string, RequestSummary>(
-    snapshot.requests.map((request) => [request.traceId, request]),
-  )
+  const index = buildTraceIndex(snapshot)
   const evaluated = options.config.enabled
     ? evaluateDiagnosticRules({
         snapshot,
         config: options.config,
-        requestByTrace,
+        slowRequestMs: options.slowRequestMs ?? 500,
+        traceIndex: index,
       })
     : []
   const maxFindings = options.config.maxFindings
   const findings = evaluated.slice(0, maxFindings)
+  const sample = sampleFor(snapshot, index, options)
   return {
     format: STACKNEXT_DIAGNOSTICS_FORMAT,
     version: STACKNEXT_DIAGNOSTICS_FORMAT_VERSION,
@@ -141,10 +194,10 @@ export function generateDiagnosticReport(
     generatedAt: options.generatedAt ?? Date.now(),
     projectName: options.projectName,
     collectorVersion: options.collectorVersion,
-    sample: sampleFor(snapshot, options),
+    sample,
     counts: countFindings(findings),
     findings,
-    notes: buildNotes(snapshot, evaluated.length, findings.length, options.config),
+    notes: buildNotes(snapshot, sample, evaluated.length, findings.length, options.config),
     limitations: [...REPORT_LIMITATIONS],
   }
 }

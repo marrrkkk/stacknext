@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { PageResult } from '@stacknext/core'
 import type { RunSummary } from '@stacknext/regression'
 import { api } from '../api'
@@ -6,15 +6,22 @@ import { useAsync } from '../hooks'
 import {
   Badge,
   Card,
+  DataTable,
   EmptyState,
   ErrorState,
-  Loading,
+  Id,
+  ListTableSkeleton,
   PageHeader,
-  Pagination,
+  PageLayout,
+  SearchInput,
   StatCard,
+  StatGridSkeleton,
+  StatStrip,
+  TableFooter,
+  Toolbar,
 } from '../components/ui'
 import { Icon } from '../components/Icon'
-import { formatDateTime, formatDuration, formatRelative } from '../format'
+import { formatDateTime, formatDuration, formatNumber, formatRelative } from '../format'
 import { RUN_STATUS_TONE } from './RegressionScenarios'
 
 const LIMIT = 25
@@ -31,6 +38,7 @@ export function RunsPage({
   refreshKey: number
   onNavigate: (path: string) => void
 }): React.ReactElement {
+  const [search, setSearch] = useState('')
   const [offset, setOffset] = useState(0)
   const state = useAsync<PageResult<RunSummary>>(
     (signal) => api.testRuns({ limit: LIMIT, offset }, signal),
@@ -38,155 +46,239 @@ export function RunsPage({
     refreshKey,
   )
 
-  const verified = state.data?.items.reduce((sum, run) => sum + run.verifiedSamples, 0) ?? 0
-  const incomplete = state.data?.items.reduce((sum, run) => sum + run.incompleteSamples, 0) ?? 0
-  const scenarios = state.data?.items.reduce((sum, run) => sum + run.scenarios, 0) ?? 0
-  const latest = state.data?.items[0]
+  const runs = useMemo(() => state.data?.items ?? [], [state.data])
+  const total = state.data?.total ?? 0
+  const query = search.trim().toLowerCase()
+  const filtered = useMemo(() => {
+    if (!query) return runs
+    return runs.filter((run) =>
+      [run.name, run.id, run.status, environmentLine(run)].some((value) =>
+        value.toLowerCase().includes(query),
+      ),
+    )
+  }, [runs, query])
+
+  const verified = runs.reduce((sum, run) => sum + run.verifiedSamples, 0)
+  const incomplete = runs.reduce((sum, run) => sum + run.incompleteSamples, 0)
+  const scenarios = runs.reduce((sum, run) => sum + run.scenarios, 0)
+  const latest = runs[0]
+  const environmentValues = new Set(runs.map(environmentLine))
+  const uniformEnvironment = environmentValues.size === 1 ? [...environmentValues][0] ?? null : null
+  const searchActive = query.length > 0
+
+  const columns = [
+    { key: 'run', label: 'Capture run' },
+    { key: 'status', label: 'Status', width: '132px' },
+    { key: 'scenarios', label: 'Scenarios', align: 'right' as const, width: '96px' },
+    { key: 'samples', label: 'Samples', align: 'right' as const, width: '104px' },
+    ...(uniformEnvironment
+      ? []
+      : [{ key: 'environment', label: 'Environment', width: '280px' }]),
+    { key: 'duration', label: 'Duration', align: 'right' as const, width: '96px' },
+    { key: 'created', label: 'Created', align: 'right' as const, width: '110px' },
+  ]
 
   return (
-    <>
+    <PageLayout>
       <PageHeader
-        eyebrow="Runtime regression testing"
+        eyebrow="Regression · 1 of 3 · Capture"
         title="Test runs"
-        description="Local Playwright-linked captures stored under .stacknext/runs. Each run keeps its scenario identity, verified trace correlation, bounded evidence and environment snapshot."
+        description="Every capture is a historical record. Failed and incomplete runs stay visible here."
+        info="A test run is not a baseline. Save a completed run with verified samples to create an immutable reference for comparison."
         actions={
-          <button type="button" className="button button--ghost" onClick={state.reload}>
-            <Icon name="refresh" size={15} /> Refresh
-          </button>
+          <>
+            <Badge tone="muted">Capture history</Badge>
+            <button type="button" className="button button--secondary" onClick={state.reload}>
+              <Icon name="refresh" size={15} /> Refresh
+            </button>
+          </>
         }
       />
 
-      {state.data && (
-        <div className="stat-grid">
+      {state.data ? (
+        <StatStrip>
           <StatCard
-            label="Saved runs"
-            value={state.data.total}
-            hint="never uploaded"
-            icon="terminal"
+            label="Capture runs"
+            value={formatNumber(total)}
+            hint="In .stacknext/runs"
           />
           <StatCard
-            label="Scenarios"
-            value={scenarios}
-            hint={`${state.data.items.length} runs in this page`}
-            icon="traces"
+            label="Scenarios · this page"
+            value={formatNumber(scenarios)}
+            hint={`Across ${formatNumber(runs.length)} loaded run${runs.length === 1 ? '' : 's'}`}
           />
           <StatCard
-            label="Verified samples"
-            value={verified}
-            hint="trace correlation confirmed"
+            label="Verified samples · this page"
+            value={formatNumber(verified)}
+            hint="Trace correlation confirmed"
             tone="good"
-            icon="check"
           />
           <StatCard
-            label="Incomplete"
-            value={incomplete}
-            hint="reported, never fabricated"
+            label="Incomplete · this page"
+            value={formatNumber(incomplete)}
+            hint="Reported, never fabricated"
             tone={incomplete > 0 ? 'warn' : 'default'}
-            icon="pulse"
           />
-        </div>
+        </StatStrip>
+      ) : (
+        <StatGridSkeleton />
       )}
+
+      <Toolbar
+        label="Filter test runs"
+        aside={
+          <>
+            {uniformEnvironment && (
+              <span className="toolbar__env" title={uniformEnvironment}>
+                <Badge tone="muted">{uniformEnvironment}</Badge>
+              </span>
+            )}
+            {searchActive && (
+              <button
+                type="button"
+                className="button button--ghost list-toolbar__clear"
+                onClick={() => setSearch('')}
+              >
+                Clear search
+              </button>
+            )}
+            <span className="toolbar__count">
+              {searchActive
+                ? `${formatNumber(filtered.length)} of ${formatNumber(runs.length)} on this page`
+                : `${formatNumber(runs.length)} on this page`}
+            </span>
+          </>
+        }
+      >
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Search runs or environment…"
+          label="Search test runs"
+        />
+      </Toolbar>
 
       <Card padded={false}>
         {state.loading && !state.data ? (
-          <div className="card__inner">
-            <Loading rows={7} label="Loading test runs" />
-          </div>
+          <ListTableSkeleton
+            label="Loading test runs"
+            tableClassName="data-table--runs"
+            columns={[
+              { key: 'run', label: 'Capture run', width: '34%', secondaryWidth: '24%' },
+              { key: 'status', label: 'Status', width: '64%' },
+              { key: 'scenarios', label: 'Scenarios', className: 'numeric', width: '36%' },
+              { key: 'samples', label: 'Samples', className: 'numeric', width: '42%' },
+              { key: 'duration', label: 'Duration', className: 'numeric', width: '44%' },
+              { key: 'created', label: 'Created', className: 'numeric', width: '52%' },
+            ]}
+          />
         ) : state.error && !state.data ? (
           <div className="card__inner">
             <ErrorState message={state.error} onRetry={state.reload} />
           </div>
-        ) : state.data && state.data.items.length === 0 ? (
+        ) : state.data && runs.length === 0 ? (
           <div className="card__inner">
             <EmptyState
               icon="terminal"
-              title="No saved test runs"
+              title="No capture runs yet"
               description={
                 <>
-                  Capture a Playwright run with{' '}
-                  <code>stacknext capture --name &lt;name&gt; -- npx playwright test</code>. Runs
-                  appear here after the collector stores the completed sample.
+                  Capture one with{' '}
+                  <code>stacknext capture --name &lt;name&gt; -- npx playwright test</code>.
                 </>
               }
             />
           </div>
         ) : (
           <>
-            <div className="table-scroll">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Run</th>
-                    <th>Status</th>
-                    <th className="numeric">Scenarios</th>
-                    <th className="numeric">Samples</th>
-                    <th>Environment</th>
-                    <th className="numeric">Duration</th>
-                    <th>Created</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {state.data?.items.map((run) => (
-                    <tr
-                      key={run.id}
-                      className="row-clickable"
-                      tabIndex={0}
-                      onClick={() => onNavigate(`/runs/${run.id}`)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault()
-                          onNavigate(`/runs/${run.id}`)
-                        }
-                      }}
-                    >
-                      <td>
-                        <div className="route-cell">{run.name}</div>
-                        <div className="sub-cell mono">{run.id}</div>
-                      </td>
-                      <td>
-                        <Badge tone={RUN_STATUS_TONE[run.status]}>{run.status}</Badge>
-                      </td>
-                      <td className="numeric">{run.scenarios}</td>
-                      <td className="numeric">
-                        {run.samples}
-                        <div className="sub-cell">
-                          {run.verifiedSamples} verified
-                          {run.incompleteSamples > 0
-                            ? ` · ${run.incompleteSamples} incomplete`
-                            : ''}
-                        </div>
-                      </td>
-                      <td>
-                        <span className="sub-cell">{environmentLine(run)}</span>
-                      </td>
-                      <td className="numeric">{formatDuration(run.durationMs)}</td>
-                      <td title={formatDateTime(run.createdAt)}>
-                        {formatRelative(run.createdAt)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              label="Capture runs"
+              className="data-table--runs"
+              columns={columns}
+              empty={
+                filtered.length === 0
+                  ? 'No runs on this page match the search.'
+                  : undefined
+              }
+            >
+              {filtered.map((run) => (
+                <tr
+                  key={run.id}
+                  className="row-clickable"
+                  tabIndex={0}
+                  title={[
+                    run.name,
+                    run.id,
+                    run.status,
+                    `${formatNumber(run.scenarios)} scenarios · ${formatNumber(run.samples)} samples · ${formatNumber(run.verifiedSamples)} verified · ${formatNumber(run.incompleteSamples)} incomplete`,
+                    environmentLine(run),
+                    formatDuration(run.durationMs),
+                    formatDateTime(run.createdAt),
+                  ].join(' — ')}
+                  onClick={() => onNavigate(`/runs/${run.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      onNavigate(`/runs/${run.id}`)
+                    }
+                  }}
+                >
+                  <td>
+                    <div className="route-cell" title={run.name}>
+                      {run.name}
+                    </div>
+                    <div className="sub-cell">
+                      <Id value={run.id} />
+                    </div>
+                  </td>
+                  <td>
+                    <Badge tone={RUN_STATUS_TONE[run.status]}>{run.status}</Badge>
+                  </td>
+                  <td className="numeric tabular">{formatNumber(run.scenarios)}</td>
+                  <td className="numeric">
+                    {formatNumber(run.samples)}
+                    <div className="sub-cell">
+                      {formatNumber(run.verifiedSamples)} verified
+                      {run.incompleteSamples > 0
+                        ? ` · ${formatNumber(run.incompleteSamples)} incomplete`
+                        : ''}
+                    </div>
+                  </td>
+                  {!uniformEnvironment && (
+                    <td className="env-cell muted" title={environmentLine(run)}>
+                      {environmentLine(run)}
+                    </td>
+                  )}
+                  <td className="numeric tabular">{formatDuration(run.durationMs)}</td>
+                  <td
+                    className="numeric muted tabular"
+                    title={formatDateTime(run.createdAt)}
+                  >
+                    {formatRelative(run.createdAt)}
+                  </td>
+                </tr>
+              ))}
+            </DataTable>
             <div className="card__footer">
-              <Pagination
-                total={state.data?.total ?? 0}
+              <TableFooter
+                total={total}
                 limit={LIMIT}
                 offset={offset}
                 onChange={setOffset}
+                note={
+                  latest ? (
+                    <>
+                      Newest on this page {formatRelative(latest.createdAt)}:{' '}
+                      {formatNumber(latest.verifiedSamples)} verified ·{' '}
+                      {formatNumber(latest.incompleteSamples)} incomplete
+                    </>
+                  ) : undefined
+                }
               />
             </div>
           </>
         )}
       </Card>
-
-      {latest && (
-        <p className="muted dashboard-note">
-          Latest capture {formatRelative(latest.createdAt)}: {latest.verifiedSamples} verified
-          sample{latest.verifiedSamples === 1 ? '' : 's'} and {latest.incompleteSamples} incomplete.
-          Runs are read-only in the dashboard; use the CLI to capture or save baselines.
-        </p>
-      )}
-    </>
+    </PageLayout>
   )
 }
