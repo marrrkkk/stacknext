@@ -257,6 +257,7 @@ export function DiagnosticsPage({
   refreshKey: number
   onNavigate: (path: string) => void
 }): React.ReactElement {
+  const traceId = new URLSearchParams(window.location.search).get('traceId') ?? undefined
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search, 300)
   const [route, setRoute] = useState('')
@@ -273,13 +274,14 @@ export function DiagnosticsPage({
   }
 
   const key = useMemo(
-    () => JSON.stringify({ debouncedSearch, route, category, severity, status, offset }),
-    [debouncedSearch, route, category, severity, status, offset],
+    () => JSON.stringify({ debouncedSearch, route, category, severity, status, offset, traceId }),
+    [debouncedSearch, route, category, severity, status, offset, traceId],
   )
   const state = useAsync<DiagnosticListResponse>(
     (signal) =>
       api.diagnostics(
         {
+          traceId,
           limit: LIMIT,
           offset,
           q: debouncedSearch || undefined,

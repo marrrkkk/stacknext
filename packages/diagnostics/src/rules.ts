@@ -169,8 +169,17 @@ function routeGroups(traces: DiagnosticTraceModel[]): RouteGroup[] {
   )
 }
 
+const traceMembership = new WeakMap<string[], Set<string>>()
+
+export function findingMatchesTrace(finding: DiagnosticFinding, traceId: string): boolean {
+  return traceMembership.get(finding.traceIds)?.has(traceId) ?? finding.traceIds.includes(traceId)
+}
+
 function limitTraceIds(traceIds: Array<string | null | undefined>): string[] {
-  return uniqueStrings(traceIds).slice(0, TRACE_ID_LIMIT)
+  const all = uniqueStrings(traceIds)
+  const limited = all.slice(0, TRACE_ID_LIMIT)
+  traceMembership.set(limited, new Set(all))
+  return limited
 }
 
 function traceOccurrence(
@@ -282,6 +291,10 @@ function nPlusOneFindings(context: RuleContext): DiagnosticFinding[] {
     if (!traceId) continue
     const trace = context.index.traces.get(traceId)
     if (!trace || trace.root === null) continue
+    // A trace ID alone does not prove request attribution. Adapters attach the
+    // active OTel span ID; absent or detached span evidence stays unverified.
+    const node = query.spanId ? trace.bySpanId.get(query.spanId) : undefined
+    if (!node?.attributed) continue
     const route = canonicalRoute(query.route) ?? trace.route
     const routeKey = trace.routeKey ?? route
     if (!route || !routeKey) continue
@@ -624,7 +637,7 @@ function slowSpanFindings(context: RuleContext): DiagnosticFinding[] {
       group.nextSpanType ?? '',
     ])
     const phase = representativeNode.phase
-    const matchingNodes = matching.map((entry) => entry.nodes[0]!)
+    const matchingNodes = matching.flatMap((entry) => entry.nodes)
     findings.push({
       id: diagnosticFindingId(rule.id, findingFingerprint, group.routeKey),
       ruleId: rule.id,
@@ -644,7 +657,7 @@ function slowSpanFindings(context: RuleContext): DiagnosticFinding[] {
       fingerprint: findingFingerprint,
       evidence: {
         traceIds: limitTraceIds(matching.map((entry) => entry.trace.traceId)),
-        spans: matchingNodes
+        spans: matching.map((entry) => entry.nodes[0]!)
           .slice(0, SPAN_EVIDENCE_LIMIT)
           .map(spanEvidenceForNode),
         queries: representative.nodes
@@ -805,7 +818,7 @@ function repeatedHttpFindings(context: RuleContext): DiagnosticFinding[] {
       group.endpoint,
       group.route ?? '',
     ])
-    const matchingNodes = matching.map((entry) => entry.nodes[0]!)
+    const matchingNodes = matching.flatMap((entry) => entry.nodes)
     findings.push({
       id: diagnosticFindingId(rule.id, findingFingerprint, group.routeKey),
       ruleId: rule.id,
@@ -942,15 +955,18 @@ function errorFindings(context: RuleContext): DiagnosticFinding[] {
     const firstSeen = Math.min(...sorted.map((entry) => entry.error.timestamp))
     const lastSeen = latest.error.timestamp
     const statusCode = traceForContributors?.statusCode ?? null
+    const revalidateReason = sanitizedText(
+      stringAttribute(latest.error.attributes, 'next.revalidate_reason', 'revalidateReason'),
+      100,
+    )
+    const digest = sanitizedText(latest.error.digest, 1_000)
     const nextContext = [
       latest.error.routeType ? `routeType=${latest.error.routeType}` : null,
       latest.error.renderType ? `renderType=${latest.error.renderType}` : null,
       latest.error.renderSource ? `renderSource=${latest.error.renderSource}` : null,
       latest.error.routerKind ? `routerKind=${latest.error.routerKind}` : null,
-      stringAttribute(latest.error.attributes, 'next.revalidate_reason', 'revalidateReason')
-        ? `revalidateReason=${stringAttribute(latest.error.attributes, 'next.revalidate_reason', 'revalidateReason')}`
-        : null,
-      latest.error.digest ? `digest=${latest.error.digest}` : null,
+      revalidateReason ? `revalidateReason=${revalidateReason}` : null,
+      digest ? `digest=${digest}` : null,
     ]
       .filter((entry): entry is string => Boolean(entry))
       .join(', ')
@@ -959,16 +975,18 @@ function errorFindings(context: RuleContext): DiagnosticFinding[] {
       : ' No error span was found in the correlated trace.'
     const traceEvidenceById = new Map<
       string,
-      { trace: DiagnosticTraceModel | null; timestamp: number }
+      { trace: DiagnosticTraceModel | null; timestamp: number; count: number }
     >()
     for (const entry of sorted) {
       const traceId = entry.error.resolvedTraceId ?? entry.error.traceId ?? null
       if (!traceId) continue
       const existing = traceEvidenceById.get(traceId)
+      if (existing) existing.count += 1
       if (!existing || entry.error.timestamp > existing.timestamp) {
         traceEvidenceById.set(traceId, {
           trace: entry.trace,
           timestamp: entry.error.timestamp,
+          count: existing?.count ?? 1,
         })
       }
     }
@@ -977,8 +995,8 @@ function errorFindings(context: RuleContext): DiagnosticFinding[] {
       .slice(-TRACE_EVIDENCE_LIMIT)
       .map(([traceId, entry]) =>
         entry.trace
-          ? traceOccurrence(entry.trace, 1, { timestamp: entry.timestamp })
-          : { traceId, timestamp: entry.timestamp, occurrences: 1 },
+          ? traceOccurrence(entry.trace, entry.count, { timestamp: entry.timestamp })
+          : { traceId, timestamp: entry.timestamp, occurrences: entry.count },
       )
     findings.push({
       id: diagnosticFindingId(rule.id, findingFingerprint),
@@ -992,7 +1010,7 @@ function errorFindings(context: RuleContext): DiagnosticFinding[] {
         : `Request error: ${safeName}`,
       summary: repeated
         ? `${sorted.length} occurrences across ${affectedTraceCount} trace${affectedTraceCount === 1 ? '' : 's'} on ${routeLabel} share a route-aware error signature.`
-        : `1 occurrence on ${routeLabel} at ${formatTimestamp(latest.error.timestamp)}.`,
+        : `${sorted.length} occurrence${sorted.length === 1 ? '' : 's'} on ${routeLabel} at ${formatTimestamp(latest.error.timestamp)}.`,
       detail: `The latest occurrence is ${latest.error.id} at ${formatTimestamp(latest.error.timestamp)}. Grouping uses the normalized error name, message, stack shape and operation category (${operation}); grouping is heuristic and does not establish a root cause.${nextContext ? ` Next.js context: ${nextContext}.` : ''}${deepestText}${statusCode === null ? '' : ` The correlated request returned ${statusCode}.`}`,
       route,
       method,
@@ -1075,7 +1093,7 @@ function serverErrorFindings(context: RuleContext): DiagnosticFinding[] {
   for (const group of routeGroups(context.index.requestTraces)) {
     for (const trace of group.traces) {
       const statusCode = trace.statusCode
-      if (statusCode === null || statusCode < 500) continue
+      if (statusCode === null || statusCode < 500 || statusCode > 599) continue
       if ((errorsByTrace.get(trace.traceId)?.length ?? 0) > 0) continue
       const key = `${group.key}\u0000${statusCode}`
       const existing = groups.get(key)

@@ -22,7 +22,6 @@ import {
   RefreshButton,
   RelativeTime,
 } from '../components/details'
-import { Icon } from '../components/Icon'
 import { formatDateTime, formatNumber, plural } from '../format'
 import {
   EnvironmentCard,
@@ -136,15 +135,6 @@ export function RunDetailPage({
         actions={
           <>
             <CopyButton value={run.id} label="Copy run id" primary />
-            <button
-              type="button"
-              className="button button--secondary"
-              onClick={() => onNavigate('/database')}
-              title="Open the captured database queries"
-            >
-              <Icon name="database" size={15} />
-              Database
-            </button>
             <RefreshButton onClick={state.reload} loading={state.loading} />
           </>
         }
@@ -202,10 +192,7 @@ export function RunDetailPage({
         <StatCard
           label="Database"
           value={formatNumber(run.stats.databaseQueries)}
-          hint="open captured queries"
-          onClick={() => onNavigate('/database')}
-          ariaLabel={`Open ${formatNumber(run.stats.databaseQueries)} captured database queries`}
-          title="Open the database query list"
+          hint="Captured query records"
         />
         <StatCard
           label="Errors"

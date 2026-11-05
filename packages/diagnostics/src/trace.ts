@@ -467,5 +467,5 @@ export function minValue(values: number[]): number | null {
 }
 
 export function isRequestRootNode(node: TraceSpanNode): boolean {
-  return node.parent === null && node.attributed
+  return node.depth === 0 && node.attributed
 }

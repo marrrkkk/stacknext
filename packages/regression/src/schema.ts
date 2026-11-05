@@ -250,6 +250,7 @@ export const environmentDifferenceSchema = z
 
 export const regressionMetricSchema = z
   .object({
+    queryFingerprint: shortText(2_000).optional(),
     key: shortText(2_000),
     label: shortText(500),
     kind: z.enum(REGRESSION_METRIC_KINDS),

@@ -178,6 +178,15 @@ export function TooltipLayer(): React.ReactElement | null {
   useEffect(() => {
     const onPointerOver = (event: PointerEvent): void => {
       if (event.pointerType === 'touch') return
+      const active = activeRef.current
+      if (active && isInside(active, event.target)) {
+        if (hideTimerRef.current !== null) {
+          window.clearTimeout(hideTimerRef.current)
+          hideTimerRef.current = null
+        }
+        showNow(active)
+        return
+      }
       const element = findTitleElement(event.target)
       if (!element) return
       if (hideTimerRef.current !== null) {

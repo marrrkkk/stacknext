@@ -168,7 +168,7 @@ export function DatabaseQueryDetailPage({
   }, [extras.data?.diagnostics?.items, items, shapeSql])
   const normalizedShape = useMemo(() => normalizeSql(shapeSql), [shapeSql])
   const relatedComparisons = (extras.data?.comparisons ?? []).filter((ref) =>
-    ref.metric.key.includes(normalizedShape.slice(0, 160)),
+    ref.metric.queryFingerprint === normalizedShape,
   )
 
   const back = {

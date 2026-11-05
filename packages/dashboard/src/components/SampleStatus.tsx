@@ -93,7 +93,8 @@ export function SampleStatus({
 
   const sample = health.sample
   const lastEventTime = sample.lastEventTime
-  const expiresAt = lastEventTime === null ? null : lastEventTime + sample.retentionMs
+  const lastReceivedAt = sample.lastReceivedAt
+  const expiresAt = lastReceivedAt === null ? null : lastReceivedAt + sample.retentionMs
   const remaining = expiresAt === null ? null : expiresAt - now
   const hasData =
     health.counts.spans + health.counts.errors + health.counts.databaseQueries > 0

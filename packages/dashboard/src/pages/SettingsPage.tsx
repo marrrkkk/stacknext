@@ -115,10 +115,6 @@ const THEME_LABEL: Record<Theme, string> = {
   system: 'System',
 }
 
-function isAdapter(value: string): value is 'drizzle' | 'prisma' {
-  return value === 'drizzle' || value === 'prisma'
-}
-
 function renderLimitation(text: string): React.ReactNode {
   return text.split(/(withStackNextAction\(\))/g).map((part, index) =>
     part === 'withStackNextAction()' ? (
@@ -206,10 +202,12 @@ function SettingsContent({
   onCycleTheme: () => void
   onNavigate: (path: string) => void
 }): React.ReactElement {
-  const { config, health, latestRun } = data
+  const { config, health } = data
   const connected = health.connections.filter((connection) => connection.connected)
   const verbose = health.instrumentation.nextOtelVerbose
-  const adapterNames = (latestRun?.environment.databases ?? []).filter(isAdapter)
+  const adapterNames = (['drizzle', 'prisma'] as const).filter(
+    (name) => config.config.database[name],
+  )
   const [adapter, setAdapter] = useState<'drizzle' | 'prisma'>(() =>
     adapterNames.includes('prisma') && !adapterNames.includes('drizzle')
       ? 'prisma'

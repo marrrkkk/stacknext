@@ -247,7 +247,11 @@ export function DetailsTabs<T extends string>({
     if (offset === 0) return
     event.preventDefault()
     const next = tabs[(index + offset + tabs.length) % tabs.length]
-    if (next) onChange(next.key)
+    if (next) {
+      const tablist = event.currentTarget.closest('[role="tablist"]')
+      tablist?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[(index + offset + tabs.length) % tabs.length]?.focus()
+      onChange(next.key)
+    }
   }
   return (
     <div className="tabs" role="tablist" aria-label={label}>

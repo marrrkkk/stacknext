@@ -80,12 +80,7 @@ function summariseMetrics(comparison: Comparison): MetricSummary {
 function queryMetricShape(
   metric: RegressionMetric,
 ): { shapeId: string; sql: string } | null {
-  const prefix = 'query-duration:'
-  if (!metric.key.startsWith(prefix)) return null
-  const rest = metric.key.slice(prefix.length)
-  const split = rest.indexOf(':')
-  if (split < 0) return null
-  const sql = rest.slice(split + 1)
+  const sql = metric.queryFingerprint
   if (!sql) return null
   return { shapeId: queryShapeId(sql), sql }
 }

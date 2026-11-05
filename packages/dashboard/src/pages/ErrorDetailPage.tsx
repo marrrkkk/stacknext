@@ -122,7 +122,7 @@ export function ErrorDetailPage({
                 >
                   Back to errors
                 </button>
-                <RefreshButton onClick={state.reload} loading={state.loading} />
+                <RefreshButton onClick={() => { state.reload(); sample.reload() }} loading={state.loading} />
               </div>
             }
           >
@@ -207,7 +207,7 @@ export function ErrorDetailPage({
                 Open trace
               </button>
             )}
-            <RefreshButton onClick={state.reload} loading={state.loading} />
+            <RefreshButton onClick={() => { state.reload(); sample.reload() }} loading={state.loading} />
           </>
         }
       />
@@ -399,7 +399,7 @@ export function ErrorDetailPage({
             subtitle="Matching errors from the latest 200 stored records. This is a sample, not a lifetime count."
             meta={
               <span className="tabular">
-                {formatNumber(occurrences.length)} shown
+                {formatNumber(Math.min(occurrences.length, 8))} shown · {formatNumber(group?.count ?? occurrences.length)} total
               </span>
             }
           >

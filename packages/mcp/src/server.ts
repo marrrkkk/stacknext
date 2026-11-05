@@ -1070,6 +1070,7 @@ export function createStackNextMcpServer(
         const created = page.items.map((snapshot) => snapshot.createdAt)
         const meta = buildMeta({
           tool: 'stacknext_list_snapshots',
+          snapshot: true,
           health,
           firstEventTime: created.length > 0 ? Math.min(...created) : null,
           lastEventTime: created.length > 0 ? Math.max(...created) : null,
@@ -1118,6 +1119,7 @@ export function createStackNextMcpServer(
           }
           const meta = buildMeta({
             tool: 'stacknext_get_snapshot',
+            snapshot: true,
             health,
             firstEventTime: detail.snapshot.sample.firstEventTime,
             lastEventTime: detail.snapshot.sample.lastEventTime,
@@ -1163,6 +1165,7 @@ export function createStackNextMcpServer(
           const health = await healthCache.get()
           const meta = buildMeta({
             tool: 'stacknext_get_snapshot_trace',
+            snapshot: true,
             health,
             firstEventTime: detail.startTime,
             lastEventTime: detail.endTime,

@@ -408,7 +408,7 @@ export class TelemetryStore {
     filters: RequestFilters = {},
     slowRequestMs = 500,
   ): PageResult<RequestSummary> {
-    const page = this.listTraces({ ...filters, httpOnly: true }, slowRequestMs)
+    const page = this.listTracePage({ ...filters, httpOnly: true }, slowRequestMs, true)
     const items = page.items
       .map((trace) => trace.request)
       .filter((request): request is RequestSummary => request !== null)
@@ -416,6 +416,14 @@ export class TelemetryStore {
   }
 
   listTraces(filters: RequestFilters = {}, slowRequestMs = 500): TraceListResult {
+    return this.listTracePage(filters, slowRequestMs)
+  }
+
+  private listTracePage(
+    filters: RequestFilters,
+    slowRequestMs: number,
+    requestDurations = false,
+  ): TraceListResult {
     this.prune()
     const { buckets } = this.traceIndex(slowRequestMs)
     const q = filters.q?.trim().toLowerCase()
@@ -475,7 +483,7 @@ export class TelemetryStore {
       if (filters.slow === true && request?.slow !== true) continue
       if (
         typeof filters.minDuration === 'number' &&
-        summary.durationMs < filters.minDuration
+        (requestDurations ? request?.durationMs ?? 0 : summary.durationMs) < filters.minDuration
       ) {
         continue
       }
@@ -483,7 +491,11 @@ export class TelemetryStore {
     }
     const sort = filters.sort ?? 'recent'
     items.sort((a, b) => {
-      if (sort === 'slowest') return b.durationMs - a.durationMs
+      if (sort === 'slowest') {
+        return requestDurations
+          ? (b.request?.durationMs ?? 0) - (a.request?.durationMs ?? 0)
+          : b.durationMs - a.durationMs
+      }
       if (sort === 'oldest') return a.startTime - b.startTime
       return b.startTime - a.startTime
     })
@@ -733,6 +745,11 @@ export class TelemetryStore {
       recentErrors: errors.items,
       firstEventTime: eventTimes.length > 0 ? Math.min(...eventTimes) : null,
       lastEventTime: eventTimes.length > 0 ? Math.max(...eventTimes) : null,
+      lastReceivedAt: maxReceivedAt([
+        ...spanList,
+        ...this.errors.values(),
+        ...this.queries.values(),
+      ]),
     }
   }
 
@@ -989,4 +1006,9 @@ export class TelemetryStore {
     this.droppedRetention = 0
     this.revision += 1
   }
+}
+
+function maxReceivedAt(events: Array<{ receivedAt: number }>): number | null {
+  return events.reduce<number | null>((latest, event) =>
+    latest === null ? event.receivedAt : Math.max(latest, event.receivedAt), null)
 }

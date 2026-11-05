@@ -242,6 +242,11 @@ function CoverageGrid({
             <span className="coverage-signal__description" title={item.description}>
               {item.description}
             </span>
+            {item.limitations.length > 0 && (
+              <InfoHint label={`${item.label}: ${item.limitations.join(' ')}`}>
+                {item.limitations.join(' ')}
+              </InfoHint>
+            )}
           </span>
           <span className="coverage-cell coverage-cell--category" role="cell">
             {item.category}
@@ -450,7 +455,7 @@ export function OverviewPage({
   const summary = overview?.summary ?? null
   const diagnosticOverview: DiagnosticOverview | undefined =
     overview?.diagnosticOverview
-  const thresholdMs = health?.config.slowRequestMs ?? 250
+  const thresholdMs = health?.config.slowRequestMs ?? null
   const requests = data?.requests
   const recentRequests = useMemo(() => requests?.items ?? [], [requests])
   const connectedInstance = health?.connections.find((connection) => connection.connected)
@@ -585,7 +590,7 @@ export function OverviewPage({
   }, [recentRequests])
 
   const slowestAboveThreshold = slowestGroups.filter(
-    (group) => group.maxDuration > thresholdMs,
+    (group) => thresholdMs !== null && group.maxDuration > thresholdMs,
   ).length
   const maxSlowest = Math.max(1, ...slowestGroups.map((group) => group.maxDuration))
   const recentForSpark = [...recentRequests]
@@ -604,7 +609,7 @@ export function OverviewPage({
   )
   const slowSparkLabels = recentForSpark.map(
     (request) =>
-      `${request.method ?? 'Request'} ${pathFor(request)} — ${request.slow ? 'slow' : `under ${formatDuration(thresholdMs)}`}`,
+      `${request.method ?? 'Request'} ${pathFor(request)} — ${request.slow ? 'slow' : (thresholdMs === null ? 'not flagged slow' : `under ${formatDuration(thresholdMs)}`)}`,
   )
   const latency = latencyStats(recentRequests, thresholdMs)
 
@@ -676,6 +681,7 @@ export function OverviewPage({
         ? `All under ${formatDuration(thresholdMs)}.`
         : 'Axis rounded up from the slowest.'
   const p95AboveThreshold =
+    thresholdMs !== null &&
     summary?.p95DurationMs !== null &&
     summary?.p95DurationMs !== undefined &&
     summary.p95DurationMs > thresholdMs
@@ -847,9 +853,7 @@ export function OverviewPage({
                   <>
                     <span>Grouped by route</span>
                     <span className="tabular">
-                      {formatNumber(slowestAboveThreshold)} of{' '}
-                      {formatNumber(slowestGroups.length)} above{' '}
-                      {formatDuration(thresholdMs)}
+                      {thresholdMs === null ? 'Threshold unavailable' : `${formatNumber(slowestAboveThreshold)} of ${formatNumber(slowestGroups.length)} above ${formatDuration(thresholdMs)}`}
                     </span>
                   </>
                 ) : undefined
@@ -1170,6 +1174,9 @@ export function OverviewPage({
                   <span className="nowrap">
                     {formatNumber(coverage.sample.requests)} requests ·{' '}
                     {formatNumber(coverage.sample.spans)} spans
+                    {coverage.sample.firstEventTime !== null && (
+                      <> · sample start {formatDateTime(coverage.sample.firstEventTime)}</>
+                    )}
                   </span>
                 </>
               ) : undefined

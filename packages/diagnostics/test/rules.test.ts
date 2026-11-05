@@ -182,6 +182,7 @@ describe('possible N+1 queries', () => {
           id: `query-${traceIndex}-${queryIndex}`,
           traceId: trace.traceId,
           resolvedTraceId: trace.traceId,
+          spanId: trace.spanId,
           route: undefined,
           sql: `select * from tasks where project_id = ${queryIndex + 1}`,
           timestamp: trace.startTime + queryIndex,
@@ -220,6 +221,7 @@ describe('possible N+1 queries', () => {
           id: `a-${index}`,
           traceId: first.traceId,
           resolvedTraceId: first.traceId,
+          spanId: first.spanId,
           route: undefined,
           sql: 'select * from tasks where id = ?',
           timestamp: first.startTime + index,
@@ -230,6 +232,7 @@ describe('possible N+1 queries', () => {
           id: `b-${index}`,
           traceId: second.traceId,
           resolvedTraceId: second.traceId,
+          spanId: second.spanId,
           route: undefined,
           sql: 'select * from tasks where id = ?',
           timestamp: second.startTime + index,
@@ -267,6 +270,7 @@ describe('possible N+1 queries', () => {
             id: `q-${index}`,
             traceId: trace.traceId,
             resolvedTraceId: trace.traceId,
+            spanId: trace.spanId,
             route: undefined,
           }),
         ),
@@ -283,6 +287,7 @@ describe('possible N+1 queries', () => {
             id: `q-${index}`,
             traceId: trace.traceId,
             resolvedTraceId: trace.traceId,
+            spanId: trace.spanId,
             route: undefined,
             timestamp: trace.startTime + index,
             sql: `select * from tasks where id = ${index}`,
@@ -376,7 +381,7 @@ describe('slow requests and slow spans', () => {
           trace,
           span({
             traceId: trace.traceId,
-            spanId: '0000000000000001',
+            spanId: '0000000000000011',
             parentSpanId: trace.spanId,
             kind: 'internal',
             nextSpanType: undefined,
@@ -747,7 +752,7 @@ describe('report generation', () => {
       connected: true,
       connectedInstances: 1,
       tracesWithoutRequestRoot: 1,
-      tracesWithMissingParents: 2,
+      tracesWithMissingParents: 1,
       ignoredControlFlowErrors: 0,
       serverErrorsWithoutError: 0,
     })
@@ -954,5 +959,61 @@ describe('diagnostic list and detail views', () => {
     expect(overview.counts).toEqual(report.counts)
     expect(overview.topFindings).toHaveLength(2)
     expect(overview.limitations).toEqual(report.limitations)
+  })
+})
+
+describe('review regressions', () => {
+  it('filters by full trace membership beyond the evidence cap', () => {
+    const traces = Array.from({ length: 60 }, (_, index) => root(index, '/api/slow', 900))
+    const report = reportFor(snapshot({ spans: traces, requests: traces.map((trace) => requestFor(trace)) }))
+    const finding = byRule(report, 'slow-request')[0]!
+    expect(finding.traceIds).toHaveLength(50)
+    const omitted = traces.find((trace) => !finding.traceIds.includes(trace.traceId))!
+    expect(listDiagnosticFindings(report, { traceId: omitted.traceId }).items).toContain(finding)
+  })
+
+  it('counts error records within a trace and reports below-threshold totals', () => {
+    const trace = root(0, '/api/test', 120)
+    const report = reportFor(snapshot({
+      spans: [trace], requests: [requestFor(trace)],
+      errors: [1, 2].map((index) => error({ id: `error-${index}`, traceId: trace.traceId, resolvedTraceId: trace.traceId, timestamp: 1_000 + index })),
+    }), { config: config({ diagnostics: { errorGroupMin: 3 } }).diagnostics })
+    const finding = byRule(report, 'error-fingerprint')[0]!
+    expect(finding.evidence.traces?.[0]).toMatchObject({ occurrences: 2, timestamp: 1_002 })
+    expect(finding.summary).toContain('2 occurrences on /api/test')
+  })
+
+  it('does not attribute queries with missing or detached span IDs', () => {
+    const trace = root(0, '/api/test', 120)
+    for (const spanId of [undefined, 'missing', 'detached']) {
+      const report = reportFor(snapshot({
+        spans: [trace, child(trace, { spanId: 'detached', parentSpanId: 'absent' })],
+        requests: [requestFor(trace)],
+        databaseQueries: Array.from({ length: 8 }, (_, index) => query({ id: `q-${index}`, traceId: trace.traceId, resolvedTraceId: trace.traceId, spanId })),
+      }))
+      expect(byRule(report, 'n-plus-one-queries')).toHaveLength(0)
+    }
+  })
+
+  it('uses all matching spans for timestamps within one trace', () => {
+    const trace = root(0, '/api/test', 400)
+    const spans = [trace, ...[1_010, 1_200].map((startTime, index) => child(trace, {
+      spanId: `fetch-${index}`, name: 'fetch GET', nextSpanType: 'AppRender.fetch', kind: 'client',
+      startTime, durationMs: 100, attributes: { 'http.url': 'https://example.test/api' },
+    }))]
+    const report = reportFor(snapshot({ spans, requests: [requestFor(trace)] }), {
+      config: config({ diagnostics: { repeatedHttpMin: 2, slowSpans: { httpMs: 10 } } }).diagnostics,
+    })
+    for (const rule of ['slow-span', 'repeated-external-http'] as const) {
+      const finding = byRule(report, rule)[0]!
+      expect(finding).toMatchObject({ firstSeen: 1_010, lastSeen: 1_200 })
+    }
+  })
+
+  it('excludes codes outside 500 through 599 from server error findings and counts', () => {
+    const trace = root(0, '/api/test', 120, { statusCode: 600 })
+    const report = reportFor(snapshot({ spans: [trace], requests: [requestFor(trace)] }))
+    expect(byRule(report, 'server-error-response')).toHaveLength(0)
+    expect(report.sample.serverErrorsWithoutError).toBe(0)
   })
 })

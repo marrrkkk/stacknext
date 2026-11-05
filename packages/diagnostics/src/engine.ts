@@ -15,7 +15,7 @@ import {
   type StackNextConfig,
 } from '@stacknext/core'
 import { isControlFlowError } from './fingerprints.js'
-import { evaluateDiagnosticRules } from './rules.js'
+import { evaluateDiagnosticRules, findingMatchesTrace } from './rules.js'
 import { buildTraceIndex, type DiagnosticTraceIndex } from './trace.js'
 
 export const DIAGNOSTICS_ENGINE_VERSION = '0.6.1'
@@ -87,6 +87,7 @@ function sampleFor(
     (trace) =>
       trace.statusCode !== null &&
       trace.statusCode >= 500 &&
+      trace.statusCode <= 599 &&
       !errorTraceIds.has(trace.traceId),
   ).length
   return {
@@ -103,7 +104,9 @@ function sampleFor(
     tracesWithoutRequestRoot: index.tracesWithoutRequestRoot.filter(
       (trace) => trace.nodes.length > 0,
     ).length,
-    tracesWithMissingParents: index.missingParentTraceIds.size,
+    tracesWithMissingParents: index.requestTraces.filter(
+      (trace) => index.missingParentTraceIds.has(trace.traceId),
+    ).length,
     unattributedSpans: index.unattributedSpans,
     ignoredControlFlowErrors,
     serverErrorsWithoutError,
@@ -220,7 +223,7 @@ export function listDiagnosticFindings(
     if (filters.status && finding.status !== filters.status) return false
     if (filters.ruleId && finding.ruleId !== filters.ruleId) return false
     if (route && !finding.route?.toLowerCase().includes(route)) return false
-    if (traceId && !finding.traceIds.includes(traceId)) return false
+    if (traceId && !findingMatchesTrace(finding, traceId)) return false
     if (filters.since !== undefined && finding.lastSeen < filters.since) return false
     if (filters.until !== undefined && finding.firstSeen > filters.until) return false
     if (

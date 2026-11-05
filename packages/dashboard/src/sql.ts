@@ -15,19 +15,65 @@ const LONG_HEX_PATTERN = /\b[0-9a-f]{16,}\b/gi
  * the rule-set normalization changes; the hash is only a display identity.
  */
 export function normalizeSql(sql: string): string {
-  let value = sql.replace(/\/\*[\s\S]*?\*\//g, ' ')
-  value = value.replace(/--[^\n]*/g, ' ')
-  value = value.replace(/\$[a-z_]*\$[\s\S]*?\$[a-z_]*\$/gi, '?')
-  value = value.replace(/'(?:''|[^'])*'/g, '?')
-  value = value.replace(UUID_PATTERN, '?')
-  value = value.replace(/\$\d+/g, '?')
-  value = value.replace(/(?<!:):[a-zA-Z_][a-zA-Z0-9_]*/g, '?')
-  value = value.replace(/@[a-zA-Z_][a-zA-Z0-9_]*/g, '?')
-  value = value.replace(LONG_HEX_PATTERN, '?')
-  value = value.replace(/\b\d+(?:\.\d+)?(?:e[+-]?\d+)?\b/gi, '?')
-  value = value.replace(/\(\s*\?(?:\s*,\s*\?)+\s*\)/g, '(?)')
-  value = value.replace(/\s+/g, ' ').trim().toLowerCase()
-  return value
+  const parts: string[] = []
+  let plain = ''
+  const flush = (): void => {
+    let value = plain.replace(UUID_PATTERN, '?')
+    value = value.replace(/\$\d+/g, '?')
+    value = value.replace(/(?<!:):[a-zA-Z_][a-zA-Z0-9_]*/g, '?')
+    value = value.replace(/@[a-zA-Z_][a-zA-Z0-9_]*/g, '?')
+    value = value.replace(LONG_HEX_PATTERN, '?')
+    value = value.replace(/\b\d+(?:\.\d+)?(?:e[+-]?\d+)?\b/gi, '?')
+    value = value.replace(/\(\s*\?(?:\s*,\s*\?)+\s*\)/g, '(?)')
+    parts.push(value.replace(/\s+/g, ' ').toLowerCase())
+    plain = ''
+  }
+  let index = 0
+  while (index < sql.length) {
+    const char = sql[index]!
+    if (sql.startsWith('--', index)) {
+      const end = sql.indexOf('\n', index + 2)
+      index = end < 0 ? sql.length : end + 1
+      plain += ' '
+    } else if (sql.startsWith('/*', index)) {
+      let depth = 1
+      index += 2
+      while (index < sql.length && depth > 0) {
+        if (sql.startsWith('/*', index)) { depth += 1; index += 2 }
+        else if (sql.startsWith('*/', index)) { depth -= 1; index += 2 }
+        else index += 1
+      }
+      plain += ' '
+    } else if (char === '"' || char === '`' || char === '[' || char === "'") {
+      const start = index++
+      const closing = char === '[' ? ']' : char
+      // PostgreSQL E strings and MySQL strings support backslash escapes.
+      const backslashEscapes = char === "'" && /(?:^|\W)e$/i.test(sql.slice(0, start))
+      while (index < sql.length) {
+        if (backslashEscapes && sql[index] === '\\') { index += 2; continue }
+        if (sql[index++] !== closing) continue
+        if (sql[index] === closing) { index += 1; continue }
+        break
+      }
+      if (char === "'") {
+        if (backslashEscapes) plain = plain.slice(0, -1)
+        plain += '?'
+      } else {
+        flush()
+        parts.push(sql.slice(start, index))
+      }
+    } else if (char === '$' && /^\$(?:[a-z_][\w]*)?\$/i.test(sql.slice(index))) {
+      const delimiter = /^\$(?:[a-z_][\w]*)?\$/i.exec(sql.slice(index))![0]
+      const end = sql.indexOf(delimiter, index + delimiter.length)
+      index = end < 0 ? sql.length : end + delimiter.length
+      plain += '?'
+    } else {
+      plain += char
+      index += 1
+    }
+  }
+  flush()
+  return parts.join('').trim()
 }
 
 export function queryShapeId(sql: string): string {
@@ -233,7 +279,7 @@ export interface QueryTitle {
 }
 
 const TABLE_PATTERN =
-  /\b(?:from|join|update|into|delete\s+from)\s+("?[a-z_][\w$]*"?\.[\w$]+|"?[a-z_][\w$]*"?)/gi
+  /\b(?:from|join|update|into|delete\s+from)\s+((?:"(?:""|[^"])+"|[a-z_][\w$]*)(?:\.(?:"(?:""|[^"])+"|[a-z_][\w$]*))?)/gi
 
 function cleanIdentifier(value: string): string {
   return value.replace(/"/g, '').replace(/^.*\./, '')
@@ -330,11 +376,12 @@ export function groupQueriesByShape(
   for (const query of queries) {
     const shape = normalizeSql(query.sql)
     const shapeId = queryShapeId(query.sql)
-    const existing = groups.get(shapeId)
+    const groupKey = `${query.databaseSystem}\u0000${shape}`
+    const existing = groups.get(groupKey)
     if (existing) {
       existing.queries.push(query)
     } else {
-      groups.set(shapeId, {
+      groups.set(groupKey, {
         shapeId,
         shape,
         sql: query.sql,

@@ -101,6 +101,7 @@ const MAX_SNAPSHOT_BODY_BYTES = 64 * 1024
 const MAX_SNAPSHOT_CACHE_ENTRIES = 3
 
 interface SnapshotCacheEntry {
+  ctimeMs: number
   mtimeMs: number
   bytes: number
   payload: SnapshotPayload
@@ -562,6 +563,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
         databaseQueries: summary.databaseQueryCount,
       },
       sample: {
+        lastReceivedAt: summary.lastReceivedAt,
         firstEventTime: summary.firstEventTime,
         lastEventTime: summary.lastEventTime,
         retentionMs: store.retentionMs,
@@ -715,13 +717,14 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
       throw error
     }
     const cached = snapshotCache.get(id)
-    if (cached && cached.mtimeMs === info.mtimeMs) {
+    if (cached && cached.mtimeMs === info.mtimeMs && cached.ctimeMs === info.ctimeMs) {
       snapshotCache.delete(id)
       snapshotCache.set(id, cached)
       return cached
     }
     const payload = await loadSnapshotPayload(projectDir, id, { maxBytes: snapshotMaxBytes })
     const entry: SnapshotCacheEntry = {
+      ctimeMs: info.ctimeMs,
       mtimeMs: info.mtimeMs,
       bytes: info.size,
       payload,
@@ -797,7 +800,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
       return
     }
     if (request.method === 'DELETE') {
-      const id = decodeURIComponent(url.pathname.slice('/api/snapshots/'.length))
+      const id = decodeURIComponent(url.pathname.replace(/\/$/, '').slice('/api/snapshots/'.length))
       if (!isSnapshotId(id)) {
         sendError(response, 400, 'Invalid snapshot id')
         return
@@ -880,7 +883,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
           limitations: entry.payload.limitations,
           traces: entry.store.listTraces(
             { limit: 20 },
-            options.config.slowRequestMs,
+            entry.payload.config.slowRequestMs,
           ).items,
           errors: entry.store.listErrors({ limit: 20 }).items,
           databaseQueries: entry.store.listDatabaseQueries({ limit: 20 }).items,
@@ -902,7 +905,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
           200,
           entry.store.listTraces(
             filtersFromSearch(url.searchParams),
-            options.config.slowRequestMs,
+            entry.payload.config.slowRequestMs,
           ),
         )
         return
@@ -914,7 +917,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
           return
         }
         const entry = await snapshotView(id)
-        const detail = entry.store.getTrace(traceId, options.config.slowRequestMs)
+        const detail = entry.store.getTrace(traceId, entry.payload.config.slowRequestMs)
         if (!detail) {
           sendError(response, 404, 'Trace not found in snapshot')
           return

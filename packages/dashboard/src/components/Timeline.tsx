@@ -83,7 +83,15 @@ function orderedRows(spans: StackNextSpan[], collapsed: Set<string>): SpanRow[] 
       hasChildren: childList.length > 0,
       collapsed: isCollapsed,
     })
-    if (isCollapsed) return
+    if (isCollapsed) {
+      const markSeen = (child: StackNextSpan): void => {
+        if (seen.has(child.spanId)) return
+        seen.add(child.spanId)
+        for (const descendant of children.get(child.spanId) ?? []) markSeen(descendant)
+      }
+      for (const child of childList) markSeen(child)
+      return
+    }
     for (const child of childList) visit(child, Math.min(depth + 1, 12))
   }
   for (const root of sortSpans(roots)) visit(root, 0)
@@ -245,6 +253,7 @@ export function SpanTimeline({
   )
 
   const toggle = (spanId: string): void => {
+    if (filtering) return
     setCollapsed((previous) => {
       const next = new Set(previous)
       if (next.has(spanId)) next.delete(spanId)
@@ -331,7 +340,7 @@ export function SpanTimeline({
             type="button"
             className="button button--ghost button--small"
             onClick={() => setCollapsed(new Set(parentIds))}
-            disabled={parentIds.size === 0}
+            disabled={filtering || parentIds.size === 0}
             title="Collapse every span with children"
           >
             Collapse all
@@ -340,7 +349,7 @@ export function SpanTimeline({
             type="button"
             className="button button--ghost button--small"
             onClick={() => setCollapsed(new Set())}
-            disabled={collapsed.size === 0}
+            disabled={filtering || collapsed.size === 0}
             title="Expand every span"
           >
             Expand all
@@ -457,6 +466,7 @@ export function SpanTimeline({
                         isCollapsed ? 'Expand span children' : 'Collapse span children'
                       }
                       aria-expanded={!isCollapsed}
+                      disabled={filtering}
                       tabIndex={-1}
                       onClick={(event) => {
                         event.stopPropagation()

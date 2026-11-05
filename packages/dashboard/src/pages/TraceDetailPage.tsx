@@ -195,7 +195,7 @@ function TraceDatabaseTab({
       <div className="query-groups">
         {groups.map((group, index) => (
           <TraceQueryGroup
-            key={group.shapeId}
+            key={`${group.databaseSystem}:${group.shapeId}`}
             group={group}
             defaultOpen={index === 0}
             onNavigate={onNavigate}

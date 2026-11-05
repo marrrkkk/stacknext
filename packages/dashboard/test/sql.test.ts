@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { latencyStats } from '../src/components/LatencyChart'
+import { sqlFingerprint } from '@stacknext/diagnostics'
 import type { RegressionMetric } from '@stacknext/regression'
 import type { StackNextDatabaseQuery } from '@stacknext/core'
 import {
@@ -211,4 +213,52 @@ describe('stack display helpers', () => {
     expect(isMissingRecordError('record aged out of the store')).toBe(true)
     expect(isMissingRecordError('fetch failed: ECONNREFUSED')).toBe(false)
   })
+})
+
+
+it('keeps SQL normalizers aligned across quoted identifiers, strings, and comments', () => {
+  const cases = [
+    ['SELECT * FROM "task--archive" -- comment', 'select * from "task--archive"'],
+    ['SELECT * FROM "Task/*Live*/" /* comment */', 'select * from "Task/*Live*/"'],
+    ['SELECT "a""--b" FROM "public"."Tasks"', 'select "a""--b" from "public"."Tasks"'],
+    ["SELECT 'it''s -- /* quoted */' FROM tasks", 'select ? from tasks'],
+    ["SELECT E'it\\\'s -- quoted' FROM tasks", 'select ? from tasks'],
+    ['SELECT $tag$-- /* literal */$tag$ FROM tasks', 'select ? from tasks'],
+    ['SELECT * FROM `task--live`', 'select * from `task--live`'],
+    ['SELECT * FROM [task/*live*/]', 'select * from [task/*live*/]'],
+    ['SELECT /* nested /* comment */ end */ * FROM tasks', 'select * from tasks'],
+  ]
+  for (const [sql, expected] of cases) {
+    expect(normalizeSql(sql!)).toBe(expected)
+    expect(sqlFingerprint(sql!)).toBe(expected)
+  }
+  expect(queryTitle('SELECT * FROM "public"."Tasks"').table).toBe('Tasks')
+  expect(groupQueriesByShape([
+    query({ sql: 'select * from "Tasks"' }),
+    query({ sql: 'select * from "tasks"' }),
+    query({ sql: 'select * from "task--archive"' }),
+    query({ sql: 'select * from "task--live"' }),
+  ])).toHaveLength(4)
+})
+
+it('separates query groups by database system', () => {
+  const groups = groupQueriesByShape([
+    query({ databaseSystem: 'sqlite' }),
+    query({ databaseSystem: 'postgresql' }),
+    query({ databaseSystem: 'sqlite', sql: 'SELECT * FROM tasks WHERE id = 2' }),
+  ])
+  expect(groups.map((group) => [group.databaseSystem, group.queries.length])).toEqual([
+    ['sqlite', 2], ['postgresql', 1],
+  ])
+})
+
+it('uses only server slow flags when the collector threshold is unavailable', () => {
+  const requests = [false, true].map((slow) => ({
+    id: String(slow), traceId: String(slow), name: 'GET /', method: 'GET', route: '/',
+    statusCode: 200, statusClass: '2xx' as const, durationMs: 1_000, timestamp: 1_000,
+    endTime: 2_000, spanCount: 1, errorCount: 0, databaseQueryCount: 0, fetchCount: 0,
+    failed: false, slow, serviceName: 'test',
+  }))
+  expect(latencyStats(requests, null)).toMatchObject({ slowCount: 1, allUnderThreshold: false })
+  expect(latencyStats(requests, 250)).toMatchObject({ slowCount: 2 })
 })

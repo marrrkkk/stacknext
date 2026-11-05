@@ -626,6 +626,7 @@ describe('deterministic comparison', () => {
     const query = comparison.scenarios[0]?.metrics.find((metric) =>
       metric.key.startsWith('query-duration:'),
     )
+    expect(query?.queryFingerprint).toBe('sql:abc')
     expect(query?.baselineValue).toBeNull()
     expect(query?.delta).toBeNull()
     expect(query?.status).toBe('inconclusive')

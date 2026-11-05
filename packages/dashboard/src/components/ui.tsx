@@ -1130,6 +1130,7 @@ export function IdLink({
       type="button"
       className={cx('link mono id-text', className)}
       title={`${value} — ${label.toLowerCase()}`}
+      onKeyDown={(event) => event.stopPropagation()}
       onClick={(event) => {
         event.stopPropagation()
         onClick()

@@ -565,16 +565,19 @@ function compareScenario(input: ScenarioComparisonInput): ScenarioComparison {
         const baselineDurations = queryDurationValues(baseline, traceKey, queryKey)
         const candidateDurations = queryDurationValues(candidate, traceKey, queryKey)
         metrics.push(
-          durationMetric({
-            key: `query-duration:${traceKey}:${queryKey}`,
-            label: `Query duration: ${queryKey.slice(0, 120)}`,
-            baselineValues: baselineDurations.values,
-            candidateValues: candidateDurations.values,
-            baselineNulls: baselineDurations.nulls,
-            candidateNulls: candidateDurations.nulls,
-            minSamples: input.options.minSamples,
-            options: input.options,
-          }),
+          {
+            ...durationMetric({
+              key: `query-duration:${traceKey}:${queryKey}`,
+              label: `Query duration: ${queryKey.slice(0, 120)}`,
+              baselineValues: baselineDurations.values,
+              candidateValues: candidateDurations.values,
+              baselineNulls: baselineDurations.nulls,
+              candidateNulls: candidateDurations.nulls,
+              minSamples: input.options.minSamples,
+              options: input.options,
+            }),
+            queryFingerprint: queryKey,
+          },
         )
       }
     }

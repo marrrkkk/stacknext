@@ -80,6 +80,7 @@ export interface StackNextError {
 export interface StackNextDatabaseQuery {
   id: string
   traceId?: string
+  /** Active OTel span at query emission; request attribution requires captured span evidence. */
   spanId?: string
   timestamp: number
   durationMs: number | null
@@ -315,6 +316,7 @@ export interface PageResult<T> {
 }
 
 export interface StoreSummary {
+  lastReceivedAt: number | null
   totalRequests: number
   failedRequests: number
   slowRequests: number
@@ -384,6 +386,8 @@ export interface HealthResponse {
   }
   /** Current live sample window. Additive in StackNext 0.7. */
   sample: {
+    /** Newest collector receive time, used for retention expiry. */
+    lastReceivedAt: number | null
     firstEventTime: number | null
     lastEventTime: number | null
     retentionMs: number

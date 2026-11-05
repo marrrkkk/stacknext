@@ -20,9 +20,9 @@ function axisLabel(ms: number): string {
   return parts.unit ? `${parts.value} ${parts.unit}` : parts.value
 }
 
-function outcomeFor(request: RequestSummary, thresholdMs: number): Outcome {
+function outcomeFor(request: RequestSummary, thresholdMs: number | null): Outcome {
   if (request.failed || (request.statusCode ?? 0) >= 500) return 'error'
-  if (request.slow || (request.durationMs ?? 0) > thresholdMs) return 'slow'
+  if (request.slow || (thresholdMs !== null && (request.durationMs ?? 0) > thresholdMs)) return 'slow'
   return 'ok'
 }
 
@@ -41,7 +41,7 @@ export interface LatencyStats {
 /** Presentation-only summary shared by the chart body and the card footer. */
 export function latencyStats(
   requests: RequestSummary[],
-  thresholdMs: number,
+  thresholdMs: number | null,
 ): LatencyStats {
   const recent = recentRequests(requests)
   const durations = recent.map((request) => request.durationMs ?? 0)
@@ -55,11 +55,11 @@ export function latencyStats(
     ).length,
     slowest,
     scaleMax: roundedScaleMax(Math.max(slowest, 1)),
-    allUnderThreshold: recent.length > 0 && slowest < thresholdMs,
+    allUnderThreshold: thresholdMs !== null && recent.length > 0 && slowest < thresholdMs,
   }
 }
 
-export function LatencyLegend({ thresholdMs }: { thresholdMs: number }): React.ReactElement {
+export function LatencyLegend({ thresholdMs }: { thresholdMs: number | null }): React.ReactElement {
   return (
     <span className="latency-legend" aria-label="Bar colour legend">
       <span className="latency-legend__item">
@@ -68,7 +68,7 @@ export function LatencyLegend({ thresholdMs }: { thresholdMs: number }): React.R
       </span>
       <span className="latency-legend__item">
         <span className="latency-legend__swatch latency-legend__swatch--slow" aria-hidden="true" />
-        slow &gt; {formatDuration(thresholdMs)}
+        {thresholdMs === null ? 'slow (server flag)' : `slow > ${formatDuration(thresholdMs)}`}
       </span>
       <span className="latency-legend__item">
         <span className="latency-legend__swatch latency-legend__swatch--error" aria-hidden="true" />
@@ -84,7 +84,7 @@ export function LatencyChart({
   onOpenRequest,
 }: {
   requests: RequestSummary[]
-  thresholdMs: number
+  thresholdMs: number | null
   onOpenRequest: (traceId: string) => void
 }): React.ReactElement {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
@@ -93,10 +93,10 @@ export function LatencyChart({
   const recent = recentRequests(requests)
   const stats = latencyStats(requests, thresholdMs)
   const { scaleMax } = stats
-  const thresholdInRange = thresholdMs <= scaleMax
-  const thresholdBottom = thresholdInRange ? (thresholdMs / scaleMax) * 100 : null
+  const thresholdInRange = thresholdMs !== null && thresholdMs <= scaleMax
+  const thresholdBottom = thresholdInRange && thresholdMs !== null ? (thresholdMs / scaleMax) * 100 : null
   const thresholdHasOwnLabel =
-    thresholdInRange &&
+    thresholdInRange && thresholdMs !== null &&
     Math.abs(thresholdMs - scaleMax) > 1 &&
     Math.abs(thresholdMs - scaleMax / 2) > 1
   const startTime = recent[0]?.timestamp
@@ -125,8 +125,8 @@ export function LatencyChart({
   return (
     <div className="latency-chart">
       <p className="sr-only">
-        {recent.length} recent requests. {stats.slowCount} slow above{' '}
-        {formatDuration(thresholdMs)}. {stats.errorCount} errors. Slowest{' '}
+        {recent.length} recent requests. {stats.slowCount} slow{' '}
+        {thresholdMs === null ? '(server flag; threshold unavailable)' : `above ${formatDuration(thresholdMs)}`}. {stats.errorCount} errors. Slowest{' '}
         {formatDuration(stats.slowest)}. Axis maximum {formatDuration(scaleMax)}.
       </p>
       <div className="latency-chart__frame">

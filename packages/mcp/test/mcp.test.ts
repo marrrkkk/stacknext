@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { buildMeta } from '../src/meta.js'
 import { StackNextApiClient } from '../src/client.js'
 import { createStackNextMcpServer } from '../src/server.js'
 
@@ -1540,4 +1541,13 @@ describe('unreachable collector', () => {
       await connection.close()
     }
   })
+})
+
+
+it('keeps snapshot completeness independent of unavailable live health', () => {
+  const base = { tool: 'snapshot', health: null, found: 1, returned: 1 }
+  expect(buildMeta(base).completeness.complete).toBe(false)
+  expect(buildMeta({ ...base, snapshot: true }).completeness).toEqual({ complete: true, reasons: [] })
+  expect(buildMeta({ ...base, snapshot: true, reasons: ['Missing parent'] }).completeness.reasons).toEqual(['Missing parent'])
+  expect(buildMeta({ ...base, snapshot: true, limit: 1, offset: 0, found: 2 }).completeness.complete).toBe(false)
 })

@@ -75,6 +75,10 @@ export function ConfirmDialog({
   useEffect(() => {
     if (!open) return
     const onKeyDown = (event: KeyboardEvent): void => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        return
+      }
       if (event.key === 'Escape') {
         event.preventDefault()
         if (!busy) onCancel()

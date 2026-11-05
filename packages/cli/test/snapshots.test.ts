@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import {
@@ -125,6 +125,8 @@ describe('collector snapshot API', () => {
     expect(list.total).toBe(1)
     expect(list.items[0]?.id).toBe(saved.snapshot.id)
 
+    // Use an exactly representable mtime so restoring it does not lose precision.
+    await utimes(snapshotPath(projectDir, saved.snapshot.id), file.atime, new Date(1_700_000_000_000))
     const detailResponse = await fetch(
       `${collector.url}/api/snapshots/${saved.snapshot.id}`,
       { headers: { authorization: `Bearer ${TOKEN}` } },
@@ -195,8 +197,28 @@ describe('collector snapshot API', () => {
     expect(exported.spans).toHaveLength(1)
     expect(exported).not.toHaveProperty('diagnostics')
 
+    // Change the saved threshold while preserving mtime: cache reuse must also
+    // require ctime, and every snapshot trace endpoint must use the saved config.
+    const snapshotFile = snapshotPath(projectDir, saved.snapshot.id)
+    const savedStat = await stat(snapshotFile)
+    const payload = await loadSnapshotPayload(projectDir, saved.snapshot.id)
+    payload.config.slowRequestMs = 10_000
+    await writeFile(snapshotFile, JSON.stringify(payload))
+    await utimes(snapshotFile, savedStat.atime, savedStat.mtime)
+    expect((await stat(snapshotFile)).mtimeMs).toBe(savedStat.mtimeMs)
+    for (const suffix of ['', '/traces', `/traces/${TRACE}`]) {
+      const response = await fetch(`${collector.url}/api/snapshots/${saved.snapshot.id}${suffix}`, {
+        headers: { authorization: `Bearer ${TOKEN}` },
+      })
+      expect(response.status).toBe(200)
+      const result = await response.json()
+      const request = suffix === '' ? (result as SnapshotDetailResponse).traces[0]?.request
+        : suffix === '/traces' ? (result as TraceListResult).items[0]?.request : (result as TraceDetail).request
+      expect(request?.slow).toBe(false)
+    }
+
     const deleteResponse = await fetch(
-      `${collector.url}/api/snapshots/${saved.snapshot.id}`,
+      `${collector.url}/api/snapshots/${saved.snapshot.id}/`,
       { method: 'DELETE', headers: { authorization: `Bearer ${TOKEN}` } },
     )
     expect(deleteResponse.status).toBe(200)
