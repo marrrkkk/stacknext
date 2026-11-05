@@ -113,6 +113,12 @@ counts finding occurrences across verified samples. Findings are evidence, not
 root causes; a changed finding count is a signal to inspect the trace, not proof
 that the underlying behavior improved or regressed.
 
+Environment snapshots include the diagnostics rule-set version. If the baseline
+and candidate were captured with different versions, or either version is
+missing, the comparison is `inconclusive`: findings from different rule sets are
+not treated as equivalent evidence. Transport and environment overrides do not
+bypass this check.
+
 ## Samples
 
 Only **verified** samples contribute measurements:

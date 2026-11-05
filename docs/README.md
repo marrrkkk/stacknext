@@ -16,6 +16,12 @@ Start with the [README](../README.md) for the package quick start and the
 | [Limitations](limitations.md) | Unsupported runtimes, heuristics and known gaps. |
 | [Benchmark](benchmark.md) | Ingest, diagnostics and verbose-tracing measurements. |
 
+## Design
+
+| Document | What it covers |
+| --- | --- |
+| [Dashboard UX layout prompt](ux-layout-prompt.md) | Shell, navigation, page headers, command menu and acceptance criteria. |
+
 ## Observability
 
 | Document | What it covers |
@@ -52,6 +58,7 @@ Start with the [README](../README.md) for the package quick start and the
 | Document | What it covers |
 | --- | --- |
 | [Contributing](../CONTRIBUTING.md) | Development setup, gates and review expectations. |
+| [Brand assets](../brand/README.md) | Open Span mark, lockups, app icons, favicon and usage rules. |
 | [ADR 0001: native-only runtime](adr/0001-native-only-runtime.md) | Why StackNext does not ship a managed container runtime. |
 | [Releasing](releasing.md) | Versioning, package validation, trusted publishing and rollback. |
 | [Changelog](../CHANGELOG.md) | Release history and breaking changes. |

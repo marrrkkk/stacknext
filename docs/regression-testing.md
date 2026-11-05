@@ -270,15 +270,17 @@ The local dashboard serves:
 
 | Route | Content |
 | --- | --- |
-| `/runs` | Capture runs with status, environment, sample and correlation counts. |
+| `/runs` | Capture history with status, environment, sample and correlation counts. A run is not a baseline. |
 | `/runs/:id` | Scenario samples, verified traces, findings, warnings and limitations. |
-| `/baselines` | Saved baselines and source runs. |
+| `/baselines` | Immutable reference snapshots and the runs they were copied from. |
 | `/baselines/:id` | Baseline environment and captured scenarios. |
-| `/comparisons` | Comparison status, severity and summary. |
+| `/comparisons` | Report-only baseline-to-candidate results with status, severity and summary. |
 | `/comparisons/:id` | Per-scenario reasons, metrics and environment differences. |
 
-The dashboard reads the same disk-backed records through the collector's
-loopback APIs. It does not compute a second comparison.
+The three list pages share a Capture → Baseline → Compare workflow strip so the
+role of each record is visible before opening it. The dashboard reads the same
+disk-backed records through the collector's loopback APIs. It does not compute
+a second comparison.
 
 ## MCP
 

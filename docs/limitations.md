@@ -12,8 +12,9 @@ intentional boundaries, not claims of completeness.
   `stacknext doctor` to confirm the local Next.js version and App Router
   directory.
 - **Development use only.** There is no authentication for multiple users, no
-  TLS, no persistence, no clustering and no production hardening story. Do not
-  expose the collector or dashboard to a network.
+  TLS, no clustering and no production hardening story. Live telemetry is not
+  persisted, but explicit regression records and snapshots are local files. Do
+  not expose the collector or dashboard to a network.
 - **No browser/client tracing.** StackNext sees server-side Next.js spans and
   database events. Client-side React renders and browser performance are out of
   scope.
@@ -87,7 +88,7 @@ intentional boundaries, not claims of completeness.
 ## Diagnostics
 
 - **Findings are heuristics, not confirmed root causes.** The engine implements
-  four conservative rules over the current sample. `possible` means the pattern
+  six conservative rules over the current sample. `possible` means the pattern
   is consistent with a problem; `observed` means the measurement exists. Neither
   proves why the app behaves that way.
 - **The current sample is the whole input.** Diagnostics analyze the in-memory
@@ -98,17 +99,35 @@ intentional boundaries, not claims of completeness.
   pattern in the sample.
 - **N+1 is a SQL-shape signal.** Repeated normalized queries in one trace are
   consistent with an N+1 pattern, but StackNext cannot see the calling code,
-  prove a loop, or recover bind parameters. A batched query can still repeat for
-  unrelated reasons.
+  prove a loop, or recover bind parameters. Findings aggregate across traces by
+  canonical route; a batched query can still repeat for unrelated reasons.
+- **Slow requests and slow spans are different signals.** Request duration is
+  measured from the request root. Slow-span findings use self time and are
+  suppressed when the request already exceeds `slowRequestMs`, so a slow child
+  can be attributed inside a slow request rather than double-reporting it. Self
+  time is approximate when clocks disagree or child intervals overlap.
 - **Slow-span thresholds are category-specific.** A span can be slow because of
   child work, queueing, a cold start or the measured operation itself. Parent
-  duration already includes children; never add overlapping spans.
+  duration already includes children; never add overlapping spans. Framework
+  spans use their own threshold and are evidence of Next.js work, not a root
+  cause.
+- **Detached traces are excluded.** Request-level rules need an attributable
+  request root. Spans without one, and spans whose parent is missing, are noted
+  in sample integrity metadata instead of being guessed into a request.
 - **Repeated HTTP is endpoint-shape based.** Query values, fragments and
   credentials are removed, and id-like path segments are normalized. StackNext
   cannot tell an intentional retry from independent calls or a missing cache.
-- **Error grouping is route-independent and heuristic.** The same message and
-  stack shape can merge different causes; different shapes can split one cause.
-  Read the latest error and trace before acting.
+  Findings aggregate across traces by canonical route.
+- **Error grouping is route-aware and heuristic.** The normalized error
+  signature is route-independent, but findings group by canonical route so the
+  same failure in different routes stays separate. The same message and stack
+  shape can still merge different causes; different shapes can split one cause.
+  Next.js not-found and redirect control-flow errors are excluded. Read the
+  latest error, its Next.js context and the deepest error span before acting.
+- **A 5xx status is not a root cause.** `server-error-response` only reports that
+  the request root returned 5xx without a correlated non-control-flow error. The
+  app may have returned the status intentionally, the error hook may not have
+  run, or the error record may have aged out.
 - **No source or SQL execution.** StackNext cannot read source files, run SQL or
   EXPLAIN, inspect indexes, replay requests or apply a fix. It does not provide
   index advice or automatic source edits.
@@ -177,6 +196,34 @@ intentional boundaries, not claims of completeness.
   see query bind values, read source files, run EXPLAIN or recommend an index
   from a comparison. It reports measured telemetry and configured thresholds.
 
+## Saved snapshots
+
+- **A snapshot is a frozen copy, not live state.** It captures the sample at the
+  save time and never updates. Do not describe a snapshot finding as current app
+  behavior without checking the live sample.
+- **No diagnostics or coverage.** Snapshots intentionally exclude both because
+  they describe the live sample. Scoped snapshot trace detail has no diagnostic
+  references. Re-run diagnostics against the live sample if needed.
+- **Automatic snapshots are best effort.** Exit snapshots require a graceful
+  shutdown and a non-empty sample. Error snapshots fire on the first error and
+  then respect a 60-second cooldown. A crash, `SIGKILL` or full disk can skip a
+  save.
+- **Rotation only affects automatic snapshots.** `snapshots.autoKeep` defaults
+  to 10 and applies to `exit`/`error` snapshots. Manual and imported snapshots
+  accumulate until explicitly deleted.
+- **Oversized snapshots fail.** Each snapshot is capped at 64 MiB
+  (`snapshots.maxBytes`). StackNext does not truncate a snapshot silently; reduce
+  the live sample or export it instead.
+- **Import is not a trust boundary bypass.** Imported exports are re-normalized
+  and re-redacted, and must match the versioned export schema. Unknown formats,
+  malformed JSON and records over the size cap are rejected.
+- **Snapshots are local files.** They contain redacted routes, error text, SQL
+  fragments, span attributes and timings. Review them before sharing, just like
+  an export. They are never uploaded by StackNext.
+- **The snapshot cache is small and read-only.** The collector keeps at most
+  three detached views, invalidated by file `mtimeMs`. Editing or replacing a
+  snapshot file outside StackNext is unsupported.
+
 ## Databases
 
 - **Drizzle Logger does not expose query duration.** Duration is `null`, and
@@ -196,14 +243,19 @@ intentional boundaries, not claims of completeness.
 ## Storage and scale
 
 - Telemetry is **in memory only** and disappears when `stacknext dev` exits.
-  `export` is the only persistence path for the live telemetry sample.
-- Capture runs, baselines and comparisons are the exception: they are explicit
-  JSON records under `.stacknext/{runs,baselines,comparisons}`. They persist
-  across collector restarts, are never uploaded and are not pruned
-  automatically. Baseline removal is explicit; comparisons have no CLI delete.
-- Regression records are capped at 16 MiB each and validated with strict
-  versioned schemas. A malformed or oversized record is rejected rather than
-  repaired.
+  `export` and saved snapshots are the persistence paths for the live telemetry
+  sample.
+- Capture runs, baselines and comparisons are explicit JSON records under
+  `.stacknext/{runs,baselines,comparisons}`. They persist across collector
+  restarts, are never uploaded and are not pruned automatically. Baseline
+  removal is explicit; comparisons have no CLI delete.
+- Snapshots are explicit JSON records under `.stacknext/snapshots`. They persist
+  across collector restarts, are never uploaded, and automatic exit/error
+  snapshots keep the newest `snapshots.autoKeep` (default 10). Manual and
+  imported snapshots are never pruned automatically.
+- Regression records are capped at 16 MiB each and snapshots at 64 MiB each.
+  Both use strict versioned schemas. A malformed or oversized record is rejected
+  rather than repaired.
 - The store is bounded. When full, the oldest spans/errors/queries are dropped.
   Drops are counted but not recoverable.
 - The default retention is 10 minutes; older data is pruned even if capacity is
@@ -224,7 +276,7 @@ intentional boundaries, not claims of completeness.
 ## Privacy and security
 
 - Redaction is pattern-based and best effort. It is not a formal data-loss
-  prevention system. Review exports before sharing them.
+  prevention system. Review exports and snapshots before sharing them.
 - The bearer token is stored in `.stacknext/run.json` with mode `0600`. Any
   process/agent that can read your user's files can read it. The token is
   regenerated on each `stacknext dev` unless `--token` is supplied.
@@ -267,10 +319,11 @@ intentional boundaries, not claims of completeness.
   serve it.
 - The CLI requires a `dev` script in `package.json`. Custom start commands that
   do not start Next.js will not produce Next.js spans.
-- `status`, `doctor`, `coverage`, `diagnose`, `export`, `capture` and `mcp` use
-  `.stacknext/run.json` when attaching to a live runtime. If that file is stale,
-  remove it and restart. `runs`, `baseline` and `compare` read the saved records
-  under `.stacknext` and do not need a live collector.
+- `status`, `doctor`, `coverage`, `diagnose`, `export`, `capture`, `snapshot`
+  and `mcp` use `.stacknext/run.json` when attaching to a live runtime. If that
+  file is stale, remove it and restart. `runs`, `baseline`, `compare` and
+  snapshot list/show/export/import/delete read or write the saved records under
+  `.stacknext` and do not need a live collector. `snapshot save` does need one.
 - Captured Playwright runs need a Playwright browser installed
   (`pnpm exec playwright install chromium`). CI images often ship without one.
 - A capture attaches to `stacknext dev` when it is running, otherwise it starts

@@ -61,11 +61,12 @@ pnpm exec stacknext diagnose --id <diagnostic-id> --json
 ```
 
 `diagnose` reads the same collector report as the dashboard's **Diagnostics**
-page, `GET /api/diagnostics`, JSON export and MCP. The four rules are N+1-shaped
-repeated queries, slow spans, repeated external HTTP calls and error
-fingerprints. Findings are evidence, not confirmed root causes: `possible` means
-the pattern is consistent with a problem, and `observed` means the measurement
-exists. Read the finding's evidence, verification steps and limitations before
+page, `GET /api/diagnostics`, JSON export and MCP. The six rules cover grouped
+N+1-shaped queries, slow requests, self-time slow spans, grouped repeated
+external HTTP calls, single or repeated request errors and 5xx responses without
+a correlated error. Findings are evidence, not confirmed root causes: `possible`
+means the pattern is consistent with a problem, and `observed` means the
+measurement exists. Read the finding's evidence, verification steps and limitations before
 changing code. See [diagnostics](architecture.md#diagnostics) for the engine and
 [limitations](limitations.md#diagnostics) for what it cannot prove.
 
@@ -216,6 +217,7 @@ Defaults are shown below.
       "databaseMs": 250,
       "httpMs": 500,
       "customMs": 300,
+      "frameworkMs": 500,
       "otherMs": 500
     },
     "repeatedHttpMin": 3,
@@ -223,7 +225,13 @@ Defaults are shown below.
     "errorGroupMin": 2,
     "maxFindings": 100
   },
-  "slowRequestMs": 500
+  "slowRequestMs": 500,
+  "snapshots": {
+    "autoOnExit": true,
+    "autoOnError": true,
+    "autoKeep": 10,
+    "maxBytes": 67108864
+  }
 }
 ```
 
@@ -242,11 +250,15 @@ The bundled example app overrides `retentionMs` to `900000` and
 | `database.drizzle` / `database.prisma` | Used by `init`/`doctor` for setup checks. Adapters still need explicit registration. |
 | `diagnostics.enabled` | Enables the deterministic report and its API/CLI/dashboard/MCP surfaces. |
 | `diagnostics.repeatedQueryMin` | Minimum repeated normalized queries in one trace for `n-plus-one-queries` (2–100). |
-| `diagnostics.slowSpans.*` | Per-category slow-span thresholds in milliseconds: database, HTTP, custom and other. |
+| `diagnostics.slowSpans.*` | Per-category slow-span thresholds in milliseconds: database, HTTP, custom, framework and other. |
 | `diagnostics.repeatedHttpMin` | Minimum repeated normalized HTTP endpoints in one trace for `repeated-external-http`. |
-| `diagnostics.errorGrouping` / `errorGroupMin` | Enable error fingerprint grouping and set its minimum group size. |
+| `diagnostics.errorGrouping` / `errorGroupMin` | Enable error fingerprint grouping and set the occurrence count used to label a finding as repeated. A single observed error is still reported. |
 | `diagnostics.maxFindings` | Hard cap on findings in one report (10–1,000, default 100). |
 | `slowRequestMs` | Threshold used by the dashboard, CLI and MCP slow-request views. |
+| `snapshots.autoOnExit` | Save a snapshot when `stacknext dev` exits gracefully and the sample has data. |
+| `snapshots.autoOnError` | Save a snapshot on the first error, with a 60-second cooldown. |
+| `snapshots.autoKeep` | Number of automatic exit/error snapshots to keep (1–100, default 10). Manual and imported snapshots are never rotated. |
+| `snapshots.maxBytes` | Per-snapshot size cap in bytes (1 MiB–256 MiB, default 64 MiB). Oversized saves fail rather than truncate. |
 
 The config is applied by `stacknext dev`, which exports
 `STACKNEXT_CAPTURE_FETCH`, `STACKNEXT_CAPTURE_ERRORS`, `STACKNEXT_DEBUG`,

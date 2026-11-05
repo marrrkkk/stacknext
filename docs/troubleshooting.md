@@ -171,15 +171,23 @@ the connection state before changing code. See
 
 ### Diagnostics reports no findings
 
-The four rules need matching evidence in the current retention window. Exercise
-the route, check the sample counts and thresholds, and remember that `possible`
-findings are heuristics. A capped report is not a complete inventory.
+The six rules need matching evidence in the current retention window. Exercise
+the route, check the sample counts and thresholds, read the sample-integrity
+notes, and remember that `possible` findings are heuristics. A capped report is
+not a complete inventory.
 
 ### A finding disappeared
 
 The report is rebuilt from the live sample. Telemetry aging out or a collector
 restart removes its evidence. Treat a diagnostic id as a reference for the
 current sample, not a durable identifier.
+
+### A comparison is inconclusive with a diagnostics rule-set difference
+
+Baselines and candidates record the diagnostics rule-set version. If the two
+sides differ, or either version is missing, captured findings are not treated as
+equivalent and the comparison is inconclusive. Recapture the baseline with the
+current release before comparing finding counts.
 
 ### `capture` exits 3
 

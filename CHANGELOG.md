@@ -8,15 +8,135 @@ All notable changes to StackNext are documented here. The format follows
 
 ### Added
 
+- Added saved snapshots: a redacted, versioned freeze of the current sample
+  under `.stacknext/snapshots`. Save manually from the dashboard or
+  `stacknext snapshot save`, automatically on a graceful `stacknext dev` exit
+  and on the first error with a 60-second cooldown, or import an existing export.
+  Snapshots browse read-only traces, errors, database queries and raw export
+  without replaying into the live store. Automatic exit/error snapshots keep the
+  newest 10 by default; manual and imported snapshots are never auto-deleted.
+  Each snapshot is capped at 64 MiB and oversized saves fail instead of
+  truncating.
+- Added three read-only MCP snapshot tools: `stacknext_list_snapshots`,
+  `stacknext_get_snapshot` and `stacknext_get_snapshot_trace`. Snapshot data is
+  frozen evidence and carries no live diagnostics or coverage.
+- Added `stacknext snapshot save|list|show|export|import|delete` and the
+  collector snapshot APIs (`GET/POST /api/snapshots`, import, delete, export and
+  scoped trace/error/database reads).
+- Added dashboard `/snapshots` and `/snapshots/:id` pages with scoped trace,
+  error and database routes, plus a topbar save dialog and sample countdown.
+- Split the old Settings page into `/settings` and `/mcp`. Settings now covers
+  collector, adapters, snapshots and appearance; `/mcp` documents client setup,
+  the read-only tool catalog and the Agent Skill.
 - Bundled the `stacknext-debugging` Agent Skill in the `@stacknext/cli`
   archive. `stacknext skill path` prints the bundled directory, and
   `stacknext skill install --client opencode|codex|claude-code` copies it into a
   project without overwriting an existing copy unless `--force` is passed.
 - The release archive check now fails when the bundled skill is missing or its
   `metadata.version` does not match the package version.
+- Added the `brand/` identity kit: Open Span SVG masters, lockups, wordmark,
+  app-icon variants, PNG exports, web icons and usage guidelines.
+- Added a command menu (`Cmd/Ctrl+K`) with grouped navigation,
+  filtered request views and appearance/layout actions, plus a topbar search
+  trigger.
+
+### Changed
+
+- Expanded deterministic diagnostics to rule set v2: grouped N+1 and repeated
+  HTTP findings across traces, a route-level `slow-request` rule, self-time
+  `slow-span` attribution with Next.js phases and contributors, route-aware
+  single and repeated error findings, a `server-error-response` rule for 5xx
+  responses without a correlated error, sample-integrity notes, and
+  affected-trace/contributor/occurrence evidence in the CLI, dashboard, API and
+  MCP output. Regression comparisons now treat different or unknown diagnostics
+  rule-set versions as inconclusive.
+- Added a `snapshots` config block with `autoOnExit`, `autoOnError`, `autoKeep`
+  and `maxBytes` defaults, and documented snapshot storage, rotation and
+  redaction alongside regression records.
+- The Agent Skill now documents the twenty read-only MCP tools and a saved
+  snapshot evidence workflow.
+- Clarified the dashboard regression workflow. Test runs, Baselines and
+  Comparisons now share a three-step Capture → Baseline → Compare strip, and
+  each page has role-specific headers, stats, table labels and actions so
+  capture history, immutable references and report-only comparisons are not
+  mistaken for the same resource.
+- Merged the Requests page into Traces. `/traces` is the canonical list and
+  `/traces?view=requests` adds the HTTP-only view with method, status and slow
+  filters; `/requests` and `/requests/:traceId` redirect to the equivalent
+  traces URLs. Removed the duplicate request detail API in favour of
+  `/api/traces/:traceId`; `/api/requests` remains as a compatibility projection
+  and the MCP `get_request` tool remains as an alias for `get_trace`.
+- Replaced the dashboard's placeholder gradient mark with the monochrome Open
+  Span symbol and added the favicon SVG/ICO/PNG set, Apple touch icon and web
+  manifest. The symbol inherits `currentColor`, so it follows both themes.
+- Reworked the sidebar into Observe, Investigate, Test and Configure groups
+  with direct links to Test runs, Baselines and Comparisons. The desktop
+  sidebar collapses to a 64 px rail from its brand-row control or
+  `Cmd/Ctrl+B`, persists in `localStorage`, and keeps its drawer, focus and
+  inert behaviour on mobile. The collapsed rail replaces the logo with the
+  expand control.
+- Moved page titles, descriptions and actions into a shared content-level page
+  header. The topbar now carries breadcrumbs, the command trigger and
+  connection status, with the navigation trigger shown on mobile only.
+- Added a Settings > Navigation section for the sidebar preference, command
+  menu, sidebar shortcut and theme cycle.
+- Tightened the dashboard's small-screen layouts: stat strips use a compact
+  two-column grid, list tables keep only their primary columns below `640px`,
+  coverage and regression evidence wrap cleanly, and Settings exposes
+  Export/Refresh in the page header with Appearance and Navigation first.
+- Redesigned the dashboard with a refreshed visual system without changing
+  data, routes, visible copy, API behavior or local-only guarantees. The new
+  shell uses a 244 px recessed sidebar, an 8 px-inset content panel and a 40 px
+  header bar; screens use an Inter-based 11/12/13/15/20/24 px type scale,
+  hairline borders, edge-to-edge tables and 360 px detail rails in dark and
+  light themes.
+- Rebuilt the Overview around four interactive KPI tiles, a 24-request latency
+  chart, grouped diagnostic and error previews, and a full-width evidence
+  table. Shared status glyphs, cards, list rows, segmented summaries and
+  container-query breakpoints are documented in `DESIGN.md`.
+- Added a self-hosted `@fontsource-variable/inter` dependency so the dashboard
+  font is served locally and the existing CSP still blocks external assets.
+- Improved dashboard keyboard access: the mobile drawer now moves and restores
+  focus, supports Escape, marks the main panel inert while open and keeps the
+  closed sidebar out of the tab order. Search fields and filter selects draw
+  the focus ring on their wrapper so the inner controls can suppress their own
+  outline. Decorative separators and timeline branches are hidden from
+  assistive technology, span rows expose their selected state, and all
+  meaningful text meets WCAG AA contrast in both themes.
+- Live tables hold buffered SSE refreshes while a row is under the pointer, so
+  arriving requests cannot move the row being read. The refresh applies as soon
+  as the pointer leaves the row.
+- Motion follows the OS preference again: transitions and the skeleton shimmer
+  run normally by default and collapse only under
+  `prefers-reduced-motion: reduce`.
 
 ### Fixed
 
+- Command-menu request filters now apply when the Requests page is already
+  mounted, and browser back/forward keeps the visible filters in sync with the
+  URL.
+- Command-menu focus returns to a visible control after navigation, a collapsed
+  desktop sidebar or a closed mobile drawer. IME composition no longer runs
+  commands or interferes with candidate selection, and the command search
+  field shows a focus indicator again.
+- The mobile command menu labels its sidebar action as opening or closing the
+  navigation drawer, the desktop-only sidebar preference is hidden below
+  901 px, and the drawer uses the dynamic viewport height.
+- Dashboard keyboard handling no longer collapses the sidebar while a text
+  field is focused or the command menu is open, and opening the command menu
+  closes the mobile drawer first.
+- Comparison lists no longer paint a zero regressed count in the error colour.
+- Request, trace and error tables now scroll horizontally inside their cards on
+  narrow screens instead of clipping columns, and the duplicated occurrence
+  table is hidden in the mobile error summary.
+- Dashboard navigation now resets the inset content scroller instead of the
+  non-scrolling window, so detail pages open at the top.
+- Widening the mobile drawer to desktop moves focus to the active navigation
+  item rather than dropping it to the document body.
+- `JsonView` honours caller height limits again, and error groups no longer
+  render empty occurrence tables on later result pages.
+- Live refresh counts telemetry events locally so a reset collector sequence
+  cannot stall updates.
 - Two overlapping `stacknext dev` runs can no longer start duplicate
   collectors for the same project. A stale lock from a crashed run is reclaimed
   on the next start.
