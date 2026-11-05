@@ -128,6 +128,35 @@ describe('TelemetryStore', () => {
     expect(store.listRequests({ limit: 1 }).items).toHaveLength(1)
   })
 
+  it('filters traces to HTTP requests and supports request filters', () => {
+    const store = new TelemetryStore({ now: () => 5_000 })
+    store.ingest(envelope(), 5_000)
+    store.ingest(
+      envelope({
+        spans: [
+          fetchSpan({
+            traceId: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+            spanId: '4444444444444444',
+            parentSpanId: '9999999999999999',
+          }),
+        ],
+        errors: [],
+        databaseQueries: [],
+      }),
+      5_000,
+    )
+
+    expect(store.listTraces({}).total).toBe(2)
+    expect(store.listTraces({ httpOnly: true }).total).toBe(1)
+    expect(store.listTraces({ httpOnly: true }).items[0]?.request?.traceId).toBe(TRACE_ID)
+    expect(store.listTraces({ q: 'test-app' }).total).toBe(2)
+    expect(store.listTraces({ method: 'GET' }).total).toBe(1)
+    expect(store.listTraces({ status: '2xx' }).total).toBe(1)
+    expect(store.listTraces({ slow: true }, 100).total).toBe(1)
+    expect(store.listTraces({ minDuration: 100 }).total).toBe(1)
+    expect(store.listRequests({ httpOnly: false }).total).toBe(1)
+  })
+
   it('drops the oldest events when capacity is reached', () => {
     const store = new TelemetryStore({ maxSpans: 2, now: () => 5_000 })
     store.ingest(envelope(), 5_000)
@@ -363,4 +392,29 @@ describe('TelemetryStore', () => {
     expect(store.storeRevision).toBeGreaterThan(before)
     expect(store.getStats().dropped.capacity).toBeGreaterThan(0)
   })
+})
+
+
+it('filters and paginates requests using root duration rather than the full trace range', () => {
+  const store = new TelemetryStore({ now: () => 5_000 })
+  const secondId = 'b'.repeat(32)
+  store.ingest(envelope({
+    spans: [
+      rootSpan({ durationMs: 50, endTime: 1_050 }),
+      fetchSpan({ startTime: 1_020, endTime: 2_000, durationMs: 980 }),
+      rootSpan({ traceId: secondId, spanId: 'c'.repeat(16), durationMs: 200, endTime: 1_200 }),
+    ], errors: [], databaseQueries: [],
+  }), 5_000)
+  expect(store.listRequests({ sort: 'slowest', limit: 1 }).items[0]?.traceId).toBe(secondId)
+  const filtered = store.listRequests({ minDuration: 100, limit: 1 })
+  expect(filtered.total).toBe(1)
+  expect(filtered.items[0]?.traceId).toBe(secondId)
+  expect(store.listTraces({ sort: 'slowest', limit: 1 }).items[0]?.traceId).toBe(TRACE_ID)
+})
+
+it('exposes newest receive time independently of event timestamps for retention', () => {
+  const store = new TelemetryStore({ now: () => 5_000 })
+  store.ingest(envelope({ spans: [rootSpan()], errors: [], databaseQueries: [] }), 4_000)
+  store.ingest(envelope({ spans: [], errors: [errorEvent({ timestamp: 500 })], databaseQueries: [] }), 4_900)
+  expect(store.summary()).toMatchObject({ lastReceivedAt: 4_900, lastEventTime: 1_000 })
 })

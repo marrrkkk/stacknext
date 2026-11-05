@@ -323,7 +323,7 @@ async function mcpCheck() {
   const tools = responses.get(2).result?.tools ?? []
   const prompts = responses.get(3).result?.prompts ?? []
   mcpChild.kill()
-  if (tools.length !== 17) fail(`Expected 17 MCP tools, got ${tools.length}`)
+  if (tools.length !== 20) fail(`Expected 20 MCP tools, got ${tools.length}`)
   if (!tools.every((tool) => tool.annotations?.readOnlyHint === true)) {
     fail('Every MCP tool must be read-only')
   }

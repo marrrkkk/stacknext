@@ -90,7 +90,7 @@ stores servers under `mcp.servers`:
 }
 ```
 
-`codemode: false` exposes the seventeen tools directly. If you leave Code Mode
+`codemode: false` exposes the twenty tools directly. If you leave Code Mode
 on, the tools are grouped as `tools.stacknext.<tool>`.
 
 ### Codex
@@ -174,6 +174,21 @@ pnpm exec stacknext compare <baseline-id> <candidate-run-id>
 See [runtime regression testing](../../../docs/regression-testing.md) and
 [Playwright integration](../../../docs/playwright-integration.md).
 
+The three snapshot tools read frozen records from `.stacknext/snapshots`. They
+cannot save, import, rotate or delete a snapshot. Save one from the dashboard
+`/snapshots` page or the CLI while the collector is running:
+
+```bash
+pnpm exec stacknext snapshot save --label "before change"
+pnpm exec stacknext snapshot list
+pnpm exec stacknext snapshot export snap-0123456789abcdef -o sample.json
+pnpm exec stacknext snapshot import sample.json --label "reported issue"
+```
+
+Snapshots contain no live diagnostics or coverage and never update. Automatic
+exit/error snapshots keep the newest ten by default; manual and imported
+snapshots are never rotated away.
+
 ## Troubleshooting
 
 | Symptom | Check | Fix |
@@ -188,8 +203,9 @@ See [runtime regression testing](../../../docs/regression-testing.md) and
 | Coverage says `not-observed` | The sample did not exercise the feature, or capture is disabled | Check `configured` and item limitations; make a request that uses it |
 | Coverage says `unknown` | Adapter/config state cannot be inferred | Report uncertainty; check the config and registration manually |
 | No successful Server Action spans | Actions are not wrapped | Use `withStackNextAction`; failures may still reach `onRequestError` |
-| Old data disappeared | In-memory retention (10 minutes by default) | Reproduce the request; export before restarting |
+| Old data disappeared | In-memory retention (10 minutes by default) | Reproduce the request, or inspect/export a saved snapshot before restarting |
 | No regression records | No capture/baseline/comparison has been saved for this project directory | Run `stacknext capture`, `baseline save` and `compare`; MCP is read-only |
+| No snapshots | No manual/exit/error snapshot has been saved for this project directory | Save one with `stacknext snapshot save` or the dashboard; MCP is read-only |
 | Comparison is `inconclusive` | Environment mismatch, incomplete correlation or too few samples | Fix the evidence; do not report it as a pass |
 | Scenario has no baseline | The annotation or scenario id changed | Re-baseline the intended scenario |
 
@@ -200,11 +216,11 @@ values or SQL bind parameters. Redaction runs in the app and again in the
 collector. Error messages and stacks are text-redacted, and resource attributes
 are allowlisted. The MCP server receives the same redacted data as the dashboard.
 
-Captured runs, baselines and comparisons are redacted local JSON files under
-`.stacknext`. They can include scenario titles, file paths, routes, span and
-query evidence, environment facts and a sanitized command line. They never
-include Playwright screenshots, video or trace archives. Review them before
-sharing or uploading them as CI artifacts.
+Captured runs, baselines, comparisons and snapshots are redacted local JSON
+files under `.stacknext`. They can include scenario titles, file paths, routes,
+span and query evidence, environment facts and a sanitized command line. They
+never include Playwright screenshots, video or trace archives. Review them
+before sharing or uploading them as CI artifacts.
 
 The bearer token stays in `.stacknext/run.json` (mode `0600`) and is read by the
 MCP process. Tool callers never receive it. The client you connect may log or

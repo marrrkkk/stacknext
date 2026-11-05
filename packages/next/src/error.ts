@@ -25,6 +25,7 @@ export interface NextRequestErrorContext {
   routeType?: string
   renderSource?: string
   revalidateReason?: string
+  renderType?: string
   [key: string]: unknown
 }
 
@@ -102,6 +103,9 @@ function buildAttributes(
   if (typeof context.revalidateReason === 'string') {
     attributes['next.revalidate_reason'] = context.revalidateReason
   }
+  if (typeof context.renderType === 'string') {
+    attributes['next.render_type'] = context.renderType
+  }
   return attributes
 }
 
@@ -139,6 +143,7 @@ export function requestErrorToInput(
     ...(context.renderSource
       ? { renderSource: redactText(context.renderSource, 100) }
       : {}),
+    ...(context.renderType ? { renderType: redactText(context.renderType, 100) } : {}),
     ...(validContext
       ? {
           traceId: spanContext.traceId.toLowerCase(),

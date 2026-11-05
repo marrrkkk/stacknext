@@ -3,6 +3,8 @@ import type {
   DiagnosticFinding,
   DiagnosticReport,
   DiagnosticSnapshot,
+  RequestSummary,
+  StackNextSpan,
 } from '@stacknext/core'
 import {
   countFindings,
@@ -14,7 +16,6 @@ import {
 } from '../src/engine.js'
 import { diagnosticSpanCategory, spanThresholdMs } from '../src/classify.js'
 import {
-  TRACE_A,
   TRACE_B,
   config,
   error,
@@ -31,6 +32,7 @@ function options(
     projectName: 'diagnostics-test',
     collectorVersion: '0.6.1',
     config: config().diagnostics,
+    slowRequestMs: config().slowRequestMs,
     generatedAt: 10_000,
     connected: true,
     connectedInstances: 1,
@@ -50,6 +52,69 @@ function byRule(
   ruleId: DiagnosticFinding['ruleId'],
 ): DiagnosticFinding[] {
   return report.findings.filter((finding) => finding.ruleId === ruleId)
+}
+
+function traceIdFor(index: number): string {
+  return (index + 1).toString(16).padStart(32, '0')
+}
+
+function spanIdFor(index: number): string {
+  return (index + 1).toString(16).padStart(16, '0')
+}
+
+function root(
+  index: number,
+  route: string,
+  durationMs: number,
+  overrides: Partial<StackNextSpan> = {},
+): StackNextSpan {
+  return span({
+    traceId: traceIdFor(index),
+    spanId: spanIdFor(index),
+    name: `GET ${route}`,
+    route,
+    durationMs,
+    startTime: 1_000 + index * 10_000,
+    ...overrides,
+  })
+}
+
+function child(
+  parent: StackNextSpan,
+  overrides: Partial<StackNextSpan> & { spanId: string },
+): StackNextSpan {
+  return span({
+    traceId: parent.traceId,
+    parentSpanId: parent.spanId,
+    name: 'db.select tasks',
+    kind: 'internal',
+    nextSpanType: undefined,
+    route: parent.route,
+    method: parent.method,
+    statusCode: parent.statusCode,
+    startTime: parent.startTime + 20,
+    durationMs: 300,
+    attributes: { 'db.system': 'sqlite' },
+    ...overrides,
+  })
+}
+
+function requestFor(
+  rootSpan: StackNextSpan,
+  overrides: Partial<RequestSummary> = {},
+): RequestSummary {
+  return request({
+    id: rootSpan.traceId,
+    traceId: rootSpan.traceId,
+    name: rootSpan.name,
+    method: rootSpan.method ?? 'GET',
+    route: rootSpan.route ?? null,
+    statusCode: rootSpan.statusCode ?? null,
+    durationMs: rootSpan.durationMs,
+    timestamp: rootSpan.startTime,
+    endTime: rootSpan.endTime,
+    ...overrides,
+  })
 }
 
 describe('diagnostic rule classification', () => {
@@ -95,7 +160,8 @@ describe('diagnostic rule classification', () => {
           databaseMs: 10,
           httpMs: 20,
           customMs: 30,
-          otherMs: 40,
+          frameworkMs: 40,
+          otherMs: 50,
         },
       },
     }).diagnostics
@@ -103,33 +169,28 @@ describe('diagnostic rule classification', () => {
     expect(spanThresholdMs('http', diagnostics)).toBe(20)
     expect(spanThresholdMs('custom', diagnostics)).toBe(30)
     expect(spanThresholdMs('framework', diagnostics)).toBe(40)
+    expect(spanThresholdMs('other', diagnostics)).toBe(50)
   })
 })
 
 describe('possible N+1 queries', () => {
-  it('groups repeated SQL shapes per trace and keeps the finding possible', () => {
-    const queries = Array.from({ length: 5 }, (_, index) =>
-      query({
-        id: `query-${index}`,
-        sql: `select * from tasks where project_id = ${index + 1}`,
-        timestamp: 1_010 + index,
-      }),
-    )
-    queries.push(
-      query({
-        id: 'other-trace',
-        traceId: TRACE_B,
-        resolvedTraceId: TRACE_B,
-        sql: 'select * from tasks where project_id = 99',
-        timestamp: 1_020,
-      }),
+  it('aggregates the same SQL shape across traces by canonical route', () => {
+    const traces = [0, 1, 2].map((index) => root(index, '/api/n-plus-one', 320))
+    const queries = traces.flatMap((trace, traceIndex) =>
+      Array.from({ length: 5 }, (_, queryIndex) =>
+        query({
+          id: `query-${traceIndex}-${queryIndex}`,
+          traceId: trace.traceId,
+          resolvedTraceId: trace.traceId,
+          spanId: trace.spanId,
+          route: undefined,
+          sql: `select * from tasks where project_id = ${queryIndex + 1}`,
+          timestamp: trace.startTime + queryIndex,
+        }),
+      ),
     )
     const report = reportFor(
-      snapshot({
-        spans: [span()],
-        databaseQueries: queries,
-        requests: [request()],
-      }),
+      snapshot({ spans: traces, databaseQueries: queries, requests: traces.map((trace) => requestFor(trace)) }),
     )
     const findings = byRule(report, 'n-plus-one-queries')
     expect(findings).toHaveLength(1)
@@ -137,53 +198,102 @@ describe('possible N+1 queries', () => {
     expect(finding.status).toBe('possible')
     expect(finding.severity).toBe('warning')
     expect(finding.category).toBe('database')
-    expect(finding.route).toBe('/api/test')
-    expect(finding.traceIds).toEqual([TRACE_A])
+    expect(finding.route).toBe('/api/n-plus-one')
+    expect(finding.affectedTraceCount).toBe(3)
+    expect(finding.traceIds).toHaveLength(3)
+    expect(finding.title).toContain('15 similar')
     expect(finding.evidence.queries).toHaveLength(5)
+    expect(finding.evidence.traces).toHaveLength(3)
     expect(finding.evidence.queries[0]?.sqlFingerprint).toBe(
       'select * from tasks where project_id = ?',
     )
     expect(JSON.stringify(finding)).not.toContain('project_id = 1')
-    expect(finding.verification.length).toBeGreaterThan(0)
     expect(finding.detail).toContain('cannot confirm')
     expect(finding.limitations.join(' ')).toContain('intentional')
   })
 
-  it('honors repeatedQueryMin and ignores queries without a resolved trace', () => {
+  it('keeps separate routes apart and ignores queries without a request root', () => {
+    const first = root(0, '/api/a', 300)
+    const second = root(1, '/api/b', 300)
+    const queries = [
+      ...Array.from({ length: 5 }, (_, index) =>
+        query({
+          id: `a-${index}`,
+          traceId: first.traceId,
+          resolvedTraceId: first.traceId,
+          spanId: first.spanId,
+          route: undefined,
+          sql: 'select * from tasks where id = ?',
+          timestamp: first.startTime + index,
+        }),
+      ),
+      ...Array.from({ length: 5 }, (_, index) =>
+        query({
+          id: `b-${index}`,
+          traceId: second.traceId,
+          resolvedTraceId: second.traceId,
+          spanId: second.spanId,
+          route: undefined,
+          sql: 'select * from tasks where id = ?',
+          timestamp: second.startTime + index,
+        }),
+      ),
+      ...Array.from({ length: 8 }, (_, index) =>
+        query({
+          id: `detached-${index}`,
+          traceId: traceIdFor(9),
+          resolvedTraceId: traceIdFor(9),
+          route: undefined,
+          sql: 'select * from detached where id = ?',
+        }),
+      ),
+    ]
+    const report = reportFor(
+      snapshot({
+        spans: [first, second],
+        databaseQueries: queries,
+        requests: [requestFor(first), requestFor(second)],
+      }),
+    )
+    const findings = byRule(report, 'n-plus-one-queries')
+    expect(findings.map((finding) => finding.route).sort()).toEqual(['/api/a', '/api/b'])
+    expect(report.notes.join(' ')).not.toContain('detached')
+  })
+
+  it('honors repeatedQueryMin and reports full matching counts with capped evidence', () => {
+    const trace = root(0, '/api/n-plus-one', 400)
     const below = reportFor(
       snapshot({
+        spans: [trace],
         databaseQueries: Array.from({ length: 4 }, (_, index) =>
-          query({ id: `q-${index}`, sql: 'select * from tasks where id = ?' }),
+          query({
+            id: `q-${index}`,
+            traceId: trace.traceId,
+            resolvedTraceId: trace.traceId,
+            spanId: trace.spanId,
+            route: undefined,
+          }),
         ),
+        requests: [requestFor(trace)],
       }),
     )
     expect(byRule(below, 'n-plus-one-queries')).toHaveLength(0)
 
-    const unresolved = reportFor(
-      snapshot({
-        databaseQueries: Array.from({ length: 8 }, (_, index) =>
-          query({
-            id: `q-${index}`,
-            traceId: undefined,
-            resolvedTraceId: null,
-            sql: 'select * from tasks where id = ?',
-          }),
-        ),
-      }),
-    )
-    expect(byRule(unresolved, 'n-plus-one-queries')).toHaveLength(0)
-  })
-
-  it('caps query evidence and reports the full matching count', () => {
     const report = reportFor(
       snapshot({
+        spans: [trace],
         databaseQueries: Array.from({ length: 15 }, (_, index) =>
           query({
             id: `q-${index}`,
+            traceId: trace.traceId,
+            resolvedTraceId: trace.traceId,
+            spanId: trace.spanId,
+            route: undefined,
+            timestamp: trace.startTime + index,
             sql: `select * from tasks where id = ${index}`,
-            timestamp: 1_000 + index,
           }),
         ),
+        requests: [requestFor(trace)],
       }),
     )
     const finding = byRule(report, 'n-plus-one-queries')[0]!
@@ -192,128 +302,158 @@ describe('possible N+1 queries', () => {
       label: 'matching queries',
       value: 15,
     })
-    expect(finding.title).toContain('15 similar')
+    expect(finding.evidence.measurements).toContainEqual({
+      label: 'matching traces',
+      value: 1,
+    })
   })
 })
 
-describe('slow spans', () => {
-  it('reports observed threshold crossings with category-specific thresholds', () => {
-    const report = reportFor(
-      snapshot({
-        spans: [
-          span({
-            spanId: 'db-span',
-            name: 'db.select tasks',
-            attributes: { 'db.system': 'sqlite' },
-            durationMs: 260,
-          }),
-          span({
-            spanId: 'http-span',
-            name: 'fetch GET https://example.test/api?token=secret',
-            kind: 'client',
-            nextSpanType: 'AppRender.fetch',
-            attributes: {
-              'http.url': 'https://example.test/api?token=secret',
-            },
-            durationMs: 510,
-          }),
-          span({
-            spanId: 'custom-span',
-            name: 'custom.work',
-            kind: 'internal',
-            parentSpanId: '2222222222222222',
-            nextSpanType: undefined,
-            attributes: { 'stacknext.span.kind': 'custom' },
-            durationMs: 310,
-          }),
-          span({
-            spanId: 'fast-span',
-            name: 'fast custom',
-            kind: 'internal',
-            parentSpanId: '2222222222222222',
-            nextSpanType: undefined,
-            attributes: { 'stacknext.span.kind': 'custom' },
-            durationMs: 10,
-          }),
-        ],
+describe('slow requests and slow spans', () => {
+  it('groups slow requests by method and route and attributes self time', () => {
+    const traces = [0, 1, 2].map((index) => root(index, '/api/slow-db', 900 + index * 100))
+    const children = traces.map((trace, index) =>
+      child(trace, {
+        spanId: `dddddddddddddd${index}`,
+        durationMs: 850 + index * 100,
       }),
     )
-    const findings = byRule(report, 'slow-span')
-    expect(findings).toHaveLength(3)
-    expect(findings.map((finding) => finding.status)).toEqual([
-      'observed',
-      'observed',
-      'observed',
-    ])
-    expect(findings.every((finding) => finding.severity === 'warning')).toBe(true)
-    expect(findings.map((finding) => finding.title)).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining('Slow database span'),
-        expect.stringContaining('Slow http span'),
-        expect.stringContaining('Slow custom span'),
-      ]),
+    const report = reportFor(
+      snapshot({
+        spans: [...traces, ...children],
+        requests: traces.map((trace) => requestFor(trace)),
+      }),
+      { slowRequestMs: 500 },
     )
-    expect(JSON.stringify(findings)).not.toContain('token=secret')
+    const findings = byRule(report, 'slow-request')
+    expect(findings).toHaveLength(1)
+    const finding = findings[0]!
+    expect(finding.route).toBe('/api/slow-db')
+    expect(finding.method).toBe('GET')
+    expect(finding.affectedTraceCount).toBe(3)
+    expect(finding.evidence.contributors.length).toBeGreaterThan(0)
+    expect(finding.evidence.contributors[0]?.label).toContain('db.select')
+    expect(finding.evidence.traces).toHaveLength(3)
+    expect(finding.evidence.measurements).toContainEqual({
+      label: 'slow requests',
+      value: 3,
+    })
+    expect(byRule(report, 'slow-span')).toHaveLength(0)
   })
 
-  it('does not treat null or non-positive durations as slow', () => {
+  it('reports slow operations by self time when the request is not slow', () => {
+    const traces = [0, 1].map((index) => root(index, '/api/slow-db', 400))
+    const children = traces.map((trace, index) =>
+      child(trace, {
+        spanId: `eeeeeeeeeeeeee${index}`,
+        startTime: trace.startTime + 50,
+        durationMs: 300,
+      }),
+    )
+    const report = reportFor(
+      snapshot({
+        spans: [...traces, ...children],
+        requests: traces.map((trace) => requestFor(trace)),
+      }),
+      { slowRequestMs: 500 },
+    )
+    const findings = byRule(report, 'slow-span')
+    expect(findings).toHaveLength(1)
+    const finding = findings[0]!
+    expect(finding.title).toContain('Slow database operation')
+    expect(finding.affectedTraceCount).toBe(2)
+    expect(finding.evidence.spans).toHaveLength(2)
+    expect(finding.evidence.spans[0]?.selfDurationMs).toBe(300)
+    expect(finding.evidence.spans[0]?.nextPhase).toBe('database')
+    expect(finding.detail).toContain('request threshold')
+    expect(finding.evidence.measurements).toContainEqual({
+      label: 'self time',
+      value: 300,
+      unit: 'ms',
+    })
+  })
+
+  it('does not treat zero or negative durations as slow', () => {
+    const trace = root(0, '/api/test', 0)
     const report = reportFor(
       snapshot({
         spans: [
-          span({ spanId: 'zero', durationMs: 0 }),
-          span({ spanId: 'negative', durationMs: -1 }),
+          trace,
+          span({
+            traceId: trace.traceId,
+            spanId: '0000000000000011',
+            parentSpanId: trace.spanId,
+            kind: 'internal',
+            nextSpanType: undefined,
+            attributes: { 'stacknext.span.kind': 'custom' },
+            durationMs: 0,
+          }),
+          span({
+            traceId: trace.traceId,
+            spanId: '0000000000000002',
+            parentSpanId: trace.spanId,
+            kind: 'internal',
+            nextSpanType: undefined,
+            attributes: { 'stacknext.span.kind': 'custom' },
+            durationMs: -1,
+          }),
         ],
+        requests: [requestFor(trace)],
       }),
     )
     expect(byRule(report, 'slow-span')).toHaveLength(0)
   })
 
-  it('uses the configured thresholds', () => {
-    const value = snapshot({
-      spans: [
-        span({
-          spanId: 'custom-span',
-          kind: 'internal',
-          parentSpanId: '2222222222222222',
-          nextSpanType: undefined,
-          attributes: { 'stacknext.span.kind': 'custom' },
-          durationMs: 100,
-        }),
-      ],
+  it('uses the configured slow span thresholds', () => {
+    const trace = root(0, '/api/custom', 200)
+    const custom = child(trace, {
+      spanId: 'ffffffffffffffff',
+      name: 'custom.work',
+      durationMs: 100,
+      attributes: { 'stacknext.span.kind': 'custom' },
     })
-    expect(
-      byRule(reportFor(value), 'slow-span'),
-    ).toHaveLength(0)
+    const value = snapshot({
+      spans: [trace, custom],
+      requests: [requestFor(trace)],
+    })
+    expect(byRule(reportFor(value), 'slow-span')).toHaveLength(0)
     const tuned = config({
       diagnostics: { slowSpans: { customMs: 100 } },
     }).diagnostics
-    expect(
-      byRule(reportFor(value, { config: tuned }), 'slow-span'),
-    ).toHaveLength(1)
+    expect(byRule(reportFor(value, { config: tuned }), 'slow-span')).toHaveLength(1)
   })
 })
 
 describe('repeated external HTTP', () => {
-  it('groups repeated endpoints in one trace after removing credentials and IDs', () => {
-    const spans = [1, 2, 3].map((id, index) =>
-      span({
-        spanId: `http-${index}`,
-        traceId: TRACE_A,
-        name: `fetch GET https://api.example.test/users/${id}?token=secret`,
-        kind: 'client',
-        nextSpanType: 'AppRender.fetch',
-        attributes: {
-          'http.url': `https://user:password@api.example.test/users/${id}?token=secret`,
-          'http.method': 'GET',
-        },
-        durationMs: 30,
-        startTime: 1_020 + index,
-      }),
+  it('aggregates repeated endpoints by route across traces', () => {
+    const traces = [0, 1, 2].map((index) => root(index, '/api/repeated-fetch', 250))
+    const fetches = traces.flatMap((trace, traceIndex) =>
+      [1, 2, 3].map((id, fetchIndex) =>
+        span({
+          traceId: trace.traceId,
+          spanId: `abababababab${traceIndex}${fetchIndex}`,
+          parentSpanId: trace.spanId,
+          name: `fetch GET https://api.example.test/users/${id}?token=secret`,
+          kind: 'client',
+          nextSpanType: 'AppRender.fetch',
+          route: trace.route,
+          method: trace.method,
+          statusCode: 200,
+          startTime: trace.startTime + 20 + fetchIndex,
+          endTime: trace.startTime + 40 + fetchIndex,
+          durationMs: 20,
+          attributes: {
+            'http.url': `https://user:password@api.example.test/users/${id}?token=secret`,
+            'http.method': 'GET',
+            'next.fetch.cache_status': 'skip',
+          },
+        }),
+      ),
     )
     const report = reportFor(
       snapshot({
-        spans: [span(), ...spans],
-        requests: [request()],
+        spans: [...traces, ...fetches],
+        requests: traces.map((trace) => requestFor(trace)),
       }),
     )
     const findings = byRule(report, 'repeated-external-http')
@@ -321,58 +461,105 @@ describe('repeated external HTTP', () => {
     const finding = findings[0]!
     expect(finding.status).toBe('possible')
     expect(finding.category).toBe('http')
-    expect(finding.traceIds).toEqual([TRACE_A])
+    expect(finding.route).toBe('/api/repeated-fetch')
+    expect(finding.affectedTraceCount).toBe(3)
     expect(finding.evidence.spans).toHaveLength(3)
+    expect(finding.evidence.traces).toHaveLength(3)
     expect(finding.evidence.measurements).toContainEqual({
       label: 'endpoint',
       value: 'api.example.test/users/:id',
+    })
+    expect(finding.evidence.measurements).toContainEqual({
+      label: 'cache statuses',
+      value: 'skip: 9',
     })
     expect(JSON.stringify(finding)).not.toContain('password')
     expect(JSON.stringify(finding)).not.toContain('token=secret')
   })
 
-  it('honors repeatedHttpMin and groups separately by trace and method', () => {
+  it('honors repeatedHttpMin and ignores detached fetch traces', () => {
+    const trace = root(0, '/api/repeated-fetch', 250)
     const two = reportFor(
       snapshot({
         spans: [
-          span({ spanId: 'a', name: 'fetch GET https://api.example.test/a' }),
-          span({ spanId: 'b', name: 'fetch GET https://api.example.test/a' }),
+          trace,
+          span({
+            traceId: trace.traceId,
+            spanId: 'a',
+            parentSpanId: trace.spanId,
+            name: 'fetch GET https://api.example.test/a',
+            kind: 'client',
+            nextSpanType: 'AppRender.fetch',
+            route: trace.route,
+            attributes: { 'http.url': 'https://api.example.test/a' },
+          }),
+          span({
+            traceId: trace.traceId,
+            spanId: 'b',
+            parentSpanId: trace.spanId,
+            name: 'fetch GET https://api.example.test/a',
+            kind: 'client',
+            nextSpanType: 'AppRender.fetch',
+            route: trace.route,
+            attributes: { 'http.url': 'https://api.example.test/a' },
+          }),
         ],
+        requests: [requestFor(trace)],
       }),
     )
     expect(byRule(two, 'repeated-external-http')).toHaveLength(0)
 
-    const mixed = reportFor(
-      snapshot({
-        spans: [
-          span({ spanId: 'a', name: 'fetch GET https://api.example.test/a' }),
-          span({ spanId: 'b', name: 'fetch GET https://api.example.test/a' }),
-          span({ spanId: 'c', name: 'fetch POST https://api.example.test/a' }),
-          span({
-            spanId: 'd',
-            traceId: TRACE_B,
-            name: 'fetch GET https://api.example.test/a',
-          }),
-        ],
+    const detached = root(1, '/api/detached', 200)
+    const detachedFetches = [1, 2, 3].map((index) =>
+      span({
+        traceId: 'dddddddddddddddddddddddddddddddd',
+        spanId: `c${index}`,
+        name: 'fetch GET https://detached.example.test/data',
+        kind: 'client',
+        nextSpanType: 'AppRender.fetch',
+        route: undefined,
+        nextRoute: undefined,
+        attributes: { 'http.url': 'https://detached.example.test/data' },
       }),
     )
-    expect(byRule(mixed, 'repeated-external-http')).toHaveLength(0)
+    const report = reportFor(
+      snapshot({
+        spans: [detached, ...detachedFetches],
+        requests: [requestFor(detached)],
+      }),
+    )
+    expect(byRule(report, 'repeated-external-http')).toHaveLength(0)
+    expect(report.sample.tracesWithoutRequestRoot).toBe(1)
+    expect(report.notes.join(' ')).toContain('no captured request root')
   })
 })
 
-describe('error fingerprint grouping', () => {
-  it('groups the same signature across routes and reports observed evidence', () => {
+describe('request errors and server responses', () => {
+  it('reports a single error with route context and the deepest error span', () => {
+    const trace = root(0, '/api/error', 250, { status: 'error', statusCode: 500 })
+    const handler = child(trace, {
+      spanId: '9999999999999991',
+      name: 'route handler',
+      durationMs: 200,
+      status: 'error',
+      nextSpanType: 'AppRouteRouteHandlers.runHandler',
+      attributes: {},
+    })
     const report = reportFor(
       snapshot({
+        spans: [trace, handler],
+        requests: [requestFor(trace)],
         errors: [
-          error({ id: 'e1', route: '/api/one', timestamp: 1_010 }),
           error({
-            id: 'e2',
-            route: '/api/two',
-            method: 'POST',
-            timestamp: 1_020,
-            traceId: TRACE_B,
-            resolvedTraceId: TRACE_B,
+            id: 'e1',
+            route: '/api/error',
+            requestPath: '/api/error',
+            traceId: trace.traceId,
+            resolvedTraceId: trace.traceId,
+            spanId: trace.spanId,
+            routeType: 'route',
+            renderType: 'dynamic',
+            timestamp: trace.startTime + 30,
           }),
         ],
       }),
@@ -380,63 +567,126 @@ describe('error fingerprint grouping', () => {
     const findings = byRule(report, 'error-fingerprint')
     expect(findings).toHaveLength(1)
     const finding = findings[0]!
-    expect(finding.status).toBe('observed')
-    expect(finding.severity).toBe('error')
-    expect(finding.category).toBe('errors')
-    expect(finding.route).toBeNull()
-    expect(finding.traceIds).toEqual([TRACE_B, TRACE_A])
-    expect(finding.evidence.errors).toHaveLength(2)
-    expect(finding.evidence.measurements).toContainEqual({
+    expect(finding.affectedTraceCount).toBe(1)
+    expect(finding.evidence.spans[0]?.spanId).toBe(handler.spanId)
+    expect(finding.evidence.errors[0]?.spanId).toBe(handler.spanId)
+    expect(finding.evidence.errors[0]?.routeType).toBe('route')
+    expect(finding.evidence.errors[0]?.renderType).toBe('dynamic')
+    expect(finding.evidence.errors[0]?.statusCode).toBe(500)
+    expect(finding.detail).toContain('renderType=dynamic')
+    expect(finding.evidence.traces).toHaveLength(1)
+  })
+
+  it('groups repeated errors per route and keeps different routes apart', () => {
+    const first = root(0, '/api/error', 200, { status: 'error', statusCode: 500 })
+    const second = root(1, '/api/error', 200, { status: 'error', statusCode: 500 })
+    const third = root(2, '/api/other-error', 200, { status: 'error', statusCode: 500 })
+    const report = reportFor(
+      snapshot({
+        spans: [first, second, third],
+        requests: [requestFor(first), requestFor(second), requestFor(third)],
+        errors: [
+          error({ id: 'e1', route: '/api/error', traceId: first.traceId, resolvedTraceId: first.traceId }),
+          error({ id: 'e2', route: '/api/error', traceId: second.traceId, resolvedTraceId: second.traceId, timestamp: 1_030 }),
+          error({ id: 'e3', route: '/api/other-error', traceId: third.traceId, resolvedTraceId: third.traceId }),
+        ],
+      }),
+    )
+    const findings = byRule(report, 'error-fingerprint')
+    expect(findings).toHaveLength(2)
+    const repeated = findings.find((finding) => finding.route === '/api/error')!
+    expect(repeated.title).toContain('Repeated request error')
+    expect(repeated.affectedTraceCount).toBe(2)
+    expect(repeated.evidence.errors).toHaveLength(2)
+    expect(repeated.evidence.measurements).toContainEqual({
       label: 'occurrences',
       value: 2,
     })
-    expect(finding.fingerprint).toMatch(/^[0-9a-f]{8}$/)
-  })
-
-  it('can be disabled independently of the engine', () => {
-    const value = snapshot({
-      errors: [
-        error({ id: 'e1' }),
-        error({ id: 'e2', timestamp: 1_030 }),
-      ],
+    expect(repeated.evidence.measurements).toContainEqual({
+      label: 'repeated threshold',
+      value: 2,
     })
-    const disabled = config({
-      diagnostics: { errorGrouping: false },
-    }).diagnostics
-    expect(byRule(reportFor(value, { config: disabled }), 'error-fingerprint')).toHaveLength(0)
+    expect(findings.some((finding) => finding.title.startsWith('Request error:'))).toBe(true)
   })
 
-  it('honors errorGroupMin', () => {
-    const value = snapshot({ errors: [error({ id: 'e1' })] })
-    expect(byRule(reportFor(value), 'error-fingerprint')).toHaveLength(0)
-    const minThree = config({ diagnostics: { errorGroupMin: 3 } }).diagnostics
-    const two = snapshot({
-      errors: [error({ id: 'e1' }), error({ id: 'e2', timestamp: 1_030 })],
-    })
-    expect(byRule(reportFor(two, { config: minThree }), 'error-fingerprint')).toHaveLength(0)
-  })
-
-  it('does not crash on an invalid timestamp in a stored snapshot', () => {
+  it('does not group errors when errorGrouping is disabled', () => {
     const report = reportFor(
       snapshot({
-        errors: [error({ id: 'e1' }), error({ id: 'e2', timestamp: 1e20 })],
+        errors: [
+          error({ id: 'e1' }),
+          error({ id: 'e2', timestamp: 1_030 }),
+        ],
+      }),
+      { config: config({ diagnostics: { errorGrouping: false } }).diagnostics },
+    )
+    expect(byRule(report, 'error-fingerprint')).toHaveLength(2)
+  })
+
+  it('ignores Next.js control-flow errors and notes them', () => {
+    const report = reportFor(
+      snapshot({
+        errors: [
+          error({ id: 'e1', digest: 'NEXT_NOT_FOUND', route: '/missing' }),
+          error({ id: 'e2', message: 'NEXT_REDIRECT;replace;/login;307;', route: '/private' }),
+        ],
       }),
     )
-    const finding = byRule(report, 'error-fingerprint')[0]!
-    expect(finding.detail).toContain('unknown time')
+    expect(byRule(report, 'error-fingerprint')).toHaveLength(0)
+    expect(report.sample.ignoredControlFlowErrors).toBe(2)
+    expect(report.notes.join(' ')).toContain('control-flow error')
+  })
+
+  it('reports 5xx responses without a correlated error record', () => {
+    const traces = [0, 1].map((index) =>
+      root(index, '/api/server-error', 120, { statusCode: 503, status: 'error' }),
+    )
+    const report = reportFor(
+      snapshot({
+        spans: traces,
+        requests: traces.map((trace) => requestFor(trace)),
+      }),
+    )
+    const findings = byRule(report, 'server-error-response')
+    expect(findings).toHaveLength(1)
+    const finding = findings[0]!
+    expect(finding.route).toBe('/api/server-error')
+    expect(finding.method).toBe('GET')
+    expect(finding.affectedTraceCount).toBe(2)
+    expect(finding.evidence.measurements).toContainEqual({
+      label: 'status code',
+      value: 503,
+    })
+    expect(finding.evidence.errors).toHaveLength(0)
+    expect(report.sample.serverErrorsWithoutError).toBe(2)
+  })
+
+  it('does not report a 5xx response that already has a correlated error', () => {
+    const trace = root(0, '/api/error', 200, { status: 'error', statusCode: 500 })
+    const report = reportFor(
+      snapshot({
+        spans: [trace],
+        requests: [requestFor(trace)],
+        errors: [
+          error({
+            id: 'e1',
+            route: '/api/error',
+            traceId: trace.traceId,
+            resolvedTraceId: trace.traceId,
+          }),
+        ],
+      }),
+    )
+    expect(byRule(report, 'server-error-response')).toHaveLength(0)
+    expect(byRule(report, 'error-fingerprint')).toHaveLength(1)
   })
 })
 
 describe('report generation', () => {
   it('is deterministic for the same snapshot and options', () => {
+    const trace = root(0, '/api/slow', 900)
     const value = snapshot({
-      spans: [
-        span({
-          spanId: 'slow',
-          attributes: { 'db.system': 'sqlite' },
-          durationMs: 900,
-        }),
-      ],
+      spans: [trace, child(trace, { spanId: 'dddddddddddddd01', durationMs: 800 })],
+      requests: [requestFor(trace)],
       errors: [error({ id: 'e1' }), error({ id: 'e2', timestamp: 1_030 })],
     })
     const first = reportFor(value)
@@ -445,16 +695,11 @@ describe('report generation', () => {
   })
 
   it('sorts findings by severity, recency and id', () => {
+    const trace = root(0, '/api/test', 900, { startTime: 1_100 })
     const report = reportFor(
       snapshot({
-        spans: [
-          span({
-            spanId: 'slow',
-            name: 'slow span',
-            durationMs: 900,
-            startTime: 1_100,
-          }),
-        ],
+        spans: [trace],
+        requests: [requestFor(trace)],
         errors: [error({ id: 'e1' }), error({ id: 'e2', timestamp: 1_030 })],
       }),
     )
@@ -465,30 +710,58 @@ describe('report generation', () => {
     expect(warningIds).toEqual([...warningIds].sort())
   })
 
-  it('reports counts, sample metadata and bounded notes', () => {
+  it('reports counts, sample integrity metadata and bounded notes', () => {
+    const trace = root(0, '/api/test', 400)
+    const missingParent = child(trace, {
+      spanId: 'bbbbbbbbbbbbbb01',
+      parentSpanId: 'missing-parent',
+      durationMs: 100,
+    })
+    const detached = span({
+      traceId: TRACE_B,
+      spanId: 'cccccccccccccc01',
+      name: 'fetch GET https://detached.example.test/data',
+      kind: 'client',
+      nextSpanType: 'AppRender.fetch',
+      route: undefined,
+      nextRoute: undefined,
+      parentSpanId: 'deadbeefdeadbeef',
+      attributes: { 'http.url': 'https://detached.example.test/data' },
+    })
     const value = snapshot({
-      spans: [span()],
-      errors: [error({ id: 'e1' }), error({ id: 'e2', timestamp: 1_030 })],
+      spans: [trace, missingParent, detached],
+      errors: [
+        error({ id: 'e1', route: '/api/test', traceId: trace.traceId, resolvedTraceId: trace.traceId }),
+        error({ id: 'e2', route: '/api/test', traceId: trace.traceId, resolvedTraceId: trace.traceId, timestamp: 1_030 }),
+      ],
       databaseQueries: [query({ durationMs: null })],
-      requests: [request()],
+      requests: [requestFor(trace)],
     })
     const report = reportFor(value)
     expect(report.format).toBe('stacknext-diagnostics')
     expect(report.version).toBe(1)
     expect(report.engineVersion).toBe('0.6.1')
-    expect(report.ruleSetVersion).toBe(1)
+    expect(report.ruleSetVersion).toBe(2)
     expect(report.projectName).toBe('diagnostics-test')
     expect(report.sample).toMatchObject({
       requests: 1,
-      spans: 1,
+      requestTraces: 1,
+      spans: 3,
       errors: 2,
       databaseQueries: 1,
       connected: true,
       connectedInstances: 1,
+      tracesWithoutRequestRoot: 1,
+      tracesWithMissingParents: 1,
+      ignoredControlFlowErrors: 0,
+      serverErrorsWithoutError: 0,
     })
+    expect(report.sample.unattributedSpans).toBeGreaterThan(0)
     expect(report.counts).toEqual(countFindings(report.findings))
     expect(report.counts.bySeverity.error).toBe(1)
     expect(report.notes.join(' ')).toContain('no measured duration')
+    expect(report.notes.join(' ')).toContain('no captured request root')
+    expect(report.notes.join(' ')).toContain('parent is not in the sample')
     expect(report.limitations.join(' ')).toContain('not confirmed root causes')
   })
 
@@ -510,16 +783,12 @@ describe('report generation', () => {
   })
 
   it('caps findings at maxFindings and explains the cap', () => {
-    const spans = Array.from({ length: 12 }, (_, index) =>
-      span({
-        spanId: `slow-${index}`,
-        name: `slow ${index}`,
-        durationMs: 900,
-        startTime: 1_000 + index,
-      }),
-    )
+    const traces = Array.from({ length: 12 }, (_, index) => root(index, `/api/slow-${index}`, 900))
     const limited = config({ diagnostics: { maxFindings: 10 } }).diagnostics
-    const report = reportFor(snapshot({ spans }), { config: limited })
+    const report = reportFor(
+      snapshot({ spans: traces, requests: traces.map((trace) => requestFor(trace)) }),
+      { config: limited },
+    )
     expect(report.findings).toHaveLength(10)
     expect(report.notes.join(' ')).toContain('Showing the top 10 of 12 findings')
   })
@@ -528,14 +797,7 @@ describe('report generation', () => {
     const longMessage = 'x'.repeat(2_000)
     const report = reportFor(
       snapshot({
-        spans: [
-          span({
-            spanId: 'slow-span',
-            name: 'slow work',
-            durationMs: 900,
-            route: '/api/test?token=super-secret-demo-token',
-          }),
-        ],
+        spans: [root(0, '/api/test', 900)],
         databaseQueries: Array.from({ length: 5 }, (_, index) =>
           query({
             id: `q-${index}`,
@@ -571,67 +833,29 @@ describe('report generation', () => {
 
 describe('diagnostic list and detail views', () => {
   function populated(): { snapshot: DiagnosticSnapshot; report: DiagnosticReport } {
+    const slow = root(0, '/api/test', 900)
+    const slowChild = child(slow, { spanId: 'dddddddddddddd10', durationMs: 800 })
+    const repeated = root(1, '/api/other', 150, { traceId: TRACE_B })
+    const fetches = [1, 2, 3].map((index) =>
+      span({
+        traceId: repeated.traceId,
+        spanId: `http-${index}`,
+        parentSpanId: repeated.spanId,
+        name: 'fetch GET https://api.example.test/users?token=secret',
+        kind: 'client',
+        nextSpanType: 'AppRender.fetch',
+        route: repeated.route,
+        attributes: { 'http.url': 'https://api.example.test/users?token=secret' },
+        startTime: repeated.startTime + index,
+      }),
+    )
     const value = snapshot({
-      spans: [
-        span({
-          spanId: 'slow-db',
-          name: 'db.select tasks',
-          attributes: { 'db.system': 'sqlite' },
-          durationMs: 900,
-          startTime: 1_100,
-        }),
-        span({
-          spanId: 'http-1',
-          traceId: TRACE_B,
-          name: 'fetch GET https://api.example.test/users?token=secret',
-          kind: 'client',
-          nextSpanType: 'AppRender.fetch',
-          attributes: { 'http.url': 'https://api.example.test/users?token=secret' },
-          durationMs: 30,
-          startTime: 1_200,
-        }),
-        span({
-          spanId: 'http-2',
-          traceId: TRACE_B,
-          name: 'fetch GET https://api.example.test/users?token=secret',
-          kind: 'client',
-          nextSpanType: 'AppRender.fetch',
-          attributes: { 'http.url': 'https://api.example.test/users?token=secret' },
-          durationMs: 30,
-          startTime: 1_201,
-        }),
-        span({
-          spanId: 'http-3',
-          traceId: TRACE_B,
-          name: 'fetch GET https://api.example.test/users?token=secret',
-          kind: 'client',
-          nextSpanType: 'AppRender.fetch',
-          attributes: { 'http.url': 'https://api.example.test/users?token=secret' },
-          durationMs: 30,
-          startTime: 1_202,
-        }),
-        span({
-          spanId: 'http-root',
-          traceId: TRACE_B,
-          name: 'GET /api/other',
-          route: '/api/other',
-          startTime: 1_150,
-          endTime: 1_300,
-          durationMs: 150,
-        }),
+      spans: [slow, slowChild, repeated, ...fetches],
+      errors: [
+        error({ id: 'e1', traceId: slow.traceId, resolvedTraceId: slow.traceId }),
+        error({ id: 'e2', timestamp: 1_030, traceId: slow.traceId, resolvedTraceId: slow.traceId }),
       ],
-      errors: [error({ id: 'e1' }), error({ id: 'e2', timestamp: 1_030 })],
-      requests: [
-        request(),
-        request({
-          id: TRACE_B,
-          traceId: TRACE_B,
-          route: '/api/other',
-          timestamp: 1_150,
-          endTime: 1_300,
-          durationMs: 150,
-        }),
-      ],
+      requests: [requestFor(slow), requestFor(repeated)],
     })
     return { snapshot: value, report: reportFor(value) }
   }
@@ -652,14 +876,11 @@ describe('diagnostic list and detail views', () => {
     expect(rule.items).toHaveLength(1)
 
     const route = listDiagnosticFindings(report, { route: '/api/other' })
-    expect(route.items.every((finding) => finding.route?.includes('/api/other'))).toBe(
-      true,
-    )
+    expect(route.items.every((finding) => finding.route?.includes('/api/other'))).toBe(true)
 
     const trace = listDiagnosticFindings(report, { traceId: TRACE_B })
-    expect(trace.items.every((finding) => finding.traceIds.includes(TRACE_B))).toBe(
-      true,
-    )
+    expect(trace.items.length).toBeGreaterThan(0)
+    expect(trace.items.every((finding) => finding.traceIds.includes(TRACE_B))).toBe(true)
 
     const recent = listDiagnosticFindings(report, { since: 1_190 })
     expect(recent.items.every((finding) => finding.lastSeen >= 1_190)).toBe(true)
@@ -703,28 +924,31 @@ describe('diagnostic list and detail views', () => {
 
   it('returns a bounded trace context for a finding and null for unknown ids', () => {
     const { snapshot: value, report } = populated()
-    const slow = report.findings.find((finding) => finding.ruleId === 'slow-span')!
+    const slow = report.findings.find((finding) => finding.ruleId === 'slow-request')!
     const detail = getDiagnosticDetail(report, slow.id, value)
     expect(detail).not.toBeNull()
     expect(detail?.finding.id).toBe(slow.id)
-    expect(detail?.trace?.traceId).toBe(TRACE_A)
-    expect(detail?.trace?.request?.route).toBe('/api/test')
-    expect(detail?.trace?.spans.map((entry) => entry.spanId)).toContain('slow-db')
+    expect(detail?.trace?.traceId).toBe(slow.traceIds[0])
+    expect(detail?.trace?.spans.map((entry) => entry.spanId)).toContain('dddddddddddddd10')
     expect(getDiagnosticDetail(report, 'diag-00000000-00000000', value)).toBeNull()
   })
 
   it('detects missing parents in related trace evidence', () => {
+    const trace = root(0, '/api/test', 900)
     const value = snapshot({
       spans: [
+        trace,
         span({
+          traceId: trace.traceId,
           spanId: 'slow',
           parentSpanId: 'missing-parent',
           durationMs: 900,
         }),
       ],
+      requests: [requestFor(trace)],
     })
     const report = reportFor(value)
-    const finding = report.findings.find((entry) => entry.ruleId === 'slow-span')!
+    const finding = report.findings.find((entry) => entry.ruleId === 'slow-request')!
     const detail = getDiagnosticDetail(report, finding.id, value)!
     expect(detail.trace?.missingParentSpanIds).toEqual(['missing-parent'])
   })
@@ -735,5 +959,61 @@ describe('diagnostic list and detail views', () => {
     expect(overview.counts).toEqual(report.counts)
     expect(overview.topFindings).toHaveLength(2)
     expect(overview.limitations).toEqual(report.limitations)
+  })
+})
+
+describe('review regressions', () => {
+  it('filters by full trace membership beyond the evidence cap', () => {
+    const traces = Array.from({ length: 60 }, (_, index) => root(index, '/api/slow', 900))
+    const report = reportFor(snapshot({ spans: traces, requests: traces.map((trace) => requestFor(trace)) }))
+    const finding = byRule(report, 'slow-request')[0]!
+    expect(finding.traceIds).toHaveLength(50)
+    const omitted = traces.find((trace) => !finding.traceIds.includes(trace.traceId))!
+    expect(listDiagnosticFindings(report, { traceId: omitted.traceId }).items).toContain(finding)
+  })
+
+  it('counts error records within a trace and reports below-threshold totals', () => {
+    const trace = root(0, '/api/test', 120)
+    const report = reportFor(snapshot({
+      spans: [trace], requests: [requestFor(trace)],
+      errors: [1, 2].map((index) => error({ id: `error-${index}`, traceId: trace.traceId, resolvedTraceId: trace.traceId, timestamp: 1_000 + index })),
+    }), { config: config({ diagnostics: { errorGroupMin: 3 } }).diagnostics })
+    const finding = byRule(report, 'error-fingerprint')[0]!
+    expect(finding.evidence.traces?.[0]).toMatchObject({ occurrences: 2, timestamp: 1_002 })
+    expect(finding.summary).toContain('2 occurrences on /api/test')
+  })
+
+  it('does not attribute queries with missing or detached span IDs', () => {
+    const trace = root(0, '/api/test', 120)
+    for (const spanId of [undefined, 'missing', 'detached']) {
+      const report = reportFor(snapshot({
+        spans: [trace, child(trace, { spanId: 'detached', parentSpanId: 'absent' })],
+        requests: [requestFor(trace)],
+        databaseQueries: Array.from({ length: 8 }, (_, index) => query({ id: `q-${index}`, traceId: trace.traceId, resolvedTraceId: trace.traceId, spanId })),
+      }))
+      expect(byRule(report, 'n-plus-one-queries')).toHaveLength(0)
+    }
+  })
+
+  it('uses all matching spans for timestamps within one trace', () => {
+    const trace = root(0, '/api/test', 400)
+    const spans = [trace, ...[1_010, 1_200].map((startTime, index) => child(trace, {
+      spanId: `fetch-${index}`, name: 'fetch GET', nextSpanType: 'AppRender.fetch', kind: 'client',
+      startTime, durationMs: 100, attributes: { 'http.url': 'https://example.test/api' },
+    }))]
+    const report = reportFor(snapshot({ spans, requests: [requestFor(trace)] }), {
+      config: config({ diagnostics: { repeatedHttpMin: 2, slowSpans: { httpMs: 10 } } }).diagnostics,
+    })
+    for (const rule of ['slow-span', 'repeated-external-http'] as const) {
+      const finding = byRule(report, rule)[0]!
+      expect(finding).toMatchObject({ firstSeen: 1_010, lastSeen: 1_200 })
+    }
+  })
+
+  it('excludes codes outside 500 through 599 from server error findings and counts', () => {
+    const trace = root(0, '/api/test', 120, { statusCode: 600 })
+    const report = reportFor(snapshot({ spans: [trace], requests: [requestFor(trace)] }))
+    expect(byRule(report, 'server-error-response')).toHaveLength(0)
+    expect(report.sample.serverErrorsWithoutError).toBe(0)
   })
 })

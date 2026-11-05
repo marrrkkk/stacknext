@@ -27,6 +27,7 @@ export interface CoverageMeta {
 
 export interface MetaOptions {
   tool: string
+  snapshot?: boolean
   health: HealthResponse | null
   project?: string | null
   firstEventTime?: number | null
@@ -78,45 +79,49 @@ export function buildMeta(options: MetaOptions): ToolMeta {
     )
   }
 
-  if (!health) {
-    reasons.push(
-      'Collector health is unavailable, so connection and instrumentation state are unknown.',
-    )
-  } else {
-    if (!health.connected) {
+  if (!options.snapshot) {
+    if (!health) {
       reasons.push(
-        'No Next.js app is currently connected to the collector. Start the app through "stacknext dev" and make a request.',
+        'Collector health is unavailable, so connection and instrumentation state are unknown.',
       )
-    }
-    const storeDropped =
-      (health.store?.dropped.capacity ?? 0) +
-      (health.store?.dropped.retention ?? 0)
-    if (storeDropped > 0) {
-      reasons.push(
-        `The collector dropped ${storeDropped} record(s) because of capacity or retention limits.`,
-      )
-    }
-    const ingestDropped =
-      (health.server?.droppedPayload ?? 0) +
-      (health.server?.droppedMalformed ?? 0)
-    if (ingestDropped > 0) {
-      reasons.push(
-        `The collector rejected ${ingestDropped} ingest payload(s) as oversized or malformed.`,
-      )
-    }
-    const exporterDropped =
-      (health.exporter?.droppedSpans ?? 0) +
-      (health.exporter?.droppedEvents ?? 0)
-    if (exporterDropped > 0) {
-      reasons.push(
-        `The app exporter dropped ${exporterDropped} span(s) or event(s) before delivery.`,
-      )
+    } else {
+      if (!health.connected) {
+        reasons.push(
+          'No Next.js app is currently connected to the collector. Start the app through "stacknext dev" and make a request.',
+        )
+      }
+      const storeDropped =
+        (health.store?.dropped.capacity ?? 0) +
+        (health.store?.dropped.retention ?? 0)
+      if (storeDropped > 0) {
+        reasons.push(
+          `The collector dropped ${storeDropped} record(s) because of capacity or retention limits.`,
+        )
+      }
+      const ingestDropped =
+        (health.server?.droppedPayload ?? 0) +
+        (health.server?.droppedMalformed ?? 0)
+      if (ingestDropped > 0) {
+        reasons.push(
+          `The collector rejected ${ingestDropped} ingest payload(s) as oversized or malformed.`,
+        )
+      }
+      const exporterDropped =
+        (health.exporter?.droppedSpans ?? 0) +
+        (health.exporter?.droppedEvents ?? 0)
+      if (exporterDropped > 0) {
+        reasons.push(
+          `The app exporter dropped ${exporterDropped} span(s) or event(s) before delivery.`,
+        )
+      }
     }
   }
 
   if (options.found === 0) {
     reasons.push(
-      'No matching telemetry is present in the collector\'s current retention window.',
+      options.snapshot
+        ? 'No matching records are present in the saved snapshot selection.'
+        : 'No matching telemetry is present in the collector\'s current retention window.',
     )
   }
 

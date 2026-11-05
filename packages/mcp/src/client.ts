@@ -11,6 +11,8 @@ import type {
   PageResult,
   RequestFilters,
   RequestSummary,
+  SnapshotDetailResponse,
+  SnapshotListResponse,
   TraceDetail,
   TraceListResult,
 } from '@stacknext/core'
@@ -163,10 +165,6 @@ export class StackNextApiClient {
     return this.get<PageResult<RequestSummary>>('/api/requests', params)
   }
 
-  async getRequest(traceId: string): Promise<TraceDetail> {
-    return this.get<TraceDetail>(`/api/requests/${encodeURIComponent(traceId)}`)
-  }
-
   async listTraces(filters: RequestFilters = {}): Promise<TraceListResult> {
     const params = new URLSearchParams()
     appendNumber(params, 'limit', filters.limit)
@@ -269,6 +267,26 @@ export class StackNextApiClient {
 
   async getComparison(id: string): Promise<Comparison> {
     return this.get<Comparison>(`/api/comparisons/${encodeURIComponent(id)}`)
+  }
+
+  async listSnapshots(options: {
+    limit?: number
+    offset?: number
+  } = {}): Promise<SnapshotListResponse> {
+    const params = new URLSearchParams()
+    appendNumber(params, 'limit', options.limit)
+    appendNumber(params, 'offset', options.offset)
+    return this.get<SnapshotListResponse>('/api/snapshots', params)
+  }
+
+  async getSnapshot(id: string): Promise<SnapshotDetailResponse> {
+    return this.get<SnapshotDetailResponse>(`/api/snapshots/${encodeURIComponent(id)}`)
+  }
+
+  async getSnapshotTrace(id: string, traceId: string): Promise<TraceDetail> {
+    return this.get<TraceDetail>(
+      `/api/snapshots/${encodeURIComponent(id)}/traces/${encodeURIComponent(traceId)}`,
+    )
   }
 
   async findSlowRequests(options: {

@@ -30,6 +30,13 @@ export type IconName =
   | 'download'
   | 'pulse'
   | 'inbox'
+  | 'menu'
+  | 'panel-left'
+  | 'compare'
+  | 'flag'
+  | 'pause'
+  | 'play'
+  | 'info'
 
 const paths: Record<IconName, ReactNode> = {
   overview: (
@@ -178,6 +185,41 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M5 5h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
     </>
   ),
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  'panel-left': (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9.5 4v16" />
+    </>
+  ),
+  compare: (
+    <>
+      <path d="M4 7h12" />
+      <path d="m13 4 3 3-3 3" />
+      <path d="M20 17H8" />
+      <path d="m11 14-3 3 3 3" />
+    </>
+  ),
+  flag: (
+    <>
+      <path d="M5 21V4" />
+      <path d="M5 4h10l-2 4 2 4H5" />
+    </>
+  ),
+  pause: (
+    <>
+      <rect x="7" y="5" width="3.5" height="14" rx="1" />
+      <rect x="13.5" y="5" width="3.5" height="14" rx="1" />
+    </>
+  ),
+  play: <path d="M8 5.5v13l10-6.5-10-6.5Z" />,
+  info: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 11v5" />
+      <path d="M12 8v.1" />
+    </>
+  ),
 }
 
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name'> {
@@ -193,7 +235,7 @@ export function Icon({ name, size = 18, ...props }: IconProps): ReactElement {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.7"
+      strokeWidth="2.2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"

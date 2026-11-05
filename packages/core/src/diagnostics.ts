@@ -9,7 +9,7 @@ import type {
 
 export const STACKNEXT_DIAGNOSTICS_FORMAT = 'stacknext-diagnostics'
 export const STACKNEXT_DIAGNOSTICS_FORMAT_VERSION = 1
-export const STACKNEXT_DIAGNOSTICS_RULE_SET_VERSION = 1
+export const STACKNEXT_DIAGNOSTICS_RULE_SET_VERSION = 2
 
 export const DIAGNOSTIC_CATEGORIES = [
   'database',
@@ -32,9 +32,11 @@ export type DiagnosticStatus = (typeof DIAGNOSTIC_STATUSES)[number]
 
 export const DIAGNOSTIC_RULE_IDS = [
   'n-plus-one-queries',
+  'slow-request',
   'slow-span',
   'repeated-external-http',
   'error-fingerprint',
+  'server-error-response',
 ] as const
 export type DiagnosticRuleId = (typeof DIAGNOSTIC_RULE_IDS)[number]
 
@@ -53,15 +55,23 @@ export const DIAGNOSTIC_RULES: readonly DiagnosticRuleSummary[] = [
     category: 'database',
     severity: 'warning',
     description:
-      'The same SQL shape runs repeatedly inside one trace. This is consistent with a per-item query loop, but it is not proof of an N+1 bug.',
+      'The same SQL shape runs repeatedly in request traces. This is consistent with a per-item query loop, but it is not proof of an N+1 bug.',
   },
   {
-    id: 'slow-span',
-    label: 'Slow span',
+    id: 'slow-request',
+    label: 'Slow request',
     category: 'performance',
     severity: 'warning',
     description:
-      'A measured span exceeds the configured threshold for its category. Span duration includes child work and is not a sum of overlapping work.',
+      'A request root exceeds the configured request threshold. StackNext attributes self time to the deepest measured spans and names the dominant contributor without claiming causality.',
+  },
+  {
+    id: 'slow-span',
+    label: 'Slow operation',
+    category: 'performance',
+    severity: 'warning',
+    description:
+      'A measured span exceeds its category threshold when the enclosing request is not already reported as slow. Duration is evaluated as self time, not as inclusive child time.',
   },
   {
     id: 'repeated-external-http',
@@ -69,15 +79,23 @@ export const DIAGNOSTIC_RULES: readonly DiagnosticRuleSummary[] = [
     category: 'http',
     severity: 'warning',
     description:
-      'The same outbound HTTP endpoint is called repeatedly inside one trace. This may indicate missing caching or request deduplication, but repeated calls can be intentional.',
+      'The same outbound HTTP endpoint is called repeatedly from one route. Cache status and same-app/external origin are reported as evidence; repeated calls can be intentional.',
   },
   {
     id: 'error-fingerprint',
-    label: 'Repeated error group',
+    label: 'Request errors',
     category: 'errors',
     severity: 'error',
     description:
-      'A route-independent error signature occurs more than once in the sample. Grouping is heuristic and does not establish a root cause.',
+      'A single or repeated request error is reported with its Next.js route context. Grouping is heuristic and does not establish a root cause.',
+  },
+  {
+    id: 'server-error-response',
+    label: 'Server error response',
+    category: 'errors',
+    severity: 'error',
+    description:
+      'A request returned a 5xx response without a correlated error record. The status is observed; the cause is unknown.',
   },
 ]
 
@@ -94,15 +112,35 @@ export type DiagnosticSpanCategory =
   | 'framework'
   | 'other'
 
+export const DIAGNOSTIC_NEXT_PHASES = [
+  'request',
+  'routing',
+  'render',
+  'route-handler',
+  'fetch',
+  'database',
+  'client-components',
+  'response',
+  'middleware',
+  'custom',
+  'other',
+] as const
+export type DiagnosticNextPhase = (typeof DIAGNOSTIC_NEXT_PHASES)[number]
+
 export interface DiagnosticSpanEvidence {
   spanId: string
   traceId: string
   name: string
   durationMs: number
+  /** Duration after subtracting the union of direct child intervals. */
+  selfDurationMs?: number
   category: DiagnosticSpanCategory
   status: string
   route?: string
   nextSpanType?: string
+  nextPhase?: DiagnosticNextPhase
+  parentSpanId?: string
+  isRequestRoot?: boolean
 }
 
 export interface DiagnosticQueryEvidence {
@@ -127,6 +165,33 @@ export interface DiagnosticErrorEvidence {
   method?: string
   traceId: string | null
   fingerprint: string
+  routeType?: string
+  renderSource?: string
+  renderType?: string
+  revalidateReason?: string
+  routerKind?: string
+  digest?: string
+  statusCode?: number
+  spanId?: string
+}
+
+export interface DiagnosticContributor {
+  traceId?: string
+  spanId?: string
+  label: string
+  category: DiagnosticSpanCategory
+  phase?: DiagnosticNextPhase
+  selfMs: number
+  durationMs?: number
+}
+
+export interface DiagnosticTraceOccurrence {
+  traceId: string
+  timestamp: number
+  /** Query, call or error occurrences in this trace; one for slow requests. */
+  occurrences: number
+  durationMs?: number
+  contributor?: string
 }
 
 export interface DiagnosticEvidence {
@@ -134,6 +199,8 @@ export interface DiagnosticEvidence {
   spans: DiagnosticSpanEvidence[]
   queries: DiagnosticQueryEvidence[]
   errors: DiagnosticErrorEvidence[]
+  contributors: DiagnosticContributor[]
+  traces: DiagnosticTraceOccurrence[]
   measurements: DiagnosticMeasurement[]
 }
 
@@ -150,6 +217,8 @@ export interface DiagnosticFinding {
   route: string | null
   method: string | null
   traceIds: string[]
+  /** Number of distinct traces matched, even when traceIds is capped. */
+  affectedTraceCount: number
   firstSeen: number
   lastSeen: number
   fingerprint: string
@@ -168,6 +237,18 @@ export interface DiagnosticSample {
   databaseQueries: number
   connectedInstances: number
   connected: boolean
+  /** Request traces used by request-level rules. */
+  requestTraces?: number
+  /** Traces excluded because no request root was captured. */
+  tracesWithoutRequestRoot?: number
+  /** Request traces with at least one missing parent span. */
+  tracesWithMissingParents?: number
+  /** Spans that could not be attributed to a request root. */
+  unattributedSpans?: number
+  /** Next.js control-flow errors ignored by the error rule. */
+  ignoredControlFlowErrors?: number
+  /** 5xx request traces without a correlated error record. */
+  serverErrorsWithoutError?: number
 }
 
 export interface DiagnosticCounts {

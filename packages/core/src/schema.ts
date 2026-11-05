@@ -1,6 +1,8 @@
 import { z } from 'zod'
+import { stackNextConfigSchema } from './config.js'
 import {
   DATABASE_SOURCES,
+  SNAPSHOT_SOURCES,
   SPAN_KINDS,
   SPAN_STATUSES,
 } from './types.js'
@@ -71,6 +73,7 @@ export const ingestErrorSchema = z
     routerKind: z.string().max(100).optional(),
     routeType: z.string().max(100).optional(),
     renderSource: z.string().max(100).optional(),
+    renderType: z.string().max(100).optional(),
     traceId: traceIdSchema.optional(),
     spanId: spanIdSchema.optional(),
     attributes: jsonRecordSchema,
@@ -131,3 +134,122 @@ export const ingestEnvelopeSchema = z
   .strict()
 
 export type ParsedIngestEnvelope = z.infer<typeof ingestEnvelopeSchema>
+
+/**
+ * Stored telemetry uses the same normalized fields as ingestion plus the
+ * collector receive time and, for errors, the grouped fingerprint.
+ */
+export const storedSpanSchema = ingestSpanSchema
+  .extend({ receivedAt: timestampSchema })
+  .strict()
+
+export const storedErrorSchema = ingestErrorSchema
+  .extend({
+    fingerprint: z.string().min(1).max(64),
+    receivedAt: timestampSchema,
+  })
+  .strict()
+
+export const storedDatabaseQuerySchema = ingestDatabaseQuerySchema
+  .extend({ receivedAt: timestampSchema })
+  .strict()
+
+export const snapshotConfigSchema = stackNextConfigSchema.superRefine((config, context) => {
+  if (config.privacy.captureHeaders) {
+    context.addIssue({
+      code: 'custom',
+      path: ['privacy', 'captureHeaders'],
+      message: 'request headers are never captured',
+    })
+  }
+  if (config.privacy.captureRequestBodies) {
+    context.addIssue({
+      code: 'custom',
+      path: ['privacy', 'captureRequestBodies'],
+      message: 'request bodies are never captured',
+    })
+  }
+  if (config.privacy.captureSqlParameters) {
+    context.addIssue({
+      code: 'custom',
+      path: ['privacy', 'captureSqlParameters'],
+      message: 'SQL parameters are never captured',
+    })
+  }
+})
+
+export const snapshotSourceSchema = z.enum(SNAPSHOT_SOURCES)
+
+export const snapshotStatsSchema = z
+  .object({
+    requests: z.number().int().nonnegative(),
+    errors: z.number().int().nonnegative(),
+    databaseQueries: z.number().int().nonnegative(),
+    spans: z.number().int().nonnegative(),
+  })
+  .strict()
+
+export const snapshotSampleSchema = z
+  .object({
+    firstEventTime: timestampSchema.nullable(),
+    lastEventTime: timestampSchema.nullable(),
+    retentionMs: z.number().int().nonnegative(),
+  })
+  .strict()
+
+export const snapshotSummarySchema = z
+  .object({
+    id: z.string().regex(/^snap-[0-9a-f]{16}$/, 'must look like snap-xxxxxxxxxxxxxxxx'),
+    createdAt: timestampSchema,
+    source: snapshotSourceSchema,
+    projectName: z.string().min(1).max(200),
+    collectorVersion: z.string().min(1).max(100),
+    label: z.string().min(1).max(200).optional(),
+    sample: snapshotSampleSchema,
+    stats: snapshotStatsSchema,
+    bytes: z.number().int().nonnegative(),
+  })
+  .strict()
+
+const MAX_SNAPSHOT_RECORDS = 100_000
+
+export const snapshotPayloadSchema = z
+  .object({
+    format: z.literal('stacknext-snapshot'),
+    version: z.literal(1),
+    id: z.string().regex(/^snap-[0-9a-f]{16}$/, 'must look like snap-xxxxxxxxxxxxxxxx'),
+    createdAt: timestampSchema,
+    source: snapshotSourceSchema,
+    projectName: z.string().min(1).max(200),
+    collectorVersion: z.string().min(1).max(100),
+    label: z.string().min(1).max(200).optional(),
+    config: snapshotConfigSchema,
+    sample: snapshotSampleSchema,
+    spans: z.array(storedSpanSchema).max(MAX_SNAPSHOT_RECORDS),
+    errors: z.array(storedErrorSchema).max(MAX_SNAPSHOT_RECORDS),
+    databaseQueries: z.array(storedDatabaseQuerySchema).max(MAX_SNAPSHOT_RECORDS),
+    stats: snapshotStatsSchema,
+    limitations: z.array(z.string().max(2_000)).max(50),
+  })
+  .strict()
+
+/** Accepts a raw StackNext export as an import source. */
+export const snapshotImportSchema = z
+  .object({
+    format: z.literal('stacknext-export'),
+    version: z.literal(1),
+    exportedAt: timestampSchema,
+    projectName: z.string().min(1).max(200),
+    collectorVersion: z.string().min(1).max(100),
+    config: snapshotConfigSchema,
+    spans: z.array(storedSpanSchema).max(MAX_SNAPSHOT_RECORDS),
+    errors: z.array(storedErrorSchema).max(MAX_SNAPSHOT_RECORDS),
+    databaseQueries: z.array(storedDatabaseQuerySchema).max(MAX_SNAPSHOT_RECORDS),
+    stats: snapshotStatsSchema,
+    diagnostics: z.unknown().optional(),
+    limitations: z.array(z.string().max(2_000)).max(100),
+  })
+  .strict()
+
+export type ParsedSnapshotPayload = z.infer<typeof snapshotPayloadSchema>
+export type ParsedSnapshotImport = z.infer<typeof snapshotImportSchema>

@@ -1,9 +1,9 @@
 # @stacknext/diagnostics
 
 Deterministic, evidence-backed diagnostics for [StackNext](https://github.com/marrrkkk/stacknext)
-telemetry. The engine evaluates four conservative rules over the current
-retention sample: repeated SQL shapes, slow spans, repeated external HTTP
-endpoints and error fingerprints.
+telemetry. The engine evaluates six conservative rules over the current
+retention sample: repeated SQL shapes, slow requests and spans, repeated
+external HTTP endpoints, request errors and server-error responses.
 
 Findings are heuristics, not confirmed root causes. The same report is exposed
 by the StackNext CLI, dashboard, JSON export and read-only MCP server.

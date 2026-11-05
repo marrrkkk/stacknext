@@ -1,4 +1,5 @@
 import {
+  STACKNEXT_DIAGNOSTICS_RULE_SET_VERSION,
   STACKNEXT_SDK_VERSION,
   type ConnectionInfo,
   type NextOtelVerboseStatus,
@@ -64,6 +65,9 @@ export function buildEnvironmentSnapshot(
       captureErrors: input.config.instrumentation.captureErrors,
     },
     sdkVersion: connection?.sdkVersion ?? STACKNEXT_SDK_VERSION,
+    diagnostics: {
+      ruleSetVersion: STACKNEXT_DIAGNOSTICS_RULE_SET_VERSION,
+    },
     ...(input.playwrightVersion
       ? { playwrightVersion: input.playwrightVersion.slice(0, 100) }
       : {}),
@@ -88,6 +92,7 @@ function environmentValues(
     ['instrumentation.captureFetch', environment.instrumentation.captureFetch ? 'enabled' : 'disabled'],
     ['instrumentation.captureErrors', environment.instrumentation.captureErrors ? 'enabled' : 'disabled'],
     ['sdkVersion', environment.sdkVersion],
+    ['diagnostics.ruleSetVersion', String(environment.diagnostics?.ruleSetVersion ?? 'unknown')],
     ['playwrightVersion', valueOrNone(environment.playwrightVersion)],
   ]
 }
