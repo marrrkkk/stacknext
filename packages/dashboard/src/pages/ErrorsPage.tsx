@@ -4,37 +4,69 @@ import { api } from '../api'
 import { useAsync, useDebounced } from '../hooks'
 import {
   Badge,
+  Banner,
   Card,
+  DataTable,
   EmptyState,
   ErrorState,
-  Loading,
+  IdLink,
+  MethodBadge,
   PageHeader,
-  Pagination,
+  PageLayout,
   SearchInput,
+  StatCard,
+  StatGridSkeleton,
+  StatStrip,
+  TableFooter,
+  Toolbar,
 } from '../components/ui'
 import { Icon } from '../components/Icon'
-import { formatDateTime, formatRelative, truncate } from '../format'
+import { formatDateTime, formatNumber, formatRelative } from '../format'
 
 const LIMIT = 50
+
+function ErrorGroupsSkeleton(): React.ReactElement {
+  return (
+    <div className="error-group-list" role="status" aria-label="Loading server errors">
+      {[0, 1, 2].map((index) => (
+        <div className="card" key={index} aria-hidden="true">
+          <div className="error-group-card__header">
+            <div className="error-group-card__content">
+              <span className="skeleton stat-skeleton__label" />
+              <span className="skeleton error-group-skeleton__message" />
+              <span className="skeleton stat-skeleton__hint" />
+            </div>
+          </div>
+        </div>
+      ))}
+      <span className="sr-only">Loading server errors</span>
+    </div>
+  )
+}
 
 export function ErrorsPage({
   refreshKey,
   onNavigate,
+  snapshotId,
 }: {
   refreshKey: number
   onNavigate: (path: string) => void
+  snapshotId?: string
 }): React.ReactElement {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search, 300)
   const [route, setRoute] = useState('')
   const [offset, setOffset] = useState(0)
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
   const updateSearch = (value: string): void => {
     setSearch(value)
+    setExpanded({})
     setOffset(0)
   }
   const updateRoute = (value: string): void => {
     setRoute(value)
+    setExpanded({})
     setOffset(0)
   }
 
@@ -43,99 +75,150 @@ export function ErrorsPage({
     [debouncedSearch, route, offset],
   )
   const state = useAsync<ErrorListResponse>(
-    (signal) =>
-      api.errors(
-        {
-          limit: LIMIT,
-          offset,
-          q: debouncedSearch || undefined,
-          route: route || undefined,
-        },
-        signal,
-      ),
+    (signal) => {
+      const query = {
+        limit: LIMIT,
+        offset,
+        q: debouncedSearch || undefined,
+        route: route || undefined,
+      }
+      return snapshotId
+        ? api.snapshotErrors(snapshotId, query, signal)
+        : api.errors(query, signal)
+    },
     key,
     refreshKey,
   )
+  const basePath = snapshotId ? `/snapshots/${snapshotId}` : ''
   const filtersActive = Boolean(debouncedSearch || route)
 
+  const items = useMemo(() => state.data?.items ?? [], [state.data])
+  const groups = useMemo(() => state.data?.groups ?? [], [state.data])
+  const total = state.data?.total ?? 0
+  const affectedRoutes = new Set(groups.map((group) => group.route).filter(Boolean)).size
+  const lastSeen = groups.reduce((latest, group) => Math.max(latest, group.lastSeen), 0)
+  const hasExpandedState = Object.keys(expanded).length > 0
+
+  const pageGroups = useMemo(
+    () =>
+      groups
+        .map((group) => ({
+          group,
+          occurrences: items.filter((error) => error.fingerprint === group.fingerprint),
+        }))
+        .filter((entry) => entry.occurrences.length > 0),
+    [groups, items],
+  )
+
   return (
-    <>
+    <PageLayout>
       <PageHeader
-        eyebrow="Errors"
+        eyebrow={snapshotId ? 'Snapshot' : 'Errors'}
+        eyebrowOnClick={
+          snapshotId ? () => onNavigate(`/snapshots/${snapshotId}`) : undefined
+        }
         title="Server errors"
-        description="Errors reported by Next.js onRequestError, linked to their request trace and grouped by fingerprint."
+        description={
+          snapshotId
+            ? 'Errors frozen in this snapshot, grouped by fingerprint. Occurrence counts describe the saved sample only.'
+            : 'Errors reported by Next.js onRequestError, linked to their request trace and grouped by fingerprint.'
+        }
+        info="Groups are sorted by last seen. Expand a group to inspect the occurrences captured on this page; each linked trace opens the request timeline."
         actions={
-          <button type="button" className="button button--ghost" onClick={state.reload}>
+          <button type="button" className="button button--secondary" onClick={state.reload}>
             <Icon name="refresh" size={15} /> Refresh
           </button>
         }
       />
 
-      {state.data && state.data.groups.length > 0 && (
-        <div className="error-groups">
-          {state.data.groups.slice(0, 6).map((group) => (
-            <button
-              type="button"
-              key={group.fingerprint}
-              className="error-group"
-              onClick={() => onNavigate(`/errors/${group.latestErrorId}`)}
-            >
-              <div className="error-group__top">
-                <span className="error-group__name">{group.name}</span>
-                <Badge tone="bad">{group.count}</Badge>
-              </div>
-              <div className="error-group__message">{truncate(group.message, 120)}</div>
-              <div className="error-group__meta">
-                {group.route ?? 'unknown route'} · last seen {formatRelative(group.lastSeen)}
-              </div>
-            </button>
-          ))}
-        </div>
+      {snapshotId && (
+        <Banner tone="accent" icon="layers" title="Saved snapshot">
+          These errors come from a frozen local snapshot. The page cannot show live diagnostics,
+          coverage or errors captured after the snapshot.
+        </Banner>
       )}
 
-      <Card className="toolbar-card">
-        <div className="toolbar">
-          <SearchInput
-            value={search}
-            onChange={updateSearch}
-            placeholder="Search message, name or stack…"
-            label="Search errors"
+      {state.data ? (
+        <StatStrip>
+          <StatCard
+            label="Error groups"
+            value={formatNumber(groups.length)}
+            hint="Distinct error fingerprints"
           />
-          <SearchInput
-            value={route}
-            onChange={updateRoute}
-            placeholder="Filter by route…"
-            label="Filter errors by route"
+          <StatCard
+            label="Occurrences"
+            value={formatNumber(total)}
+            hint="Across all error groups"
           />
-        </div>
-      </Card>
+          <StatCard
+            label="Affected routes"
+            value={formatNumber(affectedRoutes)}
+            hint="Routes represented"
+          />
+          <StatCard
+            label="Last seen"
+            value={
+              lastSeen ? (
+                <span title={formatDateTime(lastSeen)}>{formatRelative(lastSeen)}</span>
+              ) : (
+                'None'
+              )
+            }
+            hint="Most recent occurrence"
+          />
+        </StatStrip>
+      ) : (
+        <StatGridSkeleton />
+      )}
 
-      <Card padded={false}>
-        {state.loading && !state.data ? (
-          <div className="card__inner">
-            <Loading rows={7} />
-          </div>
-        ) : state.error && !state.data ? (
-          <div className="card__inner">
-            <ErrorState message={state.error} onRetry={state.reload} />
-          </div>
-        ) : state.data && state.data.items.length === 0 ? (
+      <Toolbar
+        label="Filter server errors"
+        aside={
+          <span className="toolbar__count">
+            Showing {formatNumber(items.length)} of {formatNumber(total)}
+          </span>
+        }
+      >
+        <SearchInput
+          value={search}
+          onChange={updateSearch}
+          placeholder="Search message or route…"
+          label="Search errors"
+        />
+        <SearchInput
+          value={route}
+          onChange={updateRoute}
+          placeholder="Filter by route…"
+          label="Filter errors by route"
+        />
+      </Toolbar>
+
+      {state.loading && !state.data ? (
+        <ErrorGroupsSkeleton />
+      ) : state.error && !state.data ? (
+        <Card>
+          <ErrorState message={state.error} onRetry={state.reload} />
+        </Card>
+      ) : state.data && items.length === 0 ? (
+        <Card>
           <EmptyState
             icon={filtersActive ? 'search' : 'shield'}
-            title={filtersActive ? 'No errors match these filters' : 'No server errors captured'}
-            description={
+            title={
               filtersActive
-                ? 'Try clearing the message or route filter.'
-                : 'Unhandled App Router errors appear here automatically through onRequestError. This is a good place to be.'
+                ? 'No server errors match these filters'
+                : snapshotId
+                  ? 'No server errors in this snapshot'
+                  : 'No server errors in the current retention window'
             }
             action={
               filtersActive ? (
                 <button
                   type="button"
-                  className="button button--ghost"
+                  className="button button--secondary button--small"
                   onClick={() => {
                     setSearch('')
                     setRoute('')
+                    setExpanded({})
                     setOffset(0)
                   }}
                 >
@@ -146,73 +229,122 @@ export function ErrorsPage({
               )
             }
           />
-        ) : (
-          <>
-            <table className="table table--errors">
-              <thead>
-                <tr>
-                  <th>Error</th>
-                  <th>Route</th>
-                  <th>Trace</th>
-                  <th>Seen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {state.data?.items.map((error) => (
-                  <tr
-                    key={error.id}
-                    className="row-clickable"
-                    tabIndex={0}
-                    onClick={() => onNavigate(`/errors/${error.id}`)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault()
-                        onNavigate(`/errors/${error.id}`)
-                      }
-                    }}
+        </Card>
+      ) : (
+        <>
+          <div className="error-group-list">
+            {pageGroups.map(({ group, occurrences }, index) => {
+              const open =
+                expanded[group.fingerprint] ?? (!hasExpandedState && index === 0)
+              return (
+                <Card key={group.fingerprint} padded={false}>
+                  <button
+                    type="button"
+                    className="error-group-card__header"
+                    aria-expanded={open}
+                    onClick={() =>
+                      setExpanded((current) => ({
+                        ...current,
+                        [group.fingerprint]: !open,
+                      }))
+                    }
                   >
-                    <td>
-                      <div className="error-cell__name">{error.name}</div>
-                      <div className="error-cell__message">{truncate(error.message, 140)}</div>
-                    </td>
-                    <td>
-                      <div className="mono">{error.route ?? '—'}</div>
-                      <div className="sub-cell">{error.method ?? '—'}</div>
-                    </td>
-                    <td>
-                      {error.resolvedTraceId ? (
-                        <button
-                          type="button"
-                          className="link mono"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            onNavigate(`/requests/${error.resolvedTraceId}`)
+                    <span className="error-group-card__content">
+                      <span className="error-group-card__top">
+                        <span className="error-group__name">{group.name}</span>
+                        <Badge tone="bad">
+                          {formatNumber(group.count)}{' '}
+                          {group.count === 1 ? 'occurrence' : 'occurrences'}
+                        </Badge>
+                      </span>
+                      <span className="error-group__message error-group-card__message">
+                        {group.message}
+                      </span>
+                      <span className="error-group__meta">
+                        {group.route ?? 'Unknown route'} · Last seen{' '}
+                        {formatRelative(group.lastSeen)}
+                        {group.count > occurrences.length
+                          ? ` · showing ${formatNumber(occurrences.length)} on this page`
+                          : ''}
+                      </span>
+                    </span>
+                    <span className="error-group-card__chevron" aria-hidden="true">
+                      <Icon name="chevron-down" size={14} />
+                    </span>
+                  </button>
+
+            {open && (
+                    <DataTable
+                      label={`Occurrences for ${group.name}`}
+                      className="data-table--compact"
+                      columns={[
+                        { key: 'request', label: 'Request' },
+                        { key: 'trace', label: 'Trace ID', width: '160px' },
+                        {
+                          key: 'time',
+                          label: 'Time',
+                          align: 'right',
+                          width: '96px',
+                        },
+                      ]}
+                    >
+                      {occurrences.map((error) => (
+                        <tr
+                          key={error.id}
+                          className="row-clickable"
+                          tabIndex={0}
+                          onClick={() => onNavigate(`${basePath}/errors/${error.id}`)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              onNavigate(`${basePath}/errors/${error.id}`)
+                            }
                           }}
                         >
-                          {error.resolvedTraceId.slice(0, 10)}…
-                        </button>
-                      ) : (
-                        <span className="muted">not linked</span>
-                      )}
-                    </td>
-                    <td className="muted nowrap" title={formatDateTime(error.timestamp)}>
-                      {formatRelative(error.timestamp)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="card__footer">
-              <Pagination
-                total={state.data?.total ?? 0}
-                limit={LIMIT}
-                offset={offset}
-                onChange={setOffset}
-              />
-            </div>
-          </>
-        )}
-      </Card>
-    </>
+                          <td>
+                            <span className="occurrence-request">
+                              <MethodBadge method={error.method} />
+                              <span className="mono">{error.route ?? 'Unknown route'}</span>
+                            </span>
+                          </td>
+                          <td>
+                            {error.resolvedTraceId ? (
+                              <IdLink
+                                value={error.resolvedTraceId}
+                                label="Open request trace"
+                                onClick={() =>
+                                  onNavigate(`${basePath}/traces/${error.resolvedTraceId}`)
+                                }
+                              />
+                            ) : (
+                              <span className="muted">Not linked</span>
+                            )}
+                          </td>
+                          <td
+                            className="numeric"
+                            title={formatDateTime(error.timestamp)}
+                          >
+                            {formatRelative(error.timestamp)}
+                          </td>
+                        </tr>
+                      ))}
+                    </DataTable>
+                  )}
+                </Card>
+              )
+            })}
+          </div>
+
+          <div className="table-footer--page">
+            <TableFooter
+              total={total}
+              limit={LIMIT}
+              offset={offset}
+              onChange={setOffset}
+            />
+          </div>
+        </>
+      )}
+    </PageLayout>
   )
 }

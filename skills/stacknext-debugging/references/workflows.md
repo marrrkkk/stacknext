@@ -144,19 +144,27 @@ which one is supported by evidence?
      `route`, `traceId`, `since`, `until` or `q`.
    - Read `total`, `counts`, `sample`, `notes` and `limitations`.
 3. Select one finding and call `stacknext_get_diagnostic` with its id.
-   - Read `finding.status`, `severity`, `fingerprint`, `evidence`,
-     `verification` and `limitations`.
+   - Read `finding.status`, `severity`, `affectedTraceCount`, `fingerprint`,
+     `evidence`, `verification` and `limitations`.
    - Note the related `trace.traceId` and whether the trace is bounded.
 4. Verify by rule:
-   - **n-plus-one-queries:** count matching queries and inspect the normalized
-     SQL shape. Confirm whether the count tracks a list size. StackNext cannot
-     prove the calling code is a loop.
-   - **slow-span:** inspect the span and threshold in the trace. Check children,
-     queueing and cold starts. Do not add overlapping spans.
-   - **repeated-external-http:** inspect the endpoint shape. Determine whether
-     calls are independent, retries or a missing cache; query values are absent.
-   - **error-fingerprint:** inspect the latest error and trace. Grouping is
-     route-independent and can merge different causes.
+   - **n-plus-one-queries:** count matching queries per trace and inspect the
+     normalized SQL shape. Findings aggregate by canonical route; confirm whether
+     the count tracks a list size. StackNext cannot prove the calling code is a
+     loop.
+   - **slow-request:** inspect the request duration distribution and self-time
+     contributors. Self time attributes measured work; it is not proof of cause.
+   - **slow-span:** inspect the span self time, inclusive duration and Next.js
+     phase. Slow-span findings are suppressed when the request itself is slow.
+     Check children, queueing and cold starts; do not add overlapping spans.
+   - **repeated-external-http:** inspect the endpoint shape and per-trace
+     occurrence counts. Determine whether calls are independent, retries or a
+     missing cache; query values are absent.
+   - **error-fingerprint:** inspect the latest error, Next.js context and deepest
+     error span. Findings group by canonical route and can merge different
+     causes. Not-found and redirect control-flow errors are excluded.
+   - **server-error-response:** the request returned 5xx without a correlated
+     non-control-flow error record. The status is observed; the cause is unknown.
 5. If the related trace is truncated, call `get_trace` for the full tree. If the
    finding has no trace, say the evidence aged out or was never correlated.
 6. Report the finding id/rule/status, the evidence checked, what remains
@@ -192,7 +200,10 @@ remain inconclusive compared with its baseline?
      `scenarioId` values. An annotation change creates a new scenario with no
      baseline.
 5. `stacknext_list_comparisons` and `stacknext_get_comparison`
-   - Read `environment.compatible` and `environment.differences` first.
+   - Read `environment.compatible` and `environment.differences` first,
+     including `diagnostics.ruleSetVersion`. Different or unknown rule-set
+     versions make captured findings incomparable and the comparison
+     inconclusive.
    - Read top-level `status` and `severity`, then `summary`, then each scenario's
      `status`, `severity` and `reasons`.
    - Inspect regressed or inconclusive metrics: `baselineValue`,
@@ -224,6 +235,42 @@ sample counts, the decisive reasons/metrics, and what remains unproven.
 they were equivalent; use trace/span ids or timestamps as matching keys; call a
 regressed metric a root cause.
 
+## Workflow G: saved snapshot evidence
+
+**Question:** What does a saved snapshot show, and is it still relevant to the
+current app?
+
+1. `stacknext_list_snapshots` with `{ "limit": 20 }`
+   - Identify the snapshot by `label`, `source`, `createdAt` and `sample`.
+   - `manual` and `import` snapshots never rotate; `exit` and `error` snapshots
+     keep the newest ten by default.
+   - `invalid > 0` means some summary files are unreadable and were left in
+     place. Do not repair or delete them.
+2. `stacknext_get_snapshot` with the `snapshotId`
+   - Read `snapshot.sample`, `snapshot.stats`, captured `config`,
+     `limitations`, and the first traces/errors/queries.
+   - Confirm the snapshot contains the route or error the user asked about.
+3. `stacknext_get_snapshot_trace` with `snapshotId` and `traceId`
+   - Inspect spans, errors and queries inside that frozen trace.
+   - The response has no `diagnostics`; do not invent finding references.
+4. Decide whether the snapshot can answer the question:
+   - It can describe what happened at save time.
+   - It cannot describe current app behavior, current config or current
+     instrumentation coverage.
+   - If the user needs current behavior, inspect the live sample and say that
+     the snapshot was used only for historical comparison.
+5. If no snapshot exists, say so. The MCP tools cannot save, import, rotate or
+   delete one. Point the user to `stacknext snapshot save` or the dashboard
+   `/snapshots` page and do not create a file yourself.
+
+**Evidence to report:** snapshot id, source, save time, sample window, the
+scoped trace/error/query ids inspected, and the explicit caveat that the data is
+frozen rather than live.
+
+**Do not:** replay a snapshot into the live store; treat snapshot diagnostics or
+coverage as present; compare snapshot medians as if they were a regression
+comparison; call a snapshot finding a current root cause.
+
 | Observation | Likely meaning | Next action |
 | --- | --- | --- |
 | Collector unreachable | `stacknext dev` is stopped or the runtime file is stale | Ask the user to start it; do not guess |
@@ -241,6 +288,11 @@ regressed metric a root cause.
 | Comparison is `inconclusive` | Environment mismatch, missing/incomplete samples, structural change | Fix the evidence; it is not a pass |
 | Scenario has no baseline | Annotation changed or scenario is new | Re-baseline the intended scenario |
 | Query metric is `unmeasured` | Drizzle duration is null | Report unmeasured, never zero |
+| No snapshots listed | No manual/exit/error snapshot has been saved for this project directory | Save one with `stacknext snapshot save` or the dashboard |
+| Snapshot `invalid` is greater than 0 | Unreadable summary files were left on disk | Report them; do not repair or delete automatically |
+| Snapshot has no diagnostics | Diagnostics are intentionally not stored | Inspect the live sample if a finding is needed |
+| Snapshot trace is missing | The trace id is wrong or not in that snapshot | Use `stacknext_get_snapshot` to list its traces |
+| Snapshot sample is old | It is frozen evidence from save time | State the save time; check the live sample for current behavior |
 
 ## Report template
 
@@ -264,6 +316,9 @@ Completeness
 Regression
   <status/severity, environment compatibility and verified sample counts, or
   "not relevant">
+
+Snapshot
+  <snapshot id, source, save time and sample window, or "live sample">
 
 Unproven
   <what the evidence cannot establish>

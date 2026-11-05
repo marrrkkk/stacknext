@@ -408,59 +408,22 @@ export class TelemetryStore {
     filters: RequestFilters = {},
     slowRequestMs = 500,
   ): PageResult<RequestSummary> {
-    this.prune()
-    const { requests } = this.traceIndex(slowRequestMs)
-    const q = filters.q?.trim().toLowerCase()
-    const method = filters.method?.trim().toUpperCase()
-    const status = filters.status?.trim().toLowerCase()
-    const numericStatus = status && /^\d{3}$/.test(status) ? Number(status) : null
-    let items = [...requests.values()].filter((request) => {
-      if (q && !(
-        includesText(request.route, q) ||
-        includesText(request.name, q) ||
-        includesText(request.method, q) ||
-        includesText(request.traceId, q) ||
-        includesText(String(request.statusCode ?? ''), q)
-      )) {
-        return false
-      }
-      if (method && request.method !== method) return false
-      if (status && status !== 'all') {
-        if (status === 'error') {
-          if (!request.failed) return false
-        } else if (numericStatus !== null) {
-          if (request.statusCode !== numericStatus) return false
-        } else if (!['2xx', '3xx', '4xx', '5xx'].includes(status)) {
-          return false
-        } else if (request.statusClass !== status) {
-          return false
-        }
-      }
-      if (filters.slow === true && !request.slow) return false
-      if (
-        typeof filters.minDuration === 'number' &&
-        request.durationMs !== null &&
-        request.durationMs < filters.minDuration
-      ) {
-        return false
-      }
-      return true
-    })
-
-    const sort = filters.sort ?? 'recent'
-    items = items.sort((a, b) => {
-      if (sort === 'slowest') return (b.durationMs ?? 0) - (a.durationMs ?? 0)
-      if (sort === 'oldest') return a.timestamp - b.timestamp
-      return b.timestamp - a.timestamp
-    })
-
-    const total = items.length
-    const limit = clampLimit(filters.limit, 50, 200)
-    const offset = Math.max(0, Math.trunc(filters.offset ?? 0))
-    return { items: items.slice(offset, offset + limit), total, limit, offset }
+    const page = this.listTracePage({ ...filters, httpOnly: true }, slowRequestMs, true)
+    const items = page.items
+      .map((trace) => trace.request)
+      .filter((request): request is RequestSummary => request !== null)
+    return { items, total: page.total, limit: page.limit, offset: page.offset }
   }
 
   listTraces(filters: RequestFilters = {}, slowRequestMs = 500): TraceListResult {
+    return this.listTracePage(filters, slowRequestMs)
+  }
+
+  private listTracePage(
+    filters: RequestFilters,
+    slowRequestMs: number,
+    requestDurations = false,
+  ): TraceListResult {
     this.prune()
     const { buckets } = this.traceIndex(slowRequestMs)
     const q = filters.q?.trim().toLowerCase()
@@ -470,6 +433,7 @@ export class TelemetryStore {
     for (const bucket of buckets.values()) {
       if (bucket.spans.length === 0 && bucket.errors.length === 0) continue
       const request = bucket.request
+      if (filters.httpOnly === true && request === null) continue
       const first = bucket.spans[0]
       const startTime = first?.startTime ?? bucket.errors[0]?.timestamp ?? 0
       const endTime = bucket.spans.reduce(
@@ -497,8 +461,10 @@ export class TelemetryStore {
       if (q && !(
         includesText(summary.rootName, q) ||
         includesText(summary.traceId, q) ||
+        includesText(summary.serviceName, q) ||
         includesText(request?.route, q) ||
-        includesText(request?.method, q)
+        includesText(request?.method, q) ||
+        includesText(String(request?.statusCode ?? ''), q)
       )) {
         continue
       }
@@ -510,12 +476,14 @@ export class TelemetryStore {
           if (request?.statusClass !== status) continue
         } else if (/^\d{3}$/.test(status)) {
           if (request?.statusCode !== Number(status)) continue
+        } else {
+          continue
         }
       }
       if (filters.slow === true && request?.slow !== true) continue
       if (
         typeof filters.minDuration === 'number' &&
-        summary.durationMs < filters.minDuration
+        (requestDurations ? request?.durationMs ?? 0 : summary.durationMs) < filters.minDuration
       ) {
         continue
       }
@@ -523,7 +491,11 @@ export class TelemetryStore {
     }
     const sort = filters.sort ?? 'recent'
     items.sort((a, b) => {
-      if (sort === 'slowest') return b.durationMs - a.durationMs
+      if (sort === 'slowest') {
+        return requestDurations
+          ? (b.request?.durationMs ?? 0) - (a.request?.durationMs ?? 0)
+          : b.durationMs - a.durationMs
+      }
       if (sort === 'oldest') return a.startTime - b.startTime
       return b.startTime - a.startTime
     })
@@ -593,10 +565,6 @@ export class TelemetryStore {
       missingParentSpanIds,
       warnings,
     }
-  }
-
-  getRequest(traceId: string, slowRequestMs = 500): TraceDetail | null {
-    return this.getTrace(traceId, slowRequestMs)
   }
 
   listErrors(filters: ErrorFilters = {}): PageResult<ErrorListItem> & { groups: ErrorGroup[] } {
@@ -777,6 +745,11 @@ export class TelemetryStore {
       recentErrors: errors.items,
       firstEventTime: eventTimes.length > 0 ? Math.min(...eventTimes) : null,
       lastEventTime: eventTimes.length > 0 ? Math.max(...eventTimes) : null,
+      lastReceivedAt: maxReceivedAt([
+        ...spanList,
+        ...this.errors.values(),
+        ...this.queries.values(),
+      ]),
     }
   }
 
@@ -1001,4 +974,41 @@ export class TelemetryStore {
     this.queryOrder.length = 0
     if (hadData) this.revision += 1
   }
+
+  /**
+   * Loads already-normalized records into this store. Used only for detached
+   * snapshot views; live ingestion must go through ingest().
+   */
+  restore(data: {
+    spans: StackNextSpan[]
+    errors: StackNextError[]
+    databaseQueries: StackNextDatabaseQuery[]
+  }): void {
+    this.clear()
+    for (const span of data.spans) {
+      this.spans.set(`${span.traceId}:${span.spanId}`, span)
+      this.spanOrder.push(`${span.traceId}:${span.spanId}`)
+    }
+    for (const error of data.errors) {
+      if (this.errors.has(error.id)) continue
+      this.errors.set(error.id, error)
+      this.errorOrder.push(error.id)
+    }
+    for (const query of data.databaseQueries) {
+      if (this.queries.has(query.id)) continue
+      this.queries.set(query.id, query)
+      this.queryOrder.push(query.id)
+    }
+    this.spansReceived = data.spans.length
+    this.errorsReceived = data.errors.length
+    this.databaseQueriesReceived = data.databaseQueries.length
+    this.droppedCapacity = 0
+    this.droppedRetention = 0
+    this.revision += 1
+  }
+}
+
+function maxReceivedAt(events: Array<{ receivedAt: number }>): number | null {
+  return events.reduce<number | null>((latest, event) =>
+    latest === null ? event.receivedAt : Math.max(latest, event.receivedAt), null)
 }

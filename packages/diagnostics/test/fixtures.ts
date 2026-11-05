@@ -18,14 +18,16 @@ export function config(
 }
 
 export function span(overrides: Partial<StackNextSpan> = {}): StackNextSpan {
+  const startTime = overrides.startTime ?? 1_000
+  const durationMs = overrides.durationMs ?? 120
   return {
     traceId: TRACE_A,
     spanId: '1111111111111111',
     name: 'GET /api/test',
     kind: 'server',
-    startTime: 1_000,
-    endTime: 1_120,
-    durationMs: 120,
+    startTime,
+    endTime: overrides.endTime ?? startTime + Math.max(0, durationMs),
+    durationMs,
     status: 'ok',
     serviceName: 'diagnostics-test',
     route: '/api/test',

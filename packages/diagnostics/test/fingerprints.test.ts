@@ -3,6 +3,7 @@ import {
   diagnosticErrorFingerprint,
   diagnosticFindingId,
   httpEndpoint,
+  isControlFlowError,
   normalizeErrorMessage,
   sqlFingerprint,
   sqlPreview,
@@ -104,4 +105,15 @@ describe('diagnostic fingerprints', () => {
     expect(one).toMatch(/^diag-[0-9a-f]{8}-[0-9a-f]{8}$/)
     expect(otherScope).not.toBe(one)
   })
+})
+
+
+it('only recognizes control-flow messages at the trimmed start with a delimiter', () => {
+  for (const message of [' NEXT_REDIRECT;replace;/login', 'NEXT_NOT_FOUND', 'NEXT_HTTP_ERROR_FALLBACK;404']) {
+    expect(isControlFlowError(error({ message }))).toBe(true)
+  }
+  for (const message of ['Application failed: NEXT_REDIRECT', 'NEXT_REDIRECTED', 'regular failure']) {
+    expect(isControlFlowError(error({ name: 'NEXT_REDIRECT', message }))).toBe(false)
+  }
+  expect(isControlFlowError(error({ digest: 'NEXT_REDIRECT;replace;/login', message: 'regular failure' }))).toBe(true)
 })

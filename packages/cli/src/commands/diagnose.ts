@@ -84,6 +84,12 @@ function findingLine(finding: DiagnosticFinding, now: number): string {
 
 function evidenceCount(finding: DiagnosticFinding): string {
   const counts: string[] = []
+  if (finding.affectedTraceCount > 0) {
+    counts.push(`${finding.affectedTraceCount} trace${finding.affectedTraceCount === 1 ? '' : 's'}`)
+  }
+  if (finding.evidence.contributors.length > 0) {
+    counts.push(`${finding.evidence.contributors.length} contributors`)
+  }
   if (finding.evidence.spans.length > 0) counts.push(`${finding.evidence.spans.length} spans`)
   if (finding.evidence.queries.length > 0) counts.push(`${finding.evidence.queries.length} queries`)
   if (finding.evidence.errors.length > 0) counts.push(`${finding.evidence.errors.length} errors`)
@@ -100,8 +106,9 @@ export function formatDiagnosticList(
       `v${response.engineVersion} · rules ${response.ruleSetVersion}`,
     )}`,
   )
+  const requestTraces = response.sample.requestTraces
   lines.push(
-    `Sample      ${response.sample.requests} requests, ${response.sample.spans} spans, ${response.sample.errors} errors, ${response.sample.databaseQueries} database queries`,
+    `Sample      ${response.sample.requests} requests${requestTraces === undefined ? '' : ` (${requestTraces} request traces)`}, ${response.sample.spans} spans, ${response.sample.errors} errors, ${response.sample.databaseQueries} database queries`,
   )
   lines.push(
     `Findings    ${response.total} total · ${response.counts.bySeverity.error} error, ${response.counts.bySeverity.warning} warning, ${response.counts.bySeverity.info} info`,
@@ -181,6 +188,9 @@ export function formatDiagnosticDetail(
     ).toISOString()}`,
   )
   lines.push(`Fingerprint ${finding.fingerprint}`)
+  lines.push(
+    `Affected    ${finding.affectedTraceCount} trace${finding.affectedTraceCount === 1 ? '' : 's'}`,
+  )
   lines.push(`Traces      ${finding.traceIds.join(', ') || 'none'}`)
 
   if (finding.evidence.measurements.length > 0) {
@@ -199,8 +209,39 @@ export function formatDiagnosticDetail(
     lines.push('')
     lines.push(style.bold('Spans'))
     for (const span of finding.evidence.spans.slice(0, 5)) {
+      const self =
+        span.selfDurationMs === undefined
+          ? ''
+          : ` · ${formatDuration(span.selfDurationMs)} self`
+      const phase = span.nextPhase ? ` · ${span.nextPhase}` : ''
       lines.push(
-        `· ${span.name} — ${formatDuration(span.durationMs)} · ${span.category} · ${span.spanId}`,
+        `· ${span.name} — ${formatDuration(span.durationMs)}${self} · ${span.category}${phase} · ${span.spanId}`,
+      )
+    }
+  }
+
+  if (finding.evidence.contributors.length > 0) {
+    lines.push('')
+    lines.push(style.bold('Contributors'))
+    for (const contributor of finding.evidence.contributors.slice(0, 5)) {
+      lines.push(
+        `· ${contributor.label} — ${formatDuration(contributor.selfMs)} self${
+          contributor.phase ? ` · ${contributor.phase}` : ''
+        }`,
+      )
+    }
+  }
+
+  if (finding.evidence.traces.length > 0) {
+    lines.push('')
+    lines.push(style.bold('Occurrences'))
+    for (const occurrence of finding.evidence.traces.slice(0, 5)) {
+      lines.push(
+        `· ${occurrence.traceId} — ${occurrence.occurrences} occurrence${
+          occurrence.occurrences === 1 ? '' : 's'
+        }${occurrence.durationMs === undefined ? '' : ` · ${formatDuration(occurrence.durationMs)}`}${
+          occurrence.contributor ? ` · ${occurrence.contributor}` : ''
+        }`,
       )
     }
   }
@@ -223,7 +264,18 @@ export function formatDiagnosticDetail(
     lines.push(style.bold('Errors'))
     for (const error of finding.evidence.errors.slice(0, 3)) {
       lines.push(`· ${error.name}: ${error.message}`)
-      lines.push(style.dim(`   ${new Date(error.timestamp).toISOString()} · ${error.id}`))
+      const context = [
+        error.routeType ? `routeType ${error.routeType}` : null,
+        error.renderType ? `renderType ${error.renderType}` : null,
+        error.statusCode === undefined ? null : `status ${error.statusCode}`,
+      ]
+        .filter((entry): entry is string => Boolean(entry))
+        .join(' · ')
+      lines.push(
+        style.dim(
+          `   ${new Date(error.timestamp).toISOString()} · ${error.id}${context ? ` · ${context}` : ''}`,
+        ),
+      )
     }
   }
 

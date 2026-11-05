@@ -13,6 +13,9 @@
       "@stacknext/core/config-file": [
         "../core/src/config-file.ts"
       ],
+      "@stacknext/core/snapshots": [
+        "../core/src/snapshots.ts"
+      ],
       "@stacknext/diagnostics": [
         "../diagnostics/src/index.ts"
       ],

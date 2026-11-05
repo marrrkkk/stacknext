@@ -3,6 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import {
+  DIAGNOSTIC_RULE_IDS,
   STACKNEXT_SDK_VERSION,
   type CoverageReport,
   type DiagnosticDetailResponse,
@@ -12,6 +13,8 @@ import {
   type HealthResponse,
   type OverviewResponse,
   type PageResult,
+  type SnapshotDetailResponse,
+  type SnapshotListResponse,
   type TraceDetail,
 } from '@stacknext/core'
 import type { Baseline, Comparison, TestRun } from '@stacknext/regression'
@@ -34,6 +37,9 @@ import {
   errorsOutputSchema,
   overviewOutputSchema,
   requestsOutputSchema,
+  snapshotOutputSchema,
+  snapshotsOutputSchema,
+  snapshotTraceOutputSchema,
   testRunOutputSchema,
   testRunsOutputSchema,
   traceDetailOutputSchema,
@@ -53,6 +59,9 @@ const baselineIdSchema = z
 const comparisonIdSchema = z
   .string()
   .regex(/^cmp-[0-9a-f]{16}$/, 'comparisonId must look like cmp-xxxxxxxxxxxxxxxx')
+const snapshotIdSchema = z
+  .string()
+  .regex(/^snap-[0-9a-f]{16}$/, 'snapshotId must look like snap-xxxxxxxxxxxxxxxx')
 
 const limitSchema = z.number().int().min(1).max(200).optional()
 const offsetSchema = z.number().int().min(0).optional()
@@ -78,6 +87,8 @@ get_project_summary also returns a coverage report and summarises it in meta.cov
 Drizzle query durations are null because the adapter cannot measure them. Null means unmeasured, not zero. Bodies, headers, cookies, URL query values and SQL bind parameters are never captured; [redacted] marks removed values. Diagnostic findings are bounded, deterministic and versioned; they are not AI output and no data leaves the machine.
 
 Regression records are saved from Playwright-linked capture runs under the project's .stacknext directory. Use stacknext_list_test_runs and stacknext_get_test_run to inspect captured scenarios and correlation completeness. Use stacknext_list_baselines and stacknext_get_baseline for immutable baselines. Use stacknext_list_comparisons and stacknext_get_comparison for deterministic baseline/candidate comparisons. Regression statuses are improved, regressed, unchanged or inconclusive. Inconclusive is not a pass: environment differences, missing samples or unverified correlation prevent a verdict. Never describe a regression as statistically significant; comparisons use medians and thresholds, not significance tests.
+
+Snapshots are frozen, redacted copies of an earlier collector sample under .stacknext/snapshots. Use stacknext_list_snapshots to find one, stacknext_get_snapshot for its summary and first traces/errors/queries, and stacknext_get_snapshot_trace to inspect one trace inside that snapshot. Snapshots do not contain live diagnostics or coverage, and they are never replayed into the live store. Automatic snapshots rotate; manual and imported snapshots do not. Snapshot data is evidence from the save time, not current app state.
 
 All tools are read-only. They cannot edit the app, replay requests, change configuration or read files. If the collector is unreachable, ask the user to start "stacknext dev" instead of guessing. Prompts diagnose-error, investigate-slow-request, inspect-database-activity, investigate-trace and diagnose-runtime-issue provide guided workflows.`
 
@@ -318,7 +329,7 @@ export function createStackNextMcpServer(
     {
       title: 'Get request',
       description:
-        'Returns one request trace by 32-character trace id: request summary, every captured span in the timeline, correlated errors and database queries. Use missingParentSpanIds and meta.completeness to judge whether the timeline is complete.',
+        'Returns one request trace by 32-character trace id: request summary, every captured span in the timeline, correlated errors and database queries. Compatibility alias for get_trace; use missingParentSpanIds and meta.completeness to judge whether the timeline is complete.',
       inputSchema: {
         traceId: traceIdSchema,
       },
@@ -328,7 +339,7 @@ export function createStackNextMcpServer(
     (args) =>
       safely(
         async () => {
-          const detail = await client.getRequest(args.traceId)
+          const detail = await client.getTrace(args.traceId)
           const health = await healthCache.get()
           const meta = buildMeta({
             tool: 'get_request',
@@ -391,7 +402,7 @@ export function createStackNextMcpServer(
     {
       title: 'Get trace',
       description:
-        'Returns the full span tree for a 32-character trace id, including correlated errors and database queries. Prefer this when you do not know whether the id has a request root; prefer get_request when you have a request trace id.',
+        'Returns the full span tree for a 32-character trace id, including correlated errors and database queries. This is the canonical trace detail; get_request is a compatibility alias for the same data.',
       inputSchema: {
         traceId: traceIdSchema,
       },
@@ -631,14 +642,7 @@ export function createStackNextMcpServer(
           .optional(),
         severity: z.enum(['info', 'warning', 'error']).optional(),
         status: z.enum(['observed', 'possible', 'insufficient-evidence']).optional(),
-        ruleId: z
-          .enum([
-            'n-plus-one-queries',
-            'slow-span',
-            'repeated-external-http',
-            'error-fingerprint',
-          ])
-          .optional(),
+        ruleId: z.enum(DIAGNOSTIC_RULE_IDS).optional(),
         route: z.string().max(2_000).optional(),
         traceId: traceIdSchema.optional(),
         since: z.number().int().min(0).optional(),
@@ -1039,6 +1043,150 @@ export function createStackNextMcpServer(
         {
           404: `No comparison with id "${args.comparisonId}" was found. Call stacknext_list_comparisons to find a current id.`,
           400: 'Comparison ids look like cmp-xxxxxxxxxxxxxxxx.',
+        },
+      ),
+  )
+
+  server.registerTool(
+    'stacknext_list_snapshots',
+    {
+      title: 'List StackNext snapshots',
+      description:
+        'Lists frozen, redacted telemetry snapshots saved under .stacknext/snapshots. Each summary includes the save source, capture time, sample window, counts and file size. Automatic exit/error snapshots rotate; manual and imported snapshots are never auto-deleted. Snapshots are not live telemetry and do not contain diagnostics or coverage.',
+      inputSchema: {
+        limit: limitSchema,
+        offset: offsetSchema,
+      },
+      outputSchema: snapshotsOutputSchema,
+      annotations: readOnly,
+    },
+    (args) =>
+      safely(async () => {
+        const page: SnapshotListResponse = await client.listSnapshots({
+          ...(args.limit !== undefined ? { limit: args.limit } : {}),
+          ...(args.offset !== undefined ? { offset: args.offset } : {}),
+        })
+        const health = await healthCache.get()
+        const created = page.items.map((snapshot) => snapshot.createdAt)
+        const meta = buildMeta({
+          tool: 'stacknext_list_snapshots',
+          snapshot: true,
+          health,
+          firstEventTime: created.length > 0 ? Math.min(...created) : null,
+          lastEventTime: created.length > 0 ? Math.max(...created) : null,
+          found: page.total,
+          returned: page.items.length,
+          limit: page.limit,
+          offset: page.offset,
+          notes: [
+            'Snapshots are frozen copies. They do not describe the current live sample.',
+            ...(page.invalid > 0
+              ? [
+                  `${page.invalid} snapshot summary record(s) could not be read and were ignored.`,
+                ]
+              : []),
+          ],
+        })
+        return textAndStructured({ ...page, meta })
+      }),
+  )
+
+  server.registerTool(
+    'stacknext_get_snapshot',
+    {
+      title: 'Get StackNext snapshot',
+      description:
+        'Returns one frozen snapshot with its summary, captured configuration, limitations and the first 20 traces, errors and database queries. Use stacknext_get_snapshot_trace with a traceId from this response for the full timeline. Snapshot data is evidence from the save time; it has no live diagnostics, coverage or replay.',
+      inputSchema: {
+        snapshotId: snapshotIdSchema,
+      },
+      outputSchema: snapshotOutputSchema,
+      annotations: readOnly,
+    },
+    (args) =>
+      safely(
+        async () => {
+          const detail: SnapshotDetailResponse = await client.getSnapshot(args.snapshotId)
+          const health = await healthCache.get()
+          const reasons: string[] = []
+          if (detail.snapshot.sample.firstEventTime === null) {
+            reasons.push('The snapshot contains no timestamped events.')
+          }
+          if (detail.snapshot.stats.requests === 0) {
+            reasons.push(
+              'The snapshot has no request-root traces; duration comparisons are limited to raw spans.',
+            )
+          }
+          const meta = buildMeta({
+            tool: 'stacknext_get_snapshot',
+            snapshot: true,
+            health,
+            firstEventTime: detail.snapshot.sample.firstEventTime,
+            lastEventTime: detail.snapshot.sample.lastEventTime,
+            found: 1,
+            returned: 1,
+            identifiers: { snapshotId: detail.snapshot.id },
+            reasons,
+            notes: [
+              'This is a frozen snapshot, not the live sample.',
+              ...detail.limitations.slice(0, 4),
+            ],
+          })
+          return textAndStructured({ ...detail, meta })
+        },
+        {
+          404: `No snapshot with id "${args.snapshotId}" was found. Call stacknext_list_snapshots to find a saved snapshot.`,
+          400: 'Snapshot ids look like snap-xxxxxxxxxxxxxxxx.',
+          413: 'The snapshot exceeds the configured snapshots.maxBytes limit and was not read.',
+        },
+      ),
+  )
+
+  server.registerTool(
+    'stacknext_get_snapshot_trace',
+    {
+      title: 'Get a trace inside a StackNext snapshot',
+      description:
+        'Returns one full trace from a frozen snapshot, including spans, correlated errors, database queries and evidence warnings. The trace is read from the saved snapshot and cannot include live diagnostics. Use stacknext_get_snapshot first to discover trace ids.',
+      inputSchema: {
+        snapshotId: snapshotIdSchema,
+        traceId: traceIdSchema,
+      },
+      outputSchema: snapshotTraceOutputSchema,
+      annotations: readOnly,
+    },
+    (args) =>
+      safely(
+        async () => {
+          const detail: TraceDetail = await client.getSnapshotTrace(
+            args.snapshotId,
+            args.traceId,
+          )
+          const health = await healthCache.get()
+          const meta = buildMeta({
+            tool: 'stacknext_get_snapshot_trace',
+            snapshot: true,
+            health,
+            firstEventTime: detail.startTime,
+            lastEventTime: detail.endTime,
+            found: 1,
+            returned: 1,
+            identifiers: {
+              snapshotId: args.snapshotId,
+              traceId: detail.traceId,
+            },
+            reasons: detailNotes(detail),
+            notes: [
+              'This trace is read from a frozen snapshot, not the live sample.',
+              'Snapshot traces do not include live diagnostic references.',
+              ...detailReasons(detail),
+            ],
+          })
+          return textAndStructured({ ...detail, meta })
+        },
+        {
+          404: `No trace "${args.traceId}" exists in snapshot "${args.snapshotId}". Call stacknext_get_snapshot to list the snapshot's first traces.`,
+          400: 'Snapshot ids look like snap-xxxxxxxxxxxxxxxx and trace ids are 32 hexadecimal characters.',
         },
       ),
   )

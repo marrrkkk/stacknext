@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { DIAGNOSTIC_RULE_IDS } from '@stacknext/core'
 import {
   baselineSchema,
   comparisonSchema,
@@ -202,12 +203,7 @@ const traceSummarySchema = z
 const diagnosticReferenceSchema = z
   .object({
     id: z.string(),
-    ruleId: z.enum([
-      'n-plus-one-queries',
-      'slow-span',
-      'repeated-external-http',
-      'error-fingerprint',
-    ]),
+    ruleId: z.enum(DIAGNOSTIC_RULE_IDS),
     category: z.enum(['database', 'http', 'performance', 'errors', 'runtime']),
     severity: z.enum(['info', 'warning', 'error']),
     status: z.enum(['observed', 'possible', 'insufficient-evidence']),
@@ -426,6 +422,24 @@ const diagnosticSpanEvidenceSchema = z
     status: z.string(),
     route: z.string().optional(),
     nextSpanType: z.string().optional(),
+    selfDurationMs: z.number().optional(),
+    nextPhase: z
+      .enum([
+        'request',
+        'routing',
+        'render',
+        'route-handler',
+        'fetch',
+        'database',
+        'client-components',
+        'response',
+        'middleware',
+        'custom',
+        'other',
+      ])
+      .optional(),
+    parentSpanId: z.string().optional(),
+    isRequestRoot: z.boolean().optional(),
   })
   .passthrough()
 
@@ -454,6 +468,50 @@ const diagnosticErrorEvidenceSchema = z
     method: z.string().optional(),
     traceId: z.string().nullable(),
     fingerprint: z.string(),
+    routeType: z.string().optional(),
+    renderSource: z.string().optional(),
+    renderType: z.string().optional(),
+    revalidateReason: z.string().optional(),
+    routerKind: z.string().optional(),
+    digest: z.string().optional(),
+    statusCode: z.number().optional(),
+    spanId: z.string().optional(),
+  })
+  .passthrough()
+
+const diagnosticContributorSchema = z
+  .object({
+    traceId: z.string().optional(),
+    spanId: z.string().optional(),
+    label: z.string(),
+    category: z.enum(['database', 'http', 'custom', 'framework', 'other']),
+    phase: z
+      .enum([
+        'request',
+        'routing',
+        'render',
+        'route-handler',
+        'fetch',
+        'database',
+        'client-components',
+        'response',
+        'middleware',
+        'custom',
+        'other',
+      ])
+      .optional(),
+    selfMs: z.number(),
+    durationMs: z.number().optional(),
+  })
+  .passthrough()
+
+const diagnosticTraceOccurrenceSchema = z
+  .object({
+    traceId: z.string(),
+    timestamp: z.number(),
+    occurrences: z.number(),
+    durationMs: z.number().optional(),
+    contributor: z.string().optional(),
   })
   .passthrough()
 
@@ -463,6 +521,8 @@ const diagnosticEvidenceSchema = z
     spans: z.array(diagnosticSpanEvidenceSchema),
     queries: z.array(diagnosticQueryEvidenceSchema),
     errors: z.array(diagnosticErrorEvidenceSchema),
+    contributors: z.array(diagnosticContributorSchema).optional(),
+    traces: z.array(diagnosticTraceOccurrenceSchema).optional(),
     measurements: z.array(diagnosticMeasurementSchema),
   })
   .passthrough()
@@ -470,12 +530,7 @@ const diagnosticEvidenceSchema = z
 const diagnosticFindingSchema = z
   .object({
     id: z.string(),
-    ruleId: z.enum([
-      'n-plus-one-queries',
-      'slow-span',
-      'repeated-external-http',
-      'error-fingerprint',
-    ]),
+    ruleId: z.enum(DIAGNOSTIC_RULE_IDS),
     ruleVersion: z.number(),
     category: z.enum(['database', 'http', 'performance', 'errors', 'runtime']),
     severity: z.enum(['info', 'warning', 'error']),
@@ -486,6 +541,7 @@ const diagnosticFindingSchema = z
     route: z.string().nullable(),
     method: z.string().nullable(),
     traceIds: z.array(z.string()),
+    affectedTraceCount: z.number().optional(),
     firstSeen: z.number(),
     lastSeen: z.number(),
     fingerprint: z.string(),
@@ -506,6 +562,12 @@ const diagnosticSampleSchema = z
     databaseQueries: z.number(),
     connectedInstances: z.number(),
     connected: z.boolean(),
+    requestTraces: z.number().optional(),
+    tracesWithoutRequestRoot: z.number().optional(),
+    tracesWithMissingParents: z.number().optional(),
+    unattributedSpans: z.number().optional(),
+    ignoredControlFlowErrors: z.number().optional(),
+    serverErrorsWithoutError: z.number().optional(),
   })
   .passthrough()
 
@@ -630,9 +692,57 @@ const comparisonSummaryItemSchema = z
   })
   .passthrough()
 
+const snapshotSummarySchema = z
+  .object({
+    id: z.string(),
+    createdAt: z.number(),
+    source: z.enum(['manual', 'exit', 'error', 'import']),
+    projectName: z.string(),
+    collectorVersion: z.string(),
+    label: z.string().optional(),
+    sample: z.object({
+      firstEventTime: z.number().nullable(),
+      lastEventTime: z.number().nullable(),
+      retentionMs: z.number(),
+    }),
+    stats: z.object({
+      requests: z.number(),
+      errors: z.number(),
+      databaseQueries: z.number(),
+      spans: z.number(),
+    }),
+    bytes: z.number(),
+  })
+  .passthrough()
+
 export const testRunsOutputSchema = pageSchema(runSummarySchema)
 export const testRunOutputSchema = testRunSchema.extend({ meta: metaSchema })
 export const baselinesOutputSchema = pageSchema(baselineSummarySchema)
 export const baselineOutputSchema = baselineSchema.extend({ meta: metaSchema })
 export const comparisonsOutputSchema = pageSchema(comparisonSummaryItemSchema)
 export const comparisonOutputSchema = comparisonSchema.extend({ meta: metaSchema })
+
+export const snapshotsOutputSchema = z
+  .object({
+    items: z.array(snapshotSummarySchema),
+    total: z.number(),
+    limit: z.number(),
+    offset: z.number(),
+    invalid: z.number(),
+    meta: metaSchema,
+  })
+  .passthrough()
+
+export const snapshotOutputSchema = z
+  .object({
+    snapshot: snapshotSummarySchema,
+    config: z.record(z.string(), z.unknown()),
+    limitations: z.array(z.string()),
+    traces: z.array(traceSummarySchema),
+    errors: z.array(errorItemSchema),
+    databaseQueries: z.array(databaseQueryItemSchema),
+    meta: metaSchema,
+  })
+  .passthrough()
+
+export const snapshotTraceOutputSchema = traceDetailOutputSchema

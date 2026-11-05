@@ -1,6 +1,6 @@
 ---
 name: stacknext-debugging
-description: Investigate Next.js App Router runtime behavior with StackNext's local telemetry. Use when debugging server errors, slow requests, database query activity, request traces or deterministic diagnostic findings, or when comparing captured Playwright runs against baselines, in a Next.js 15/16 app that has StackNext installed; when asked to use StackNext, its MCP tools or dashboard; or when runtime evidence is needed before changing code. Covers the seventeen read-only MCP tools, evidence-first workflows, finding verification, runtime regression evidence, redaction limits and missing-telemetry troubleshooting.
+description: Investigate Next.js App Router runtime behavior with StackNext's local telemetry. Use when debugging server errors, slow requests, database query activity, request traces or deterministic diagnostic findings, or when comparing captured Playwright runs against baselines or inspecting saved snapshots, in a Next.js 15/16 app that has StackNext installed; when asked to use StackNext, its MCP tools or dashboard; or when runtime evidence is needed before changing code. Covers the twenty read-only MCP tools, evidence-first workflows, finding verification, runtime regression evidence, saved snapshot evidence, redaction limits and missing-telemetry troubleshooting.
 license: MIT
 compatibility: Next.js 15 or 16 App Router on the Node.js runtime, with a local StackNext collector. No cloud account, AI API key, or remote service is required.
 metadata:
@@ -12,9 +12,10 @@ metadata:
 
 Use StackNext as the runtime evidence source for a Next.js App Router app. The
 collector, dashboard and MCP server run on the developer's machine. The MCP
-server is read-only: it can inspect captured telemetry and saved regression
-records but cannot change the app, replay requests, capture runs, save
-baselines, run comparisons, read source files, run SQL or call an AI service.
+server is read-only: it can inspect captured telemetry, saved regression records
+and saved snapshots but cannot change the app, replay requests, capture runs,
+save baselines, run comparisons, save or delete snapshots, read source files,
+run SQL or call an AI service.
 
 ## Before investigating
 
@@ -49,10 +50,15 @@ baselines, run comparisons, read source files, run SQL or call an AI service.
   proximity. `inconclusive` is not a pass, and a comparison is not a
   statistical test. Report status and severity separately; never claim
   significance or causality.
-- **Stay read-only.** Use only the seventeen StackNext MCP tools. Do not edit the
+- **Stay read-only.** Use only the twenty StackNext MCP tools. Do not edit the
   app, run migrations, execute SQL or EXPLAIN, clear data, capture runs, save
-  baselines, run comparisons or restart services unless the user asks. Never
-  invent an index recommendation or a source patch from telemetry alone.
+  baselines, run comparisons, save or delete snapshots, or restart services
+  unless the user asks. Never invent an index recommendation or a source patch
+  from telemetry alone.
+- **Snapshots are not live telemetry.** A snapshot is a frozen, redacted copy
+  from its save time. It carries no live diagnostics or coverage and never
+  updates. Say explicitly when evidence comes from a snapshot rather than the
+  current sample.
 - **Respect the data boundary.** Bodies, headers, cookies, URL query values and
   SQL bind parameters are never captured. Values may appear as `[redacted]`.
   Do not try to recover them or reconstruct SQL parameters.
@@ -87,6 +93,7 @@ baselines, run comparisons, read source files, run SQL or call an AI service.
 | Find and inspect capture runs | `stacknext_list_test_runs`, `stacknext_get_test_run` |
 | Find and inspect baselines | `stacknext_list_baselines`, `stacknext_get_baseline` |
 | Find and inspect comparisons | `stacknext_list_comparisons`, `stacknext_get_comparison` |
+| Find and inspect saved snapshots | `stacknext_list_snapshots`, `stacknext_get_snapshot`, `stacknext_get_snapshot_trace` |
 
 All list tools accept `limit` (1-200) and `offset`. The default limit is 50.
 `list_errors` omits stacks unless `includeStack: true`; use `get_error` for the
@@ -122,8 +129,11 @@ investigation; the same evidence rules apply.
 4. Break down the timeline: total duration, longest spans, route/render spans,
    fetch spans, and database queries inside the request.
 5. Call `stacknext_list_diagnostics` with `category: "performance"` or the trace
-   id. A `slow-span` finding names the measured span and threshold; verify it in
-   the trace before calling it the bottleneck.
+   id. A `slow-request` finding groups requests by route and lists self-time
+   contributors. A `slow-span` finding names a non-root span whose self time
+   crossed its category threshold and is suppressed when the request is already
+   reported as slow. Verify the contributor in the trace before calling it the
+   bottleneck.
 6. Compare similar routes or requests. Use `list_requests` with `q`, `method`,
    `status` and `minDurationMs` to test whether the slowdown is isolated.
 7. Report the measured bottleneck. If query durations are `null`, say the
@@ -137,8 +147,9 @@ investigation; the same evidence rules apply.
 3. Note `source`, `success`, `durationMs` and `resolvedTraceId`. A query with a
    `null` duration is unmeasured.
 4. Call `stacknext_list_diagnostics` with `category: "database"` and inspect any
-   `n-plus-one-queries` finding. It groups normalized SQL shapes inside one
-   trace; it does not prove an ORM loading bug.
+   `n-plus-one-queries` finding. It requires the normalized SQL shape to repeat
+   within a trace, then aggregates matching traces by canonical Next.js route;
+   it does not prove an ORM loading bug.
 5. For failures, read `errorMessage` and open the correlated request with
    `get_request`.
 6. For slow requests, compare query counts and SQL shapes across traces. Do not
@@ -175,14 +186,22 @@ symptom.
 4. Pick one finding and call `stacknext_get_diagnostic` with its id. It returns
    bounded finding evidence plus a related trace reference.
 5. Verify the evidence:
-   - `n-plus-one-queries`: check the query count and normalized SQL shape, then
-     inspect the calling code separately. Do not guess bind values.
-   - `slow-span`: check the measured span and threshold in the trace. Span time
-     includes children.
+   - `n-plus-one-queries`: check `affectedTraceCount`, the per-trace query count
+     and normalized SQL shape, then inspect the calling code separately. Do not
+     guess bind values.
+   - `slow-request`: check the route-level duration distribution and the
+     self-time contributors. Self time subtracts direct children; it attributes
+     time but does not prove causality.
+   - `slow-span`: check the measured self time, inclusive duration and Next.js
+     phase in the trace. It is only emitted when the enclosing request stayed
+     below the request threshold.
    - `repeated-external-http`: check the endpoint shape and whether the calls are
-     independent or retries.
-   - `error-fingerprint`: check the latest error and trace. The group is
-     route-independent and heuristic.
+     independent or retries; findings aggregate matching traces by route.
+   - `error-fingerprint`: check the latest error, its Next.js context and the
+     deepest error span. Findings group by canonical route over a route-
+     independent signature; control-flow errors are excluded.
+   - `server-error-response`: the request root returned 5xx without a correlated
+     non-control-flow error. The status is proven; the cause is not.
 6. If the trace is truncated in the detail response, call `get_trace` with the
    returned trace id. If the evidence is insufficient, say so.
 7. Report the finding id, rule, status, severity, evidence checked, what remains
@@ -214,6 +233,26 @@ about a capture run, baseline or comparison.
    capture runs, save baselines or compare records yourself. Point the user to
    `stacknext capture`, `stacknext baseline save` and `stacknext compare`, and
    never fabricate a comparison from telemetry.
+
+## Workflow G: saved snapshot evidence
+
+Use this when the live retention window no longer contains the reproduction, or
+the user asks about a saved snapshot.
+
+1. `stacknext_list_snapshots` to find the snapshot by source, label, time and
+   sample window. `manual` and `import` records never rotate; `exit` and `error`
+   records keep the newest ten by default.
+2. `stacknext_get_snapshot` with the `snapshotId`. Read `snapshot.sample`,
+   `snapshot.stats`, `config`, `limitations` and the first traces/errors/queries.
+3. Pick a trace and call `stacknext_get_snapshot_trace` with both the
+   `snapshotId` and `traceId`. This is a scoped read from the frozen sample and
+   intentionally has no `diagnostics` array.
+4. If no snapshot exists, say so. The MCP tools cannot save, import, rotate or
+   delete one; point the user to `stacknext snapshot save` or the dashboard
+   `/snapshots` page and do not create a file yourself.
+5. If the question is about current behavior, say that the snapshot cannot
+   answer it and inspect the live sample instead. Never replay a snapshot or
+   treat it as current telemetry.
 
 ## Coverage checks
 
@@ -249,6 +288,7 @@ Correlation: exact span context | route+time fallback | unknown
 Completeness: <pagination, drops, missing parents, null durations>
 Coverage: <observed/not-observed/unknown/unsupported, or "not relevant">
 Regression: <status/severity and verified sample counts, or "not relevant">
+Snapshot: <snapshot id, source and save time, or "live sample">
 Unproven: <what the evidence cannot establish>
 Next step: <single concrete action, or "none">
 ```
@@ -256,7 +296,8 @@ Next step: <single concrete action, or "none">
 If no telemetry matches, say so and list the checks performed. A missing result
 is evidence about the collector window or instrumentation, not proof that the
 bug does not exist. Never present a diagnostic finding as a confirmed root cause,
-and never present an inconclusive comparison as a pass.
+never present an inconclusive comparison as a pass, and never present a snapshot
+as current live telemetry.
 
 ## References
 

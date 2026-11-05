@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { DIAGNOSTIC_RULE_IDS } from '@stacknext/core'
 import {
   CORRELATION_STATUSES,
   STACKNEXT_BASELINE_FORMAT,
@@ -43,6 +44,12 @@ export const environmentSnapshotSchema = z
     databases: z.array(databaseNameSchema).max(10),
     instrumentation: instrumentationSnapshotSchema,
     sdkVersion: z.string().min(1).max(100),
+    diagnostics: z
+      .object({
+        ruleSetVersion: z.number().int().nonnegative(),
+      })
+      .strict()
+      .optional(),
     playwrightVersion: z.string().max(100).optional(),
   })
   .strict()
@@ -92,12 +99,7 @@ export const capturedErrorSchema = z
 export const capturedFindingSchema = z
   .object({
     key: shortText(2_000),
-    ruleId: z.enum([
-      'n-plus-one-queries',
-      'slow-span',
-      'repeated-external-http',
-      'error-fingerprint',
-    ]),
+    ruleId: z.enum(DIAGNOSTIC_RULE_IDS),
     category: z.enum(['database', 'http', 'performance', 'errors', 'runtime']),
     severity: z.enum(['info', 'warning', 'error']),
     status: z.enum(['observed', 'possible', 'insufficient-evidence']),
@@ -248,6 +250,7 @@ export const environmentDifferenceSchema = z
 
 export const regressionMetricSchema = z
   .object({
+    queryFingerprint: shortText(2_000).optional(),
     key: shortText(2_000),
     label: shortText(500),
     kind: z.enum(REGRESSION_METRIC_KINDS),

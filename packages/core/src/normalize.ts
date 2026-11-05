@@ -147,6 +147,9 @@ export function normalizeError(input: StackNextErrorInput, receivedAt: number): 
   const routerKind = input.routerKind ?? readStringAttribute(attributes, 'routerKind')
   const routeType = input.routeType ?? readStringAttribute(attributes, 'routeType')
   const renderSource = input.renderSource ?? readStringAttribute(attributes, 'renderSource')
+  const renderType =
+    input.renderType ??
+    readStringAttribute(attributes, 'next.render_type', 'renderType')
   const message = stripUrlQueryInText(redactErrorText(input.message))
   const name = redactText(input.name, 200)
   const route = input.route
@@ -174,6 +177,7 @@ export function normalizeError(input: StackNextErrorInput, receivedAt: number): 
     ...(routerKind ? { routerKind: redactText(routerKind, 100) } : {}),
     ...(routeType ? { routeType: redactText(routeType, 100) } : {}),
     ...(renderSource ? { renderSource: redactText(renderSource, 100) } : {}),
+    ...(renderType ? { renderType: redactText(renderType, 100) } : {}),
     ...(input.traceId ? { traceId: input.traceId } : {}),
     ...(input.spanId ? { spanId: input.spanId } : {}),
     attributes,

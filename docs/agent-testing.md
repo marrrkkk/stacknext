@@ -1,8 +1,8 @@
 # Agent compatibility testing
 
-StackNext 0.6 includes deterministic diagnostic findings, 17 read-only MCP
-tools, five guided prompts, six read-only regression tools and the Agent Skill
-workflows.
+StackNext 0.6 includes deterministic diagnostic findings, 20 read-only MCP
+tools, five guided prompts, six read-only regression tools, three read-only
+snapshot tools and the Agent Skill workflows.
 This page keeps the 0.4 model-driven record below intact and adds the 0.6
 protocol-level verification. It is a point-in-time record, not a guarantee that
 every model or client release will behave the same way.
@@ -36,33 +36,35 @@ mock.
 
 ## 0.6 protocol-level verification
 
-The 0.6 telemetry, diagnostics, regression and MCP surface was checked with the
-real built CLI, collector, example app, dashboard and MCP server:
+The 0.6 telemetry, diagnostics, regression, snapshot and MCP surface was checked
+with the real built CLI, collector, example app, dashboard and MCP server:
 
 | Item | Value |
 | --- | --- |
-| Test date | 2026-11-02 |
+| Test date | 2026-11-05 |
 | Node.js | 24.21.0 |
 | pnpm | 12.16.1 |
-| StackNext | 0.6.0 |
+| StackNext | 0.6.1 |
 | Example app | Next.js 16.4.3, App Router, Node.js runtime |
 | Playwright | 1.58.2, Chromium headless shell |
 | Collector | `http://127.0.0.1:4400` |
 | Example app | `http://127.0.0.1:4402` |
 
-`pnpm test:e2e` passed 36 checks. The checks covered:
+`pnpm test:e2e` passed 42 checks. The checks covered:
 
 - the capture → baseline → candidate → compare flow against the live example
   app, with three annotated scenarios and three verified samples per scenario;
 - collector regression APIs for creating a run, submitting samples and
   completing it;
 - the `stacknext runs`, `baseline` and `compare` CLI records, ids and JSON;
-- dashboard deep links for `/runs/:id`, `/baselines/:id` and
-  `/comparisons/:id`;
-- all 17 MCP tools, including the six regression tools, their strict ids,
-  output schemas and `readOnlyHint` annotations;
-- five prompts and server version `0.6.0`;
-- secret scans over API, export, regression and diagnostic output;
+- `stacknext snapshot save|list|show|export|delete`, the collector snapshot
+  APIs, scoped snapshot trace/error/database reads and snapshot export;
+- dashboard deep links for `/runs/:id`, `/baselines/:id`, `/comparisons/:id`,
+  `/snapshots`, `/snapshots/:id`, its scoped routes, `/settings` and `/mcp`;
+- all 20 MCP tools, including the six regression and three snapshot tools,
+  their strict ids, output schemas and `readOnlyHint` annotations;
+- five prompts and server version `0.6.1`;
+- secret scans over API, export, regression, snapshot and diagnostic output;
 - a comparison result of `unchanged` with 3 scenarios × 3 verified samples.
 
 The six regression tools are:
@@ -79,10 +81,23 @@ The six regression tools are:
 All six are read-only and cannot capture, save, compare, delete or edit. Reviews
 confirmed that they report `inconclusive` as inconclusive rather than as a pass.
 
+The three snapshot tools are:
+
+| Tool | Verification |
+| --- | --- |
+| `stacknext_list_snapshots` | Returns frozen snapshot summaries with source, sample window, stats and invalid-record count. |
+| `stacknext_get_snapshot` | Returns one snapshot with captured config, limitations and its first traces/errors/queries. |
+| `stacknext_get_snapshot_trace` | Returns one scoped trace from a detached snapshot view, without live diagnostics. |
+
+All three are read-only and cannot save, import, rotate, delete or replay a
+snapshot. Reviews confirmed that snapshot data is labelled as frozen evidence,
+not current live telemetry.
+
 The Agent Skill test reads the skill from disk and verifies that every one of the
-17 tool names and all six workflow headings are documented, including workflow F
-for runtime regression evidence. This is a documentation/protocol check, not a
-model-driven investigation.
+20 tool names and all seven workflow headings are documented, including
+workflow F for runtime regression evidence and workflow G for saved snapshot
+evidence. This is a documentation/protocol check, not a model-driven
+investigation.
 
 The same archives were also installed into external Next.js 15 and 16 fixtures
 with npm and pnpm on Node.js 22.23.3, 24.21.0 and 26.13.0. All 12 combinations
@@ -109,7 +124,7 @@ See [compatibility](compatibility.md).
 2. The example app was exercised through its normal routes, including
    `/api/error` three times, `/api/n-plus-one`, `/api/n-plus-one-fixed`,
    `/api/slow-db` and `/api/repeated-fetch`, so the collector held real
-   requests, errors, spans, Drizzle queries and all four diagnostic rule types.
+   requests, errors, spans, Drizzle queries and the diagnostic rule types current at that release.
 3. The skill was copied to the client's project skill directory:
    `.opencode/skills/`, `.agents/skills/` or `.claude/skills/`. The full
    directory was copied, including `references/`.
@@ -204,7 +219,7 @@ environment could not approve it without an account.
 
 - Scenarios 1–7 were not rerun with model-driven clients for 0.4. Their tool
   names, arguments and read-only behavior are unchanged, and the 0.6 e2e suite
-  exercises all 17 tools and five prompts at the protocol level. The table
+  exercises all 20 tools and five prompts at the protocol level. The table
   labels them as the 0.3 baseline rather than claiming a fresh model-driven pass.
 - Scenario 8 ran once per client. Model output is nondeterministic; a pass here
   does not prove the same wording or tool order every time.
