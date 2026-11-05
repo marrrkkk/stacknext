@@ -17,7 +17,7 @@ local JSON files, are never uploaded and are never deleted automatically.
 | `projectName` | StackNext project name from the capture run. |
 | `sourceRunId` | The `run-<16 hex>` capture run the baseline was copied from. |
 | `createdAt` | Save time, not the time of the original run. |
-| `environment` | Node.js, Next.js, OS, architecture, database adapters, instrumentation flags, SDK and Playwright versions. |
+| `environment` | Node.js, Next.js, OS, architecture, database adapters, instrumentation flags, SDK and Playwright versions, and the diagnostics rule-set version. |
 | `scenarios` | Canonical scenario identity plus verified samples, bounded traces, spans, queries, errors and findings. |
 | `stats` | Scenario, sample, trace, span, error and query counts. |
 | `notes` and `warnings` | Human context and caveats. |
@@ -167,7 +167,7 @@ still needed as a reference, copy the JSON file to a location outside
 ## Sharing and portability
 
 A baseline is portable only when the environment matches the candidate. The
-environment comparison checks:
+environment comparison checks (including the diagnostics rule-set version):
 
 - Node.js version;
 - Next.js version;

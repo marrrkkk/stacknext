@@ -83,7 +83,7 @@ All tools are annotated `readOnlyHint: true`, `destructiveHint: false`,
 | --- | --- | --- |
 | `get_project_summary` | none | Project name, connection state, counts, latency summary, recent errors and instrumentation coverage. Start here. |
 | `list_requests` | `limit`, `offset`, `q`, `method`, `status`, `slow`, `minDurationMs`, `sort` | Request summaries with route, status, duration, span/error/query counts and trace id. |
-| `get_request` | `traceId` | Request summary, full span timeline, errors and database queries. |
+| `get_request` | `traceId` | Compatibility alias for `get_trace`: request summary, full span timeline, errors and database queries. |
 | `list_traces` | `limit`, `offset`, `q`, `sort` | Trace summaries with root span, duration and counts. |
 | `get_trace` | `traceId` | Full span tree plus correlated errors, database queries and additive diagnostic references. |
 | `list_errors` | `limit`, `offset`, `q`, `route`, `name`, `includeStack` | Errors, fingerprint groups and trace correlation. Stacks are omitted unless `includeStack` is true. |
@@ -98,20 +98,25 @@ All tools are annotated `readOnlyHint: true`, `destructiveHint: false`,
 | `stacknext_get_baseline` | `baselineId` | One baseline with its source run, environment and captured scenarios. |
 | `stacknext_list_comparisons` | `limit`, `offset` | Deterministic comparison summaries with status, severity, counts and environment compatibility. |
 | `stacknext_get_comparison` | `comparisonId` | One comparison with per-scenario reasons, metrics, environment differences and limitations. |
+| `stacknext_list_snapshots` | `limit`, `offset` | Frozen snapshots with source, capture time, sample window, counts, file size and invalid-record count. |
+| `stacknext_get_snapshot` | `snapshotId` | One snapshot with captured config, limitations and its first traces, errors and database queries. |
+| `stacknext_get_snapshot_trace` | `snapshotId`, `traceId` | One trace from a snapshot's detached view, without live diagnostics. |
 
 `limit` is between 1 and 200 (default 50). `minDurationMs` is between 0 and
 600,000. `status` accepts `2xx`, `3xx`, `4xx`, `5xx` or `none`. `sort` accepts
 `recent`, `oldest` or `slowest`. Diagnostic `category` accepts `database`,
 `http`, `performance`, `errors` or `runtime`; `severity` accepts `info`,
 `warning` or `error`; diagnostic `status` accepts `observed`, `possible` or
-`insufficient-evidence`; `ruleId` accepts `n-plus-one-queries`, `slow-span`,
-`repeated-external-http` or `error-fingerprint`; `since` and `until` are epoch
+`insufficient-evidence`; `ruleId` accepts `n-plus-one-queries`, `slow-request`,
+`slow-span`, `repeated-external-http`, `error-fingerprint` or
+`server-error-response`; `since` and `until` are epoch
 milliseconds.
 
 Regression ids are strict: `run-<16 hex>`, `base-<16 hex>` and `cmp-<16 hex>`.
-Comparison status is `improved`, `regressed`, `unchanged` or `inconclusive`;
-severity is `high`, `medium`, `low` or `none`. An id that does not match the
-format is rejected before storage is read.
+Snapshot ids are strict: `snap-<16 hex>`. Comparison status is `improved`,
+`regressed`, `unchanged` or `inconclusive`; severity is `high`, `medium`, `low`
+or `none`. An id that does not match the format is rejected before storage is
+read.
 
 Tool text content remains pretty-printed JSON for compatibility. Successful
 calls also return `structuredContent` and advertise an `outputSchema` when the
@@ -157,10 +162,12 @@ Every successful response adds a top-level `meta` object:
 - `completeness.complete` is false for pagination, dropped data, an unconnected
   app, an empty result or missing parent spans. Read `completeness.reasons`.
 - Detail responses add `meta.identifiers` (`traceId`, `errorId`,
-  `diagnosticId`, `runId`, `baselineId`, `comparisonId` and/or `candidateId`).
+  `diagnosticId`, `runId`, `baselineId`, `comparisonId`, `snapshotId` and/or
+  `candidateId`).
 - `notes` carries short caveats such as omitted stacks, unmeasured query
-  durations, diagnostic findings that are not confirmed root causes, or
-  regression records that are incomplete or inconclusive.
+  durations, diagnostic findings that are not confirmed root causes, regression
+  records that are incomplete or inconclusive, or snapshot data that is not live
+  telemetry.
 
 The server also publishes MCP `instructions` during initialization. Codex reads
 these directly; other clients may show or ignore them.
@@ -214,14 +221,16 @@ deterministic findings as `stacknext diagnose`, the dashboard and
 `GET /api/diagnostics`. The server does not run a second engine and does not
 call an AI service.
 
-The four rules are conservative:
+The six rules are conservative:
 
 | Rule | Category | Status | Evidence |
 | --- | --- | --- | --- |
-| `n-plus-one-queries` | `database` | `possible` | Repeated normalized SQL shapes within one trace. |
-| `slow-span` | `performance` | `observed` | A measured span above its category threshold. |
-| `repeated-external-http` | `http` | `possible` | Repeated normalized external endpoints within one trace. |
-| `error-fingerprint` | `errors` | `observed` | Errors sharing a route-independent normalized fingerprint. |
+| `n-plus-one-queries` | `database` | `possible` | A normalized SQL shape repeated in one trace, aggregated by canonical route across traces. |
+| `slow-request` | `performance` | `observed` | Requests above the top-level request threshold, grouped by method and route. |
+| `slow-span` | `performance` | `observed` | A non-root span whose self time exceeds its category threshold. |
+| `repeated-external-http` | `http` | `possible` | A normalized outbound endpoint repeated in one trace, aggregated by route across traces. |
+| `error-fingerprint` | `errors` | `observed` | Single or repeated errors grouped by canonical route and normalized signature. |
+| `server-error-response` | `errors` | `observed` | A 5xx response without a correlated non-control-flow error record. |
 
 A list response includes `total`, `counts`, `sample`, `notes`, `limitations`,
 `engineVersion` and `ruleSetVersion`. Read the sample window before drawing
@@ -230,9 +239,11 @@ not all history. `total` is the number of matching findings; `items` is the
 current page. The default finding cap is 100.
 
 `stacknext_get_diagnostic` returns `{ finding, trace, meta }`. The finding
-contains the rule, category, severity, status, route, time window, fingerprint,
-bounded evidence, `verification` steps and `limitations`. The related trace is
-bounded; use `get_trace` for the complete span tree when it is truncated.
+contains the rule, category, severity, status, route, time window, affected
+trace count, fingerprint, bounded evidence (including self-time contributors,
+trace occurrences and Next.js phases when available), `verification` steps and
+`limitations`. The related trace is bounded; use `get_trace` for the complete
+span tree when it is truncated.
 
 `get_trace` adds a `diagnostics` array of references (`id`, `ruleId`,
 `category`, `severity`, `status`, `title`) without changing the existing trace
@@ -301,6 +312,30 @@ significance tests and do not prove causality. An `inconclusive` result is not a
 pass. Never describe a regression as significant or a finding as a confirmed
 root cause.
 
+## Saved snapshots
+
+The three snapshot tools read frozen copies of earlier samples from
+`.stacknext/snapshots`. They never replay a snapshot into the live store and
+cannot save, import, rotate or delete one.
+
+- `stacknext_list_snapshots` returns summaries with `id`, `source`
+  (`manual`, `exit`, `error` or `import`), `createdAt`, project, collector
+  version, optional label, sample window, stats, file size and the number of
+  invalid records on disk.
+- `stacknext_get_snapshot` returns the summary, captured config, limitations and
+  the first 20 traces, errors and database queries. Use
+  `stacknext_get_snapshot_trace` for one full scoped trace.
+- `stacknext_get_snapshot_trace` requires both a `snapshotId` and a `traceId`
+  that exist in that snapshot. The trace has the same shape as `get_trace` but
+  intentionally has no `diagnostics` array.
+
+Snapshot data is evidence from the save time, not current app state. It carries
+no live diagnostics or coverage. Automatic exit/error snapshots rotate beyond
+`snapshots.autoKeep` (default 10); manual and imported snapshots are never
+auto-deleted. Read `snapshot.sample` and the limitations before drawing
+conclusions, and say explicitly when a conclusion comes from a snapshot rather
+than the current live sample.
+
 ## Prompts
 
 The server offers five optional prompts. They shape an investigation but do not
@@ -319,11 +354,12 @@ add capabilities or execute tools on their own.
 The portable skill at
 [`skills/stacknext-debugging`](../skills/stacknext-debugging/SKILL.md) teaches
 evidence-first workflows for runtime errors, slow requests, database activity,
-general investigation, diagnostic findings and runtime regression evidence. It
-also carries mandatory reasoning rules for observation-versus-causation, null
-durations, overlapping spans, coverage gaps and non-significant regression
-statuses. The skill ships inside `@stacknext/cli`; install the whole directory
-into the client's project skill path:
+general investigation, diagnostic findings, runtime regression evidence and
+saved snapshot evidence. It also carries mandatory reasoning rules for
+observation-versus-causation, null durations, overlapping spans, coverage gaps,
+non-significant regression statuses and the difference between a snapshot and
+current live telemetry. The skill ships inside `@stacknext/cli`; install the
+whole directory into the client's project skill path:
 
 ```bash
 pnpm exec stacknext skill install --client opencode
@@ -356,6 +392,8 @@ guides.
   regressed, inconclusive or unchanged?”
 - “Open comparison `cmp-…` and explain the regressed metrics and environment
   differences without claiming statistical significance.”
+- “List saved snapshots, open the newest one and show its scoped error trace
+  without presenting it as current live telemetry.”
 - “Group the recent errors and link one group to a trace.”
 
 ## Security model
@@ -374,6 +412,9 @@ guides.
 - Regression tools can read any run, baseline or comparison in the collector's
   configured project directory. They cannot write, delete or read arbitrary
   files, and they never receive the collector token.
+- Snapshot tools can read any snapshot in the collector's configured project
+  directory and one scoped trace. They cannot save, import, rotate, delete or
+  replay a snapshot, and they never receive the collector token.
 - Do not wrap StackNext in a remote MCP transport or proxy. The server is meant
   for a local stdio client.
 

@@ -73,7 +73,7 @@ under `mcp.servers`:
 ```
 
 Use an absolute app path; a relative path depends on where OpenCode starts the
-server. `codemode: false` exposes the seventeen StackNext tools directly instead
+server. `codemode: false` exposes the twenty StackNext tools directly instead
 of grouping them behind OpenCode's Code Mode, which keeps the tool names in this
 guide and in the skill unchanged. If you prefer Code Mode, omit the field and
 call the grouped tools as `tools.stacknext.<tool>`.

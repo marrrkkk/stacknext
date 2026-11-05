@@ -73,7 +73,7 @@ and npm. They run the same consumer journey as each Linux combination.
 
 Each combination checks `init`, idempotent re-init, `doctor`, dashboard hosting
 and static assets, real request telemetry, `status`, `coverage`, `diagnose`, an
-MCP handshake with 17 read-only tools and 5 prompts, clean shutdown and
+MCP handshake with 20 read-only tools and 5 prompts, clean shutdown and
 `uninstall`.
 
 ## Next.js 15 and 16

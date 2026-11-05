@@ -5,9 +5,11 @@
 StackNext is a free, MIT-licensed debugging center for Next.js. It collects
 OpenTelemetry spans from your dev server, adds Drizzle/Prisma query events and
 server errors, and shows them in a local dashboard, CLI and read-only MCP
-server. It also derives deterministic diagnostic findings and compares
-Playwright-linked runtime captures against saved baselines. There is no cloud
-account, no hosted backend, no AI API client and no telemetry upload.
+server. It also derives deterministic diagnostic findings, compares
+Playwright-linked runtime captures against saved baselines, and can freeze the
+current sample into redacted snapshots that outlive the live retention window.
+There is no cloud account, no hosted backend, no AI API client and no telemetry
+upload.
 
 ![StackNext overview](docs/screenshots/overview.png)
 
@@ -71,11 +73,12 @@ debugging workflow usually means adopting a hosted APM. StackNext keeps the
 feedback loop local: start your app with one command, make a request, and see
 the request, waterfall, database queries and errors on your machine.
 
-- **Requests** — route, method, status, duration, span/error/query counts,
-  slow-request filtering and live updates.
-- **Traces** — category-aware parent/child waterfall for framework, app,
-  database and fetch spans, with attributes, events, warnings and missing parent
-  detection.
+- **Requests** — HTTP-request view of the trace list with route, method,
+  status, duration, span/error/query counts, slow-request filtering and live
+  updates.
+- **Traces** — canonical list and detail with a category-aware parent/child
+  waterfall for framework, app, database and fetch spans, plus attributes,
+  events, warnings and missing parent detection.
 - **Instrumentation coverage** — evidence-based `observed`, `active`,
   `configured`, `not-observed`, `unknown` and `unsupported` statuses for
   framework spans, adapters, custom spans and Server Actions. No misleading
@@ -94,9 +97,14 @@ the request, waterfall, database queries and errors on your machine.
   server traces, capture runs save the evidence, and saved baselines are
   compared with deterministic medians and thresholds. Statuses are `improved`,
   `regressed`, `unchanged` or `inconclusive`; there is no significance claim.
-- **MCP** — seventeen read-only tools for coding agents, over local stdio, with
+- **Saved snapshots** — freeze the current sample into a redacted local file
+  before it ages out. Save manually from the dashboard or CLI, automatically on
+  a graceful exit and on the first error, then browse full traces, errors and
+  database queries read-only. Automatic snapshots keep the newest ten by
+  default; manual and imported snapshots are never rotated away.
+- **MCP** — twenty read-only tools for coding agents, over local stdio, with
   structured output, response metadata, coverage summary, diagnostic findings,
-  regression records and optional guided prompts.
+  regression records, saved snapshots and optional guided prompts.
 - **Agent Skill** — a portable `stacknext-debugging` skill with evidence-first
   workflows for errors, latency, database activity, traces, diagnostic findings,
   coverage gaps and runtime regression evidence.
@@ -152,21 +160,29 @@ pnpm exec stacknext diagnose --json
 
 ## Dashboard
 
-| Request detail | Database |
+| Trace detail | Database |
 | --- | --- |
-| ![Request detail](docs/screenshots/request-detail.png) | ![Database queries](docs/screenshots/database.png) |
+| ![Trace detail](docs/screenshots/request-detail.png) | ![Database queries](docs/screenshots/database.png) |
 
 More captures: [dark overview](docs/screenshots/overview-dark.png),
 [traces](docs/screenshots/traces.png),
 [errors](docs/screenshots/errors.png),
 [error detail](docs/screenshots/error-detail.png),
 [settings](docs/screenshots/settings.png),
+[command menu](docs/screenshots/command-menu.png),
+[collapsed sidebar](docs/screenshots/sidebar-collapsed.png),
+[1920 overview](docs/screenshots/overview-1920.png),
+[1024 overview](docs/screenshots/overview-1024.png),
 [mobile overview](docs/screenshots/overview-mobile.png).
 
-Routes: `/`, `/requests`, `/requests/:traceId`, `/traces`,
+Routes: `/`, `/traces` (`?view=requests` for the HTTP-request view),
 `/traces/:traceId`, `/database`, `/errors`, `/errors/:errorId`, `/diagnostics`,
 `/diagnostics/:id`, `/runs`, `/runs/:id`, `/baselines`, `/baselines/:id`,
-`/comparisons`, `/comparisons/:id`, `/settings`.
+`/comparisons`, `/comparisons/:id`, `/snapshots`, `/snapshots/:id`,
+`/snapshots/:id/traces`, `/snapshots/:id/traces/:traceId`,
+`/snapshots/:id/errors`, `/snapshots/:id/errors/:errorId`,
+`/snapshots/:id/database`, `/settings` and `/mcp`. Legacy `/requests` and
+`/requests/:traceId` URLs redirect to the request view and trace detail.
 
 ## Integrations and manual setup
 
@@ -242,6 +258,12 @@ stacknext baseline list [--limit <n>] [--offset <n>] [--json]
 stacknext baseline show <baseline-id> [--json]
 stacknext baseline remove <baseline-id> --yes [--json]
 stacknext compare <baseline-id> <candidate-run-id> [--json] [--fail-on regression|inconclusive|any]
+stacknext snapshot save [--label <text>] [--json]
+stacknext snapshot list [--limit <n>] [--offset <n>] [--json]
+stacknext snapshot show <snapshot-id> [--json]
+stacknext snapshot export <snapshot-id> [-o <file> | --stdout] [--force]
+stacknext snapshot import <file> [--label <text>] [--json]
+stacknext snapshot delete <snapshot-id> --yes [--json]
 stacknext export [-o <file> | --stdout] [--force]
 stacknext uninstall [--yes] [--keep-config] [--remove-data] [--json]
 stacknext mcp [--collector <url>] [--token <token>]
@@ -250,9 +272,10 @@ stacknext mcp [--collector <url>] [--token <token>]
 `dev` starts the loopback collector, writes runtime state to
 `.stacknext/run.json` (`0600`), then runs the app's own `dev` script with the
 collector URL and token in its environment. `status`, `doctor`, `coverage`,
-`diagnose`, `export` and `mcp` use that runtime state. `doctor` is the first stop
-when data is missing; `coverage` shows what the current sample actually observed;
-`diagnose` lists or opens deterministic findings with filters. Set
+`diagnose`, `snapshot`, `export` and `mcp` use that runtime state. `doctor` is
+the first stop when data is missing; `coverage` shows what the current sample
+actually observed; `diagnose` lists or opens deterministic findings with
+filters; `snapshot` freezes the current sample into a redacted local file. Set
 `instrumentation.verbose` or `NEXT_OTEL_VERBOSE=1` for the documented expanded
 Next.js span set; `dev` prints the effective state because verbose tracing adds
 span volume and dev-server overhead.
@@ -304,6 +327,46 @@ Captured runs use one Playwright worker; see
 setup, and [docs/comparison-methodology.md](docs/comparison-methodology.md) for
 the thresholds and status rules.
 
+## Saved snapshots
+
+The live sample is in memory and pruned by `collector.retentionMs`, so a
+reproduction can age out before you investigate it. A snapshot freezes the
+current redacted sample into `.stacknext/snapshots` without changing the live
+store:
+
+```bash
+pnpm exec stacknext snapshot save --label "before index change"
+pnpm exec stacknext snapshot list
+pnpm exec stacknext snapshot show snap-0123456789abcdef
+pnpm exec stacknext snapshot export snap-0123456789abcdef -o sample.json
+pnpm exec stacknext snapshot import sample.json --label "reported issue"
+pnpm exec stacknext snapshot delete snap-0123456789abcdef --yes
+```
+
+The dashboard exposes the same records at `/snapshots`, including read-only
+traces, errors, database queries and raw export. Snapshots also save
+automatically on a graceful `stacknext dev` exit and on the first error after a
+60-second cooldown. Automatic exit/error snapshots keep the newest ten by
+default; manual and imported snapshots are never rotated away. Each snapshot is
+capped at 64 MiB and an oversized save fails instead of truncating.
+
+Snapshots are evidence from the save time, not current app state. They contain
+spans, errors, database queries, the captured config and limitations, but no
+live diagnostics or coverage. They are never replayed into the live store and
+never uploaded. Configure the behavior under `snapshots` in
+`stacknext.config.json`:
+
+```json
+{
+  "snapshots": {
+    "autoOnExit": true,
+    "autoOnError": true,
+    "autoKeep": 10,
+    "maxBytes": 67108864
+  }
+}
+```
+
 ## MCP
 
 ```json
@@ -327,7 +390,9 @@ read-only, and refuses non-loopback collector URLs. With pnpm, use
 `find_slow_requests`, `stacknext_list_diagnostics`,
 `stacknext_get_diagnostic`, `stacknext_list_test_runs`,
 `stacknext_get_test_run`, `stacknext_list_baselines`, `stacknext_get_baseline`,
-`stacknext_list_comparisons`, `stacknext_get_comparison`.
+`stacknext_list_comparisons`, `stacknext_get_comparison`,
+`stacknext_list_snapshots`, `stacknext_get_snapshot`,
+`stacknext_get_snapshot_trace`.
 
 Successful responses keep the existing JSON text content and add
 `structuredContent`, output schemas and a `meta` object with pagination,
@@ -337,7 +402,9 @@ agent can separate missing instrumentation from an absent runtime problem. The
 two diagnostics tools return the same findings as the CLI and dashboard;
 `get_trace` adds references to related findings. The six regression tools read
 capture runs, baselines and comparisons from `.stacknext` without capturing,
-saving, deleting or mutating anything. Five optional prompts
+saving, deleting or mutating anything. The three snapshot tools list and read
+saved snapshots, their summary and one scoped trace; they never create, import
+or delete a snapshot. Five optional prompts
 (`diagnose-error`, `investigate-slow-request`, `inspect-database-activity`,
 `investigate-trace`, `diagnose-runtime-issue`) provide guided entry points.
 
@@ -361,6 +428,9 @@ evidence-first workflows:
 - **F — runtime regression evidence:** inspect a capture run, baseline or
   deterministic comparison without presenting it as statistical significance or
   a confirmed cause.
+- **G — saved snapshot evidence:** open a frozen snapshot, inspect its scoped
+  traces, errors and database queries, and state clearly that it is not current
+  live telemetry.
 
 The skill also has a coverage-check workflow that uses `meta.coverage` and the
 summary coverage report to distinguish a feature that was not exercised from one
@@ -407,9 +477,10 @@ The collector binds to `127.0.0.1`, requires a bearer token for ingestion and
 read APIs, issues a `HttpOnly`/`SameSite=Strict` dashboard session cookie,
 validates payloads with Zod, rejects cross-site requests and enforces 2 MiB
 ingest payloads. Telemetry is in memory, bounded and retention-pruned. Capture
-runs, baselines and comparisons are redacted JSON records under `.stacknext`
-with private permissions; they are not uploaded and are never pruned
-automatically.
+runs, baselines, comparisons and snapshots are redacted JSON records under
+`.stacknext` with private permissions; they are not uploaded and are never
+pruned automatically except for automatic exit/error snapshots, which keep the
+newest ten by default. Snapshots are redacted again on import.
 
 Read [docs/privacy.md](docs/privacy.md) for the full data table and caveats.
 Redaction is pattern-based, not a formal secret scanner: review exports before
@@ -427,8 +498,9 @@ deterministic heuristics over the same window, not confirmed root causes, and
 they do not read source, run SQL/EXPLAIN or recommend indexes. Regression
 comparisons use Playwright-linked samples, medians and explicit thresholds; they
 are not statistical tests, do not prove causality and report `inconclusive` when
-the environment or evidence is insufficient. See
-[docs/limitations.md](docs/limitations.md).
+the environment or evidence is insufficient. Snapshots are frozen copies from
+their save time: they do not update, carry no live diagnostics or coverage, and
+do not prove current behavior. See [docs/limitations.md](docs/limitations.md).
 
 ## Repository layout
 
@@ -474,11 +546,12 @@ the `@stacknext/*` packages are not fetched from the registry during validation.
 `test:e2e` needs the packages built, the example app installed and Playwright
 Chromium available. It reuses a running StackNext instance when one is alive,
 otherwise it starts and stops one. The e2e suite covers capture → baseline →
-candidate → compare, the collector regression APIs, CLI records, secret
-redaction, MCP regression tools and dashboard deep links. The benchmark and e2e
-scripts both print their method and results; benchmark numbers are
-machine-specific. See [docs/benchmark.md](docs/benchmark.md) for the measured
-collector, diagnostics and verbose-tracing results and methodology.
+candidate → compare, the collector regression APIs, CLI records, snapshot
+save/list/read/export/delete, MCP regression and snapshot tools, secret
+redaction and dashboard deep links. The benchmark and e2e scripts both print
+their method and results; benchmark numbers are machine-specific. See
+[docs/benchmark.md](docs/benchmark.md) for the measured collector, diagnostics
+and verbose-tracing results and methodology.
 
 GitHub Actions runs lint, typecheck, unit tests and build across Node.js 22, 24
 and 26, validates real package archives, and runs the e2e and external-consumer

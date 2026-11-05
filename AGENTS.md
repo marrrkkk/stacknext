@@ -9,10 +9,10 @@ StackNext is an MIT-licensed, local-first debugging center for Next.js App
 Router apps. It collects OpenTelemetry spans plus Drizzle/Prisma query events
 and Next.js errors over loopback, stores them in memory, and exposes a
 dashboard, CLI and read-only MCP server. It also derives deterministic,
-evidence-backed diagnostic findings from the same sample and compares
-Playwright-linked runtime captures against saved baselines stored under
-`.stacknext`. There is no cloud service, account, AI API client or outbound
-telemetry.
+evidence-backed diagnostic findings from the same sample, freezes samples into
+redacted local snapshots, and compares Playwright-linked runtime captures
+against saved baselines stored under `.stacknext`. There is no cloud service,
+account, AI API client or outbound telemetry.
 
 ## Commands
 
@@ -43,6 +43,12 @@ pnpm exec stacknext dev --open       # from an app directory after build
 pnpm exec stacknext doctor
 pnpm exec stacknext coverage [--json]
 pnpm exec stacknext diagnose [--json]
+pnpm exec stacknext snapshot save [--label <text>] [--json]
+pnpm exec stacknext snapshot list [--json]
+pnpm exec stacknext snapshot show <snapshot-id> [--json]
+pnpm exec stacknext snapshot export <snapshot-id> [-o <file> | --stdout]
+pnpm exec stacknext snapshot import <file> [--label <text>] [--json]
+pnpm exec stacknext snapshot delete <snapshot-id> --yes [--json]
 pnpm exec stacknext capture --name <name> -- pnpm exec playwright test --workers=1
 pnpm exec stacknext runs list
 pnpm exec stacknext baseline list
@@ -57,16 +63,16 @@ uses `http://127.0.0.1:4400` by default. `stacknext dev` writes
 
 | Path | Responsibility |
 | --- | --- |
-| `packages/core` | Wire types, Zod schemas, redaction, normalization, config, bounded store, async transport, diagnostic wire types. |
-| `packages/diagnostics` | Deterministic fingerprinting, four diagnostic rules, report filtering, overview and detail evidence. |
+| `packages/core` | Wire types, Zod schemas, redaction, normalization, config, bounded store, async transport, diagnostic wire types, snapshot storage. |
+| `packages/diagnostics` | Deterministic fingerprinting, six diagnostic rules, report filtering, overview and detail evidence. |
 | `packages/regression` | Capture/run/baseline/comparison schemas, stable scenario and trace identities, environment snapshots, deterministic comparison, private atomic storage. |
 | `packages/playwright` | Optional Playwright fixture, W3C trace-context propagation, trace probing, correlation submission. |
 | `packages/next` | `instrumentation.ts` registration, OTel provider/exporter, error hook. |
 | `packages/drizzle` | Drizzle `Logger` adapter. |
 | `packages/prisma` | Prisma `$on('query')` adapter. |
-| `packages/cli` | `stacknext` binary, collector HTTP server, regression capture/compare commands, dashboard hosting. |
-| `packages/dashboard` | React/Vite static dashboard, including run/baseline/comparison views. |
-| `packages/mcp` | Read-only stdio MCP server, output schemas, prompts, telemetry and regression metadata. |
+| `packages/cli` | `stacknext` binary, collector HTTP server, regression and snapshot commands, dashboard hosting. |
+| `packages/dashboard` | React/Vite static dashboard, including run/baseline/comparison and snapshot views. |
+| `packages/mcp` | Read-only stdio MCP server, output schemas, prompts, telemetry, regression and snapshot metadata. |
 | `skills/stacknext-debugging` | Portable Agent Skill with tool reference and evidence-first workflows. |
 | `apps/example-next-app` | Tasklight demo with Drizzle/better-sqlite3, slow, error, N+1, slow-DB and repeated-fetch routes plus annotated Playwright scenarios. |
 | `scripts/` | Real e2e and benchmark scripts, including the capture → baseline → candidate → compare flow. |
@@ -105,7 +111,7 @@ import CLI, Next.js, React, Playwright or adapter code from `core`.
   store sample plus collector config/connection state. Never invent a composite
   percentage or treat `not-observed`/`unknown` as proof that a feature is broken.
   Keep the sample window and item limitations visible in CLI, dashboard and MCP.
-- **Diagnostics are deterministic evidence.** The four rules are conservative
+- **Diagnostics are deterministic evidence.** The six rules are conservative
   heuristics over the current store sample. Keep finding ids deterministic,
   evidence bounded and re-sanitized, and expose the same report through CLI,
   dashboard, export, MCP and the Agent Skill. Never present `possible` or
@@ -127,6 +133,15 @@ import CLI, Next.js, React, Playwright or adapter code from `core`.
   Never auto-delete, never upload, and never overwrite an existing record
   without an explicit overwrite request. Keep invalid ids and incomplete
   records visible rather than repairing them.
+- **Snapshots are frozen, redacted evidence.** A snapshot is a versioned copy of
+  one sample under `.stacknext/snapshots`, never a replay into the live store.
+  Save manually, on graceful exit and on the first error with a 60-second
+  cooldown; rotate only automatic snapshots beyond `snapshots.autoKeep`
+  (default 10). Manual and imported snapshots are never auto-deleted. Write
+  atomically with `0700`/`0600` permissions, refuse implicit overwrite, cap each
+  snapshot at `snapshots.maxBytes` (default 64 MiB) and fail oversized saves
+  instead of truncating. Re-normalize and re-redact imports. Snapshot reads use
+  a detached store and carry no live diagnostics or coverage.
 - **Playwright stays optional and sequential.** `@stacknext/playwright` must be
   inert outside an active capture run and must not replace Playwright or change
   assertions. Use one worker for captured runs until parallel correlation is
@@ -147,7 +162,8 @@ import CLI, Next.js, React, Playwright or adapter code from `core`.
   and the Agent Skill shape investigations but cannot add capabilities, mutate
   data or bypass redaction. Keep tool names and arguments stable; response
   metadata is additive. The six regression tools read runs, baselines and
-  comparisons only; they cannot capture, save, compare, delete or edit.
+  comparisons only, and the three snapshot tools read snapshots only; they
+  cannot capture, save, compare, import, delete or edit.
 - **Portable skill.** `skills/stacknext-debugging` follows the Agent Skills
   specification and is the canonical source. It is copied into the
   `@stacknext/cli` archive at pack time and installed with `stacknext skill
@@ -167,11 +183,11 @@ Never capture, transmit or store:
 
 URLs keep path only. Sensitive keys become `[redacted]`. Error messages and
 stacks go through text redaction. Resource attributes use an allowlist. Capture
-records, baselines and comparisons are redacted local files under `.stacknext`;
-they must never contain a token, raw body/header/query value, SQL bind parameter
-or Playwright artifact. If a change touches captured data, update
+records, baselines, comparisons and snapshots are redacted local files under
+`.stacknext`; they must never contain a token, raw body/header/query value, SQL
+bind parameter or Playwright artifact. If a change touches captured data, update
 `docs/privacy.md`, the config schema and the tests that assert secrets do not
-appear in API/export/regression output.
+appear in API/export/regression/snapshot output.
 
 Tokens live in `.stacknext/run.json` with mode `0600`. Do not log tokens, put
 them in fixtures, commit runtime state or add a remote transport.
@@ -213,8 +229,8 @@ Before declaring a change complete:
 5. `pnpm test:e2e` (after build, with Playwright Chromium installed). It reuses a
    live runtime if one exists, otherwise it starts and stops the example app
    itself. It must cover capture → baseline → candidate → compare, the
-   collector regression APIs, CLI records, MCP regression tools and dashboard
-   deep links.
+   collector regression APIs, CLI records, snapshot save/list/read/export/delete,
+   MCP regression and snapshot tools and dashboard deep links.
 6. For user-facing changes, exercise `stacknext dev` manually and check the
    dashboard Overview coverage and diagnostics cards, request/trace timelines,
    database, errors, `/diagnostics` and `/diagnostics/:id`, `/runs`, `/runs/:id`,
