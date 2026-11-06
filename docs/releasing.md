@@ -1,14 +1,24 @@
 # Releasing StackNext
 
-Releases are manual. Nothing in this repository tags, commits, pushes or
-publishes on a schedule or on a normal branch push. The release workflow is
-started by a maintainer with an explicit version, runs the full gate set, and
-publishes only after environment approval.
+Releases are automated from Conventional Commit titles. Each push to `main`
+plans the next version; releasable commits open or refresh one
+`chore: release X.Y.Z` pull request. Merging that PR changes the version on
+`main`, which starts the Release workflow, runs the full gate set, publishes
+after `npm` environment approval, and then creates the tag and GitHub release.
+A manual dispatch remains available for bootstrap, recovery and explicitly
+chosen versions.
 
 ## Release model
 
 - All ten public packages share one version. Version alignment is enforced by
-  `scripts/pack-release.mjs` and `packages/cli/test/version.test.ts`.
+  `scripts/pack-release.mjs`, `scripts/prepare-release.mjs` and
+  `packages/cli/test/version.test.ts`.
+- `release-pr.yml` computes the next version from `feat`, `fix`, `perf`,
+  `revert` and `BREAKING CHANGE` commits since the latest `vX.Y.Z` tag. It
+  batches them into one release PR. Nothing is published until that PR merges.
+- `release.yml` runs when the version in `packages/*/package.json` changes on
+  `main`. It is the only publish path. It creates `vX.Y.Z` and the GitHub
+  release only after every package is verified in the registry.
 - Package archives are built with `pnpm pack`, which rewrites `workspace:*`
   dependencies to the exact release version. Published packages must never
   contain a `workspace:` range.
@@ -35,12 +45,18 @@ Before the first release:
 1. Create the repository and push `main`. Do not publish from a fork.
 2. Enable GitHub Discussions and private vulnerability reporting.
 3. Protect `main`: require pull requests, the CI workflow, and a linear history.
-   Do not allow force pushes.
+   Do not allow force pushes. The release PR workflow dispatches CI on its own
+   branch because pull requests opened with `GITHUB_TOKEN` do not trigger
+   workflows automatically.
 4. Create an `npm` environment under **Settings → Environments** with required
    reviewers and a deployment branch rule limited to `main`.
 5. Leave repository Actions permissions at read-only by default. The release
-   workflow requests `id-token: write` explicitly for the publish job.
-6. Confirm that `SECURITY.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md` and
+   workflows request `contents: write`, `pull-requests: write`, `actions: write`
+   or `id-token: write` explicitly in the jobs that need them.
+6. Under **Settings → Actions → General**, enable **Allow GitHub Actions to
+   create and approve pull requests** so the release PR can be opened with the
+   repository token. No personal access token is stored.
+7. Confirm that `SECURITY.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md` and
    `.github/ISSUE_TEMPLATE/config.yml` use the real repository and contact
    links.
 
@@ -150,27 +166,51 @@ from a terminal with `npm trust` requires npm 11.15.0 or newer.
 Verify the publisher configuration on each package page and with
 `npm view <package>@<version> version` before making the next release.
 
-## Prepare the version
+## Automated release PR
 
-1. Start from a clean, reviewed commit on `main`. Do not release from a dirty
-   worktree or a feature branch.
-2. Update every public package version, the root version, the example app
-   version, `CLI_VERSION` in `packages/cli/src/version.ts` and
-   `STACKNEXT_SDK_VERSION` in `packages/core/src/types.ts`.
-3. Update `CHANGELOG.md`. Include breaking changes, renamed packages, new
-   commands, privacy changes and any known limitations.
-4. Update `docs/compatibility.md` with the Node.js, Next.js, package manager and
-   OS combinations actually validated for this version.
-5. Regenerate screenshots if the UI changed. Captures must show StackNext, not
-   an older brand.
-6. Run `pnpm install` and commit the lockfile change with the version bump.
+`.github/workflows/release-pr.yml` runs on every push to `main`:
 
-Helpful checks:
+1. Reads the current version from `packages/core/package.json` and the newest
+   reachable `vX.Y.Z` tag.
+2. Parses Conventional Commit headers since that tag.
+3. Computes the next version and updates every manifest, engine constant,
+   `CLI_VERSION`, `STACKNEXT_SDK_VERSION` and the Agent Skill version.
+4. Moves the `[Unreleased]` changelog content under the new version and opens a
+   fresh empty `[Unreleased]` section.
+5. Pushes `release/vX.Y.Z` and opens or refreshes the `chore: release X.Y.Z`
+   pull request.
+6. Dispatches CI on the release branch so the required checks are attached to
+   the pull request head.
+
+Only one release PR is open at a time. Later pushes refresh it. When the PR
+merges, `release.yml` publishes and tags that exact version. If the repository
+version is newer than the newest tag, a release is already in flight; the
+planner stops instead of stacking another version.
+
+### Bump rules
+
+| Commit | Bump |
+| --- | --- |
+| `fix:`, `perf:`, `revert:` | patch |
+| `feat:` | minor |
+| `feat!:` or a `BREAKING CHANGE:` footer | minor before 1.0.0, major from 1.0.0 |
+| `docs:`, `chore:`, `test:`, `ci:`, `build:`, `refactor:`, merge commits | none |
+
+Add `Release-As: x.y.z` as a commit footer to force an exact version. To
+release without a releasable commit, use a manual dispatch. The planner and
+preparer can be inspected locally:
 
 ```bash
-node -e "for (const f of require('fs').readdirSync('packages')) console.log(f, require('./packages/'+f+'/package.json').version)"
-pnpm exec vitest run packages/cli/test/version.test.ts
+pnpm release:plan
+pnpm release:prepare --version 0.7.0 --dry-run
 ```
+
+Before merging a release PR, review the generated changelog section and add
+anything that must be called out: breaking changes, renamed packages, new
+commands, privacy changes and known limitations. Update
+`docs/compatibility.md` with the combinations actually validated for this
+version. Regenerate screenshots if the UI changed. The version-only commit does
+not change the lockfile.
 
 ## Run the release gates
 
@@ -275,9 +315,33 @@ bootstrap. `--resume` (alias `--only-missing`) skips packages that already exist
 at the exact version. The publisher never overwrites an existing version and
 never creates tags, commits or GitHub releases.
 
-## Publish with the manual workflow
+## Publish
 
-After the bootstrap, this is the only supported publication path.
+After the release PR merges, the Release workflow starts automatically. The
+publish job waits for all 12 consumer-matrix jobs and the protected `npm`
+environment, then:
+
+- checks out the default branch;
+- enforces npm 11.5.1 or newer and the exact version in every manifest and
+  constant;
+- installs with the frozen lockfile;
+- runs the production audit, lint, typecheck, docs checks, tests, build, archive
+  validation, e2e and both benchmarks;
+- packs and validates the archives;
+- publishes in dependency order with npm trusted publishing and provenance;
+- verifies that every version exists in the registry, retrying for up to 120
+  seconds per package because npm replicas can lag a successful publish
+  (`STACKNEXT_REGISTRY_WAIT_MS` overrides the wait).
+
+After every package is verified, the finalize job creates the annotated
+`vX.Y.Z` tag and the GitHub release from the matching changelog section. The tag
+is never created before publishing succeeds. `pnpm release:publish` itself never
+tags, commits or creates releases.
+
+### Manual dispatch
+
+Manual dispatch is the recovery path and the bootstrap path. It is also useful
+for a hotfix whose version must not follow the commit-derived bump.
 
 1. Open **Actions → Release → Run workflow** on `main`.
 2. Enter the exact version (for example `0.6.1`).
@@ -290,21 +354,8 @@ After the bootstrap, this is the only supported publication path.
 7. Approve the protected `npm` environment.
 
 The workflow refuses to run unless `github.ref` matches the repository's default
-branch. The publish job waits for all 12 consumer-matrix jobs and then:
-
-- checks out the default branch;
-- enforces npm 11.5.1 or newer and the exact requested version in every manifest
-  and constant;
-- installs with the frozen lockfile;
-- runs the production audit, lint, typecheck, docs checks, tests, build, archive
-  validation, e2e and both benchmarks;
-- packs and validates the archives;
-- publishes in dependency order with npm trusted publishing and provenance;
-- verifies that every version exists in the registry, retrying for up to 120
-  seconds per package because npm replicas can lag a successful publish
-  (`STACKNEXT_REGISTRY_WAIT_MS` overrides the wait).
-
-It does not push commits, create tags or create a GitHub release.
+branch. A real dispatch also creates the tag and GitHub release after a
+successful publish unless that tag already exists.
 
 ## After publishing
 
@@ -352,8 +403,11 @@ It does not push commits, create tags or create a GitHub release.
    npm view @stacknext/cli@0.6.1 dist.integrity dist.attestations
    ```
 
-4. Tag the released commit and publish the GitHub release only after the
-   registry verification passes:
+4. Tagging and the GitHub release are automatic after the registry check
+   succeeds. The finalize job creates the annotated tag at the published commit
+   and uses the matching `CHANGELOG.md` section as release notes. If the tag
+   already exists it is left untouched. For a manual recovery where the tag must
+   be recreated, run the equivalent commands after verifying the registry:
 
    ```bash
    git tag -s v0.6.1 -m "StackNext 0.6.1"
@@ -367,22 +421,27 @@ It does not push commits, create tags or create a GitHub release.
 
 ## Versioning rules
 
-- **Patch** for compatible fixes, documentation corrections and diagnostic
-  threshold tuning that does not change the report contract.
-- **Minor** for new tools, new adapters, new configuration fields or additive
-  response metadata.
-- **Major** for removed/renamed tools, changed wire formats, changed comparison
-  semantics, dropped Next.js/Node.js support or a privacy-boundary change.
+- **Patch** for compatible `fix`, `perf` and `revert` commits, including
+  diagnostic threshold tuning that does not change the report contract.
+- **Minor** for `feat` commits: new tools, new adapters, new configuration
+  fields or additive response metadata. While the major version is `0`, a
+  breaking change also bumps minor.
+- **Major** from `1.0.0` for removed/renamed tools, changed wire formats,
+  changed comparison semantics, dropped Next.js/Node.js support or a
+  privacy-boundary change.
 
-The project is pre-1.0, but a published minor still must document breaking
-changes in the changelog and migration notes.
+Documentation, chore, test and refactor commits do not trigger a release on
+their own; they ship with the next patch or minor. A published minor still must
+document breaking changes in the changelog and migration notes.
 
 ## Rollback
 
 - Broken package contents: publish a patch, deprecate the broken version.
-- Partial release: re-run the release workflow with **resume** enabled. It
-  publishes only the missing packages, in dependency order, with provenance. As
-  a last resort from an authenticated session, publish one archive directly:
+- Partial release: run **Actions → Release → Run workflow** for the same version
+  with **resume** enabled. It publishes only the missing packages, in dependency
+  order, with provenance, then creates the tag and release. Do not open a second
+  release PR for the same version. As a last resort from an authenticated
+  session, publish one archive directly:
   `npm publish release/publish/<tarball> --access public --tag latest`. That
   fallback has no provenance; record why it was needed.
 - Missing package: publish the missing package at the same version, then verify
