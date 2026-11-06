@@ -5,6 +5,7 @@ import {
   compareVersions,
   parseVersion,
   planRelease,
+  selectLatestTag,
 } from './versioning.mjs'
 
 function commit(message, sha = '0'.repeat(40)) {
@@ -30,6 +31,13 @@ describe('version parsing and bumping', () => {
     expect(compareVersions('1.10.0', '1.9.9')).toBeGreaterThan(0)
     expect(compareVersions('0.6.1', '0.6.1')).toBe(0)
     expect(compareVersions('0.6.0', '0.6.1')).toBeLessThan(0)
+  })
+
+  it('selects the newest stable tag and ignores other refs', () => {
+    expect(selectLatestTag(['v0.6.1', 'v0.10.0', 'v0.9.0'])).toBe('v0.10.0')
+    expect(selectLatestTag(['v0.7.0-rc.1', 'vnext', 'v1.0', 'v0.6.1'])).toBe('v0.6.1')
+    expect(selectLatestTag([])).toBeNull()
+    expect(selectLatestTag(['v0.7.0-beta.1'])).toBeNull()
   })
 })
 

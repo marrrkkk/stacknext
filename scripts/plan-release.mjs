@@ -9,7 +9,7 @@ import { execFileSync } from 'node:child_process'
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { compareVersions, planRelease } from './lib/versioning.mjs'
+import { compareVersions, planRelease, selectLatestTag } from './lib/versioning.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -34,10 +34,8 @@ function readCurrentVersion() {
 }
 
 function latestTag() {
-  const tags = git(['tag', '--merged', 'HEAD', '--list', 'v*', '--sort=-v:refname'])
-    .split('\n')
-    .filter(Boolean)
-  return tags[0] ?? null
+  const tags = git(['tag', '--merged', 'HEAD', '--list', 'v*']).split('\n').filter(Boolean)
+  return selectLatestTag(tags)
 }
 
 function commitsSince(tag) {

@@ -45,9 +45,9 @@ Before the first release:
 1. Create the repository and push `main`. Do not publish from a fork.
 2. Enable GitHub Discussions and private vulnerability reporting.
 3. Protect `main`: require pull requests, the CI workflow, and a linear history.
-   Do not allow force pushes. The release PR workflow dispatches CI on its own
-   branch because pull requests opened with `GITHUB_TOKEN` do not trigger
-   workflows automatically.
+   Do not allow force pushes. Release PRs need `RELEASE_PR_TOKEN` (step 7) for
+   normal CI, because pull requests opened with `GITHUB_TOKEN` do not trigger
+   workflows.
 4. Create an `npm` environment under **Settings → Environments** with required
    reviewers and a deployment branch rule limited to `main`.
 5. Leave repository Actions permissions at read-only by default. The release
@@ -55,8 +55,15 @@ Before the first release:
    or `id-token: write` explicitly in the jobs that need them.
 6. Under **Settings → Actions → General**, enable **Allow GitHub Actions to
    create and approve pull requests** so the release PR can be opened with the
-   repository token. No personal access token is stored.
-7. Confirm that `SECURITY.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md` and
+   repository token. Opening the PR does not require a personal access token.
+7. Recommended for gated release PRs: add a `RELEASE_PR_TOKEN` repository
+   secret. Use a fine-grained personal access token limited to this repository
+   with **Contents: read and write** and **Pull requests: read and write**.
+   Release PRs created with `GITHUB_TOKEN` do not start `pull_request`
+   workflows, so required checks cannot attach to them. With this secret the
+   workflow pushes and opens the PR as the token owner, and normal CI runs. Do
+   not grant workflow, npm or organization permissions.
+8. Confirm that `SECURITY.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md` and
    `.github/ISSUE_TEMPLATE/config.yml` use the real repository and contact
    links.
 
@@ -177,15 +184,35 @@ Verify the publisher configuration on each package page and with
    `CLI_VERSION`, `STACKNEXT_SDK_VERSION` and the Agent Skill version.
 4. Moves the `[Unreleased]` changelog content under the new version and opens a
    fresh empty `[Unreleased]` section.
-5. Pushes `release/vX.Y.Z` and opens or refreshes the `chore: release X.Y.Z`
-   pull request.
-6. Dispatches CI on the release branch so the required checks are attached to
-   the pull request head.
+5. Pushes `release/vX.Y.Z`, opens or refreshes the `chore: release X.Y.Z`
+   pull request, and closes any older bot release PR that the new plan
+   supersedes.
+6. Starts normal CI through the `push` and `pull_request` events when
+   `RELEASE_PR_TOKEN` is configured.
 
 Only one release PR is open at a time. Later pushes refresh it. When the PR
 merges, `release.yml` publishes and tags that exact version. If the repository
 version is newer than the newest tag, a release is already in flight; the
-planner stops instead of stacking another version.
+planner stops instead of stacking another version. After finalization it
+dispatches the planner again, so commits that arrived during publication get a
+new release PR without waiting for another push.
+
+Each run rebuilds the release branch from `main`. If the branch contains
+commits not authored by the release bot, the workflow stops rather than
+overwriting them. Put changelog notes in `[Unreleased]` on `main`, not on the
+release branch.
+
+### Required checks on the release PR
+
+GitHub does not run `pull_request` workflows for pull requests created with the
+repository's `GITHUB_TOKEN`, and checks from a `workflow_dispatch` run do not
+satisfy branch protection. Configure the `RELEASE_PR_TOKEN` secret as described
+in [One-time repository setup](#one-time-repository-setup) so the generated
+branch and PR are written with a fine-grained token and normal CI runs.
+
+Without the secret the PR is still opened, but required checks remain pending
+and it must be merged with the administrator bypass. The Release workflow still
+runs every gate before publishing, so the npm publication is gated either way.
 
 ### Bump rules
 
@@ -336,7 +363,9 @@ environment, then:
 After every package is verified, the finalize job creates the annotated
 `vX.Y.Z` tag and the GitHub release from the matching changelog section. The tag
 is never created before publishing succeeds. `pnpm release:publish` itself never
-tags, commits or creates releases.
+tags, commits or creates releases. Finalization then dispatches the release
+planner so any commits that landed while the release waited for approval are
+planned immediately.
 
 ### Manual dispatch
 

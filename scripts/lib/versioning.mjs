@@ -1,4 +1,5 @@
 const SEMVER_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
+const STABLE_TAG_PATTERN = /^v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/
 const CONVENTIONAL_PATTERN = /^([a-z][a-z0-9-]*)(?:\(([^)]*)\))?(!)?:\s+(.+)$/i
 const RELEASE_AS_PATTERN = /^Release-As:\s*v?(\d+\.\d+\.\d+)\s*$/im
 
@@ -26,6 +27,18 @@ export function compareVersions(left, right) {
     if (a[key] !== b[key]) return a[key] - b[key]
   }
   return 0
+}
+
+/**
+ * Pick the newest stable `vX.Y.Z` tag. Prerelease tags, build metadata and
+ * unrelated `v*` refs are ignored so a stray tag cannot break planning.
+ */
+export function selectLatestTag(tags) {
+  const stable = tags
+    .map((tag) => ({ tag, version: STABLE_TAG_PATTERN.exec(tag)?.[1] ?? null }))
+    .filter((entry) => entry.version !== null)
+    .sort((left, right) => compareVersions(right.version, left.version))
+  return stable[0]?.tag ?? null
 }
 
 export function bumpVersion(version, bump) {

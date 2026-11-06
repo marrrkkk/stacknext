@@ -6,6 +6,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { extractReleaseNotes } from './lib/changelog.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -23,17 +24,7 @@ if (!version) {
 }
 
 const changelog = readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8')
-const heading = `## [${version}]`
-const headingIndex = changelog.indexOf(heading)
-let notes = `Release ${version}.`
-
-if (headingIndex >= 0) {
-  const lineEnd = changelog.indexOf('\n', headingIndex)
-  const bodyStart = lineEnd === -1 ? changelog.length : lineEnd + 1
-  const next = /^## /m.exec(changelog.slice(bodyStart))
-  const body = changelog.slice(bodyStart, next ? bodyStart + next.index : undefined).trim()
-  if (body) notes = body
-}
+const notes = extractReleaseNotes(changelog, version)
 
 if (out) {
   writeFileSync(out, `${notes}\n`)

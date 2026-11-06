@@ -68,16 +68,14 @@ const SOURCE_VERSIONS = [
   },
 ]
 
-const changed = []
+const pending = []
 
 async function read(relativePath) {
   return readFile(path.join(ROOT, relativePath), 'utf8')
 }
 
-async function write(relativePath, contents) {
-  changed.push(relativePath)
-  if (dryRun) return
-  await writeFile(path.join(ROOT, relativePath), contents)
+function stage(relativePath, contents) {
+  pending.push({ file: relativePath, contents })
 }
 
 try {
@@ -106,14 +104,14 @@ try {
     if (match[2] !== currentVersion) {
       throw new Error(`${name} in ${file} is ${match[2]}; expected ${currentVersion}.`)
     }
-    await write(file, source.replace(pattern, `$1${version}$3`))
+    stage(file, source.replace(pattern, `$1${version}$3`))
   }
 
   for (const { file, manifest } of manifests) {
     if (manifest.version !== currentVersion) {
       throw new Error(`${file} is ${manifest.version}; expected ${currentVersion}.`)
     }
-    await write(file, `${JSON.stringify({ ...manifest, version }, null, 2)}\n`)
+    stage(file, `${JSON.stringify({ ...manifest, version }, null, 2)}\n`)
   }
 
   const changelog = await read('CHANGELOG.md')
@@ -125,15 +123,21 @@ try {
   if (occurrences !== 1) {
     throw new Error(`CHANGELOG.md must contain exactly one "${unreleased}" heading.`)
   }
-  await write(
+  stage(
     'CHANGELOG.md',
     changelog.replace(unreleased, `${unreleased}\n\n## [${version}] - ${date}`),
   )
 
+  // Every input has been read and validated before the first write, so a
+  // failed check never leaves a half-prepared worktree behind.
+  for (const { file, contents } of pending) {
+    if (!dryRun) await writeFile(path.join(ROOT, file), contents)
+  }
+
   console.log(
     `${dryRun ? 'Would prepare' : 'Prepared'} StackNext ${version} (from ${currentVersion}, ${date}).`,
   )
-  for (const file of changed) console.log(`  ${file}`)
+  for (const { file } of pending) console.log(`  ${file}`)
 } catch (error) {
   console.error(error instanceof Error ? error.message : error)
   process.exit(1)
