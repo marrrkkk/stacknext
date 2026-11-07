@@ -15,6 +15,9 @@ import { chromium } from '@playwright/test'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const APP_DIR = path.join(ROOT, 'apps', 'example-next-app')
 const CLI = path.join(ROOT, 'packages', 'cli', 'dist', 'bin.js')
+const RELEASE_VERSION = JSON.parse(
+  await readFile(path.join(ROOT, 'packages', 'cli', 'package.json'), 'utf8'),
+).version
 const RUNTIME_FILE = path.join(APP_DIR, '.stacknext', 'run.json')
 const DASHBOARD_INDEX = path.join(ROOT, 'packages', 'dashboard', 'dist', 'index.html')
 const APP_URL = 'http://127.0.0.1:4402'
@@ -623,11 +626,11 @@ async function runMcpChecks(runtime, errorId, diagnosticId, regression, snapshot
     const initialize = await session.request('initialize', {
       protocolVersion: '2025-06-18',
       capabilities: {},
-      clientInfo: { name: 'stacknext-e2e', version: '0.6.1' },
+      clientInfo: { name: 'stacknext-e2e', version: RELEASE_VERSION },
     })
     assert(initialize.serverInfo?.name === 'stacknext', 'MCP server name mismatch')
     assert(
-      initialize.serverInfo?.version === '0.6.1',
+      initialize.serverInfo?.version === RELEASE_VERSION,
       `MCP server version mismatch: ${initialize.serverInfo?.version}`,
     )
     assert(
@@ -1230,7 +1233,7 @@ async function main() {
 
     const diagnostics = await api('/api/diagnostics?limit=100')
     assert(diagnostics.format === undefined || diagnostics.engineVersion, 'diagnostics response is malformed')
-    assert(diagnostics.engineVersion === '0.6.1', 'diagnostics engine version mismatch')
+    assert(diagnostics.engineVersion === RELEASE_VERSION, 'diagnostics engine version mismatch')
     assert(diagnostics.ruleSetVersion === 2, 'diagnostics rule set version mismatch')
     assert(diagnostics.sample.requests > 0, 'diagnostics sample has no requests')
     assert(diagnostics.counts.total === diagnostics.items.length, 'diagnostics counts are inconsistent')
