@@ -12,6 +12,7 @@ import {
   generateDiagnosticReport,
   getDiagnosticDetail,
   listDiagnosticFindings,
+  DIAGNOSTICS_ENGINE_VERSION,
   type DiagnosticEngineOptions,
 } from '../src/engine.js'
 import { diagnosticSpanCategory, spanThresholdMs } from '../src/classify.js'
@@ -740,7 +741,7 @@ describe('report generation', () => {
     const report = reportFor(value)
     expect(report.format).toBe('stacknext-diagnostics')
     expect(report.version).toBe(1)
-    expect(report.engineVersion).toBe('0.6.1')
+    expect(report.engineVersion).toBe(DIAGNOSTICS_ENGINE_VERSION)
     expect(report.ruleSetVersion).toBe(2)
     expect(report.projectName).toBe('diagnostics-test')
     expect(report.sample).toMatchObject({

@@ -11,6 +11,7 @@ import {
   type HealthResponse,
   type OverviewResponse,
 } from '@stacknext/core'
+import { DIAGNOSTICS_ENGINE_VERSION } from '@stacknext/diagnostics'
 import {
   saveBaseline,
   saveComparison,
@@ -421,7 +422,7 @@ describe('local collector', () => {
     })
     expect(response.status).toBe(200)
     const list = (await response.json()) as DiagnosticListResponse
-    expect(list.engineVersion).toBe('0.6.1')
+    expect(list.engineVersion).toBe(DIAGNOSTICS_ENGINE_VERSION)
     expect(list.ruleSetVersion).toBe(2)
     expect(list.sample.spans).toBe(4)
     expect(list.sample.errors).toBe(2)

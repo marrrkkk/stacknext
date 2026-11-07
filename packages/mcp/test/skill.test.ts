@@ -71,7 +71,10 @@ describe('stacknext-debugging Agent Skill', () => {
     expect(fields.get('license')).toBe('MIT')
     expect(fields.get('compatibility')).toContain('Next.js')
     expect(source).toContain('metadata:')
-    expect(source).toContain('version: "0.6.1"')
+    const manifest = JSON.parse(
+      await readFile(path.join(ROOT, 'packages', 'cli', 'package.json'), 'utf8'),
+    ) as { version: string }
+    expect(source).toContain(`version: "${manifest.version}"`)
   })
 
   it('keeps SKILL.md concise and points to every reference', async () => {
