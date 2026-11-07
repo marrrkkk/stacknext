@@ -4,7 +4,7 @@ description: Investigate Next.js App Router runtime behavior with StackNext's lo
 license: MIT
 compatibility: Next.js 15 or 16 App Router on the Node.js runtime, with a local StackNext collector. No cloud account, AI API key, or remote service is required.
 metadata:
-  version: "0.6.1"
+  version: "0.7.0"
   author: StackNext
 ---
 

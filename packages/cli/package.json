@@ -1,6 +1,6 @@
 {
   "name": "@stacknext/cli",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Local-first runtime debugging, diagnostics and Playwright regression testing for Next.js",
   "license": "MIT",
   "type": "module",

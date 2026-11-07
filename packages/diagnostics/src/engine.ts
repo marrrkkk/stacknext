@@ -18,7 +18,7 @@ import { isControlFlowError } from './fingerprints.js'
 import { evaluateDiagnosticRules, findingMatchesTrace } from './rules.js'
 import { buildTraceIndex, type DiagnosticTraceIndex } from './trace.js'
 
-export const DIAGNOSTICS_ENGINE_VERSION = '0.6.1'
+export const DIAGNOSTICS_ENGINE_VERSION = '0.7.0'
 
 export interface DiagnosticEngineOptions {
   projectName: string
