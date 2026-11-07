@@ -1,0 +1,142 @@
+name: Release PR
+
+# Conventional commits on main are batched into one release PR. Merging the
+# release PR changes the package versions, which triggers the Release workflow.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-pr
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan release PR
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'push' ||
+       !startsWith(github.event.head_commit.message || '', 'chore(release):'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Plan the next version
+        id: plan
+        run: >-
+          node scripts/plan-release.mjs
+          --github-output "$GITHUB_OUTPUT"
+          --summary "$RUNNER_TEMP/release-plan.md"
+
+      - name: Prepare the version bump
+        if: steps.plan.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: node scripts/prepare-release.mjs --version "$VERSION"
+
+      - name: Commit, push and open the release PR
+        if: steps.plan.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN || github.token }}
+          PUSH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN || github.token }}
+          RELEASE_PR_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+          VERSION: ${{ steps.plan.outputs.version }}
+          SUMMARY: ${{ runner.temp }}/release-plan.md
+        run: |
+          set -euo pipefail
+          branch="release/v$VERSION"
+
+          if [ -z "${RELEASE_PR_TOKEN:-}" ]; then
+            echo "::warning::RELEASE_PR_TOKEN is not configured. Required checks cannot attach to this generated PR."
+          fi
+
+          # Pull requests created with GITHUB_TOKEN do not start pull_request
+          # workflows. With a RELEASE_PR_TOKEN, the push and pull request
+          # events run normal CI; without it, the PR body explains the
+          # administrator-merge path.
+          git config --local --unset-all http.https://github.com/.extraheader || true
+          git config --local http.https://github.com/.extraheader \
+            "AUTHORIZATION: basic $(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)"
+
+          # The branch is regenerated from main on every run. Refuse to
+          # overwrite reviewer commits instead of silently dropping them.
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            git fetch --no-tags origin "$branch"
+            manual=$(git log --format='%ae' "origin/$branch" --not main \
+              | grep -v '^41898282+github-actions\[bot\]@users.noreply.github.com$' \
+              | head -1 || true)
+            if [ -n "$manual" ]; then
+              echo "::error::The release branch $branch contains commits not authored by the release bot."
+              echo "::error::Merge or delete that branch before re-running the release planner."
+              exit 1
+            fi
+          else
+            status=$?
+            if [ "$status" -ne 2 ]; then
+              echo "::error::Could not read the remote release branch $branch."
+              exit 1
+            fi
+          fi
+
+          if [ -z "${RELEASE_PR_TOKEN:-}" ]; then
+            cat >> "$SUMMARY" <<'EOF'
+
+          ### CI checks
+
+          This pull request was created with `GITHUB_TOKEN`, so GitHub did not
+          start the `pull_request` workflows and required checks cannot attach.
+          Add a `RELEASE_PR_TOKEN` repository secret (see `docs/releasing.md`)
+          and re-run **Release PR**, or merge with the administrator bypass.
+          The Release workflow still runs the full gate set before publishing.
+          EOF
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$branch"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Release branch is already up to date."
+          else
+            git commit -m "chore(release): $VERSION"
+            git push --force origin "$branch"
+          fi
+
+          existing=$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            pr_number="$existing"
+            gh pr edit "$pr_number" --title "chore: release $VERSION" --body-file "$SUMMARY"
+          else
+            gh pr create \
+              --base main \
+              --head "$branch" \
+              --title "chore: release $VERSION" \
+              --body-file "$SUMMARY" >/dev/null
+            pr_number=$(gh pr list --head "$branch" --state open --json number --jq '.[0].number')
+          fi
+          if [ -z "$pr_number" ]; then
+            echo "::error::Could not resolve the release pull request number."
+            exit 1
+          fi
+
+          # A newer plan replaces the older version. Close the stale PR so it
+          # cannot publish the new commits under the wrong bump.
+          for other in $(gh pr list --state open --limit 100 --json number,title \
+            --jq '.[] | select(.title | startswith("chore: release ")) | .number'); do
+            if [ "$other" != "$pr_number" ]; then
+              gh pr close "$other" --comment "Superseded by #$pr_number (release $VERSION)."
+            fi
+          done

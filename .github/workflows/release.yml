@@ -1,7 +1,12 @@
 name: Release
 
-# Manual-only. Never triggers on push, tags or a schedule.
+# Automatic after a Release PR merges (the version in packages/*/package.json
+# changes on main), plus a manual dispatch for bootstrap, recovery and hotfixes.
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/*/package.json'
   workflow_dispatch:
     inputs:
       version:
@@ -29,12 +34,64 @@ permissions:
   id-token: write
 
 concurrency:
-  group: release-${{ inputs.version }}
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  detect:
+    name: Detect release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.detect.outputs.version }}
+      release: ${{ steps.detect.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version and tag state
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            version="$INPUT_VERSION"
+            release=true
+          else
+            version=$(node -p "require('./packages/core/package.json').version")
+            if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+              echo "Version $version already has tag v$version; nothing to publish."
+              release=false
+            elif [ -z "${BEFORE_SHA:-}" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE_SHA:packages/core/package.json" 2>/dev/null; then
+              echo "No previous manifest is available; treating this commit as a version change."
+              release=true
+            else
+              previous=$(git show "$BEFORE_SHA:packages/core/package.json" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")
+              if [ "$previous" = "$version" ]; then
+                echo "Version $version is unchanged since $BEFORE_SHA; nothing to publish."
+                release=false
+              else
+                echo "Version changed from $previous to $version."
+                release=true
+              fi
+            fi
+          fi
+          if ! printf '%s' "$version" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
+            echo "::error::Invalid version '$version'. Expected an exact x.y.z version."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "version=$version release=$release"
+
   compatibility:
     name: Compatibility Node ${{ matrix.node }} / Next ${{ matrix.next }} / ${{ matrix.pm }}
+    needs: detect
+    if: needs.detect.outputs.release == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -68,8 +125,9 @@ jobs:
           CI: 'true'
 
   publish:
-    name: Publish ${{ inputs.version }}
-    needs: compatibility
+    name: Publish ${{ needs.detect.outputs.version }}
+    needs: [detect, compatibility]
+    if: needs.detect.outputs.release == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     environment: npm
@@ -111,14 +169,14 @@ jobs:
           "
 
       - name: Require explicit confirmation for a real publication
-        if: ${{ !inputs.dry_run && inputs.confirm != 'publish' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.dry_run && inputs.confirm != 'publish' }}
         run: |
           echo "Refusing to publish: set confirm to 'publish' or enable dry_run."
           exit 1
 
       - name: Verify requested version matches every package
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ needs.detect.outputs.version }}
         run: |
           node --input-type=module -e "
             import { readFileSync } from 'node:fs'
@@ -132,10 +190,18 @@ jobs:
               const manifest = JSON.parse(readFileSync(file, 'utf8'))
               if (manifest.version !== version) bad.push(file + ': ' + manifest.version)
             }
-            const cliVersion = readFileSync('packages/cli/src/version.ts', 'utf8')
-            const sdkVersion = readFileSync('packages/core/src/types.ts', 'utf8')
-            if (!cliVersion.includes(\"'\" + version + \"'\")) bad.push('CLI_VERSION')
-            if (!sdkVersion.includes(\"'\" + version + \"'\")) bad.push('STACKNEXT_SDK_VERSION')
+            const constants = [
+              ['packages/cli/src/version.ts', 'CLI_VERSION'],
+              ['packages/core/src/types.ts', 'STACKNEXT_SDK_VERSION'],
+              ['packages/diagnostics/src/engine.ts', 'DIAGNOSTICS_ENGINE_VERSION'],
+              ['packages/regression/src/constants.ts', 'STACKNEXT_REGRESSION_ENGINE_VERSION'],
+            ]
+            for (const [file, label] of constants) {
+              const source = readFileSync(file, 'utf8')
+              if (!source.includes(\"'\" + version + \"'\")) bad.push(label)
+            }
+            const skill = readFileSync('skills/stacknext-debugging/SKILL.md', 'utf8')
+            if (!skill.includes('version: \"' + version + '\"')) bad.push('Agent Skill version')
             if (bad.length) {
               console.error('Version mismatch for ' + version + ':\n' + bad.join('\n'))
               process.exit(1)
@@ -184,16 +250,16 @@ jobs:
           CI: 'true'
 
       - name: Publish dry run
-        if: ${{ inputs.dry_run }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ needs.detect.outputs.version }}
         run: pnpm release:publish --version "$VERSION" --dry-run --skip-gates
 
       - name: Publish with provenance
-        if: ${{ !inputs.dry_run }}
+        if: ${{ github.event_name == 'push' || !inputs.dry_run }}
         env:
-          VERSION: ${{ inputs.version }}
-          RESUME: ${{ inputs.resume }}
+          VERSION: ${{ needs.detect.outputs.version }}
+          RESUME: ${{ inputs.resume || 'false' }}
           NPM_CONFIG_PROVENANCE: 'true'
         run: |
           args=(--version "$VERSION" --publish --skip-gates)
@@ -206,9 +272,57 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: release-manifest-${{ inputs.version }}
+          name: release-manifest-${{ needs.detect.outputs.version }}
           path: |
             release/publish/manifest.json
             release/publish/*.tgz
           if-no-files-found: warn
           retention-days: 14
+
+  finalize:
+    name: Tag and release ${{ needs.detect.outputs.version }}
+    needs: [detect, publish]
+    if: >-
+      needs.publish.result == 'success' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && inputs.dry_run == false))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create tag and GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.detect.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          tag="v$VERSION"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "Tag $tag already exists."
+          else
+            git tag -a "$tag" -m "StackNext $VERSION"
+            git push origin "$tag"
+          fi
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "GitHub release $tag already exists."
+          else
+            notes="$RUNNER_TEMP/release-notes.md"
+            node scripts/release-notes.mjs --version "$VERSION" --out "$notes"
+            gh release create "$tag" --title "StackNext $VERSION" --notes-file "$notes"
+          fi
+
+      - name: Plan the next release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh workflow run release-pr.yml --ref main; then
+            echo "::warning::Could not start the release planner; the next push to main will retry."
+          fi
