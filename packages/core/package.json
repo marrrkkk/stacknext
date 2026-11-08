@@ -1,6 +1,6 @@
 {
   "name": "@stacknext/core",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Core telemetry schema, redaction, configuration and bounded storage for StackNext",
   "license": "MIT",
   "type": "module",
