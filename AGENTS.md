@@ -38,7 +38,7 @@ pnpm --filter @stacknext/core build
 pnpm --filter @stacknext/regression build
 pnpm --filter @stacknext/playwright build
 pnpm --filter @stacknext/cli build
-pnpm --filter @stacknext/example-next-app dev
+pnpm --filter @stacknext/example dev
 pnpm exec stacknext dev --open       # from an app directory after build
 pnpm exec stacknext doctor
 pnpm exec stacknext coverage [--json]
@@ -74,7 +74,7 @@ uses `http://127.0.0.1:4400` by default. `stacknext dev` writes
 | `packages/dashboard` | React/Vite static dashboard, including run/baseline/comparison and snapshot views. |
 | `packages/mcp` | Read-only stdio MCP server, output schemas, prompts, telemetry, regression and snapshot metadata. |
 | `skills/stacknext-debugging` | Portable Agent Skill with tool reference and evidence-first workflows. |
-| `apps/example-next-app` | Tasklight demo with Drizzle/better-sqlite3, slow, error, N+1, slow-DB and repeated-fetch routes plus annotated Playwright scenarios. |
+| `apps/example` | StackNext Example demo with Drizzle/better-sqlite3, slow, error, N+1, slow-DB and repeated-fetch routes plus annotated Playwright scenarios. |
 | `scripts/` | Real e2e and benchmark scripts, including the capture → baseline → candidate → compare flow. |
 
 Dependency direction: `core` is the base. `diagnostics`, `next`, `drizzle`,

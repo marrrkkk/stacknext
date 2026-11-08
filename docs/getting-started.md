@@ -19,7 +19,7 @@ From a checkout of this repository:
 ```bash
 pnpm install
 pnpm build
-cd apps/example-next-app
+cd apps/example
 pnpm exec stacknext dev --open
 ```
 
@@ -37,8 +37,16 @@ pnpm exec stacknext dev --open
 - `http://127.0.0.1:4402/api/slow-db` — slow recursive database query
 - `http://127.0.0.1:4402/api/repeated-fetch` — three uncached fetches
 
-The example app seeds `apps/example-next-app/data/stacknext-demo.db` on first
-use. Delete that directory to start over.
+The example app seeds `apps/example/data/stacknext-demo.db` on first use.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:9cbc9ed3d46a6a823b388027018de2083e2fc818595f2a32435e12db1e7577fc -->
+
+To start over by deleting that directory, stop the app first, delete the directory,
+then restart the app. Alternatively, use `POST /api/seed` while the app is running
+to reset the demo data without restarting.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 Check what the current sample actually observed:
 

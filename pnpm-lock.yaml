@@ -191,8 +191,11 @@ importers:
         specifier: 3.2.7
         version: 3.2.7(@types/node@24.10.1)(supports-color@7.2.0)
 
-  apps/example-next-app:
+  apps/example:
     dependencies:
+      '@fontsource-variable/inter':
+        specifier: 5.2.8
+        version: 5.2.8
       '@stacknext/drizzle':
         specifier: workspace:*
         version: link:../../packages/drizzle

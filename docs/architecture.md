@@ -19,7 +19,7 @@ dashboard, CLI and MCP server read from that collector.
 | `packages/dashboard` | React + Vite local dashboard, built to static assets and served by the collector, including run/baseline/comparison and snapshot views. |
 | `packages/mcp` | Read-only MCP server, telemetry/regression/snapshot APIs client and output schemas. |
 | `skills/stacknext-debugging` | Portable Agent Skill with tool reference and evidence-first workflows. |
-| `apps/example-next-app` | Tasklight demo: Next.js App Router, Drizzle, better-sqlite3, deliberate slow/error routes and annotated Playwright scenarios. |
+| `apps/example` | StackNext Example: Next.js App Router, Drizzle, better-sqlite3, deliberate slow/error routes, a dashboard-style UI and annotated Playwright scenarios. |
 
 ## Data flow
 

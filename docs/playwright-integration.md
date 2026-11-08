@@ -19,7 +19,7 @@ pnpm exec playwright install
 
 The packages are currently workspace packages in the StackNext repository and
 are not published to npm. In this repository, `@stacknext/playwright` is already
-a dev dependency of `apps/example-next-app`.
+a dev dependency of `apps/example`.
 
 The fixture requires `@playwright/test` 1.40 or newer and Node.js 20.9 or newer.
 Use the same Playwright version for the app and the fixture.
@@ -57,19 +57,19 @@ import { stackNextFixtures } from '@stacknext/playwright'
 
 const { test, expect } = stackNextFixtures()
 
-test.describe('Tasklight runtime scenarios', () => {
+test.describe('Example runtime scenarios', () => {
   test(
     'renders the project overview',
     {
       annotation: {
         type: 'stacknext.scenario',
-        description: 'tasklight.overview',
+        description: 'example.overview',
       },
     },
     async ({ page }) => {
       await page.goto('/')
       await expect(
-        page.getByRole('heading', { name: 'Small app, real telemetry.' }),
+        page.getByRole('heading', { name: 'A small app with real telemetry' }),
       ).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible()
     },
@@ -80,7 +80,7 @@ test.describe('Tasklight runtime scenarios', () => {
     {
       annotation: {
         type: 'stacknext.scenario',
-        description: 'tasklight.project-detail',
+        description: 'example.project-detail',
       },
     },
     async ({ page }) => {
@@ -94,7 +94,7 @@ test.describe('Tasklight runtime scenarios', () => {
     {
       annotation: {
         type: 'stacknext.scenario',
-        description: 'tasklight.n-plus-one',
+        description: 'example.n-plus-one',
       },
     },
     async ({ page }) => {
@@ -123,7 +123,7 @@ With the app started through `stacknext dev`:
 
 ```bash
 pnpm exec stacknext capture \
-  --name "tasklight baseline" \
+  --name "example baseline" \
   --quiet --json \
   -- pnpm exec playwright test --workers=1 --repeat-each=3 \
   > baseline-capture.json
