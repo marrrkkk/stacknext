@@ -59,7 +59,7 @@ From the app directory, with `stacknext dev` running:
 
 ```bash
 pnpm exec stacknext capture \
-  --name "tasklight baseline" \
+  --name "example baseline" \
   --quiet --json \
   -- pnpm exec playwright test --workers=1 --repeat-each=3 \
   > baseline-capture.json
@@ -67,7 +67,7 @@ pnpm exec stacknext capture \
 RUN_ID=$(jq -r .run.id baseline-capture.json)
 
 pnpm exec stacknext baseline save "$RUN_ID" \
-  --name "tasklight baseline" \
+  --name "example baseline" \
   --notes "before checkout changes" \
   --json > baseline.json
 

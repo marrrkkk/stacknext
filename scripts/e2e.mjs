@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const APP_DIR = path.join(ROOT, 'apps', 'example-next-app')
+const APP_DIR = path.join(ROOT, 'apps', 'example')
 const CLI = path.join(ROOT, 'packages', 'cli', 'dist', 'bin.js')
 const RELEASE_VERSION = JSON.parse(
   await readFile(path.join(ROOT, 'packages', 'cli', 'package.json'), 'utf8'),

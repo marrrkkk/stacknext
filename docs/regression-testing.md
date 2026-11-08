@@ -62,7 +62,7 @@ const { test, expect } = stackNextFixtures()
 
 test(
   'renders the project overview',
-  { annotation: { type: 'stacknext.scenario', description: 'tasklight.overview' } },
+  { annotation: { type: 'stacknext.scenario', description: 'example.overview' } },
   async ({ page }) => {
     await page.goto('/')
     await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible()
@@ -89,7 +89,7 @@ done
 
 ```bash
 pnpm exec stacknext capture \
-  --name "tasklight baseline" \
+  --name "example baseline" \
   --quiet --json \
   -- pnpm exec playwright test --workers=1 --repeat-each=3 \
   > baseline-capture.json
@@ -102,7 +102,7 @@ samples for each test and is the recommended starting point.
 
 ```bash
 RUN_ID=$(jq -r .run.id baseline-capture.json)
-pnpm exec stacknext baseline save "$RUN_ID" --name "tasklight baseline" --json > baseline.json
+pnpm exec stacknext baseline save "$RUN_ID" --name "example baseline" --json > baseline.json
 BASELINE_ID=$(jq -r .baseline.id baseline.json)
 ```
 
@@ -113,7 +113,7 @@ A failed, interrupted or incomplete run is refused.
 
 ```bash
 pnpm exec stacknext capture \
-  --name "tasklight candidate" \
+  --name "example candidate" \
   --quiet --json \
   -- pnpm exec playwright test --workers=1 --repeat-each=3 \
   > candidate-capture.json
@@ -148,7 +148,7 @@ in this order:
 3. file, title and project name.
 
 The annotation value is hashed and sanitized; it is never used as a path or raw
-id. Use a short, versioned name such as `tasklight.overview`. A changed
+id. Use a short, versioned name such as `example.overview`. A changed
 annotation is a new scenario and has no baseline.
 
 Trace and span identities are also stable and id-free. They use normalized

@@ -54,7 +54,7 @@ nvm use                  # or the equivalent for fnm, asdf or mise
 corepack enable          # activates the pnpm version from package.json
 pnpm install
 pnpm build
-cd apps/example-next-app
+cd apps/example
 pnpm exec stacknext dev --open
 ```
 
@@ -144,7 +144,7 @@ app starts, then visit:
 | `http://127.0.0.1:4402/api/slow-db` | Slow recursive database query |
 | `http://127.0.0.1:4402/api/repeated-fetch` | Three uncached fetches |
 
-The example app is a small task tracker called Tasklight. It uses
+The example app is a small task tracker called StackNext Example. It uses
 better-sqlite3 and Drizzle, seeds itself on first run, and includes deliberate
 slow, throwing, custom-span and Server Action routes so every dashboard view has
 real data.
@@ -516,7 +516,7 @@ packages/cli        stacknext binary + collector HTTP server
 packages/dashboard  React/Vite dashboard served by the collector
 packages/mcp        read-only stdio MCP server
 skills/             portable Agent Skills for coding agents
-apps/example-next-app  Tasklight demo
+apps/example           StackNext Example demo
 ```
 
 More detail: [architecture](docs/architecture.md).

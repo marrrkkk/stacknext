@@ -17,7 +17,7 @@ import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const APP_DIR = path.join(ROOT, 'apps', 'example-next-app')
+const APP_DIR = path.join(ROOT, 'apps', 'example')
 const CLI = path.join(ROOT, 'packages', 'cli', 'dist', 'bin.js')
 const DASHBOARD_INDEX = path.join(ROOT, 'packages', 'dashboard', 'dist', 'index.html')
 const RUNTIME_FILE = path.join(APP_DIR, '.stacknext', 'run.json')

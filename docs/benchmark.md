@@ -232,7 +232,7 @@ pnpm benchmark:verbose
 ### Method
 
 - The script starts the built CLI with `stacknext dev --quiet` in
-  `apps/example-next-app`. Every measured mode gets a fresh collector and
+  `apps/example`. Every measured mode gets a fresh collector and
   Next.js dev server, and both are stopped before the next run.
 - `NEXT_OTEL_VERBOSE` is set explicitly to `0` or `1` in the parent environment.
   An explicit inherited value wins over `instrumentation.verbose`, so the two

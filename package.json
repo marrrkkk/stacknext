@@ -18,7 +18,7 @@
     "benchmark": "node scripts/benchmark.mjs",
     "benchmark:diagnostics": "node scripts/benchmark-diagnostics.mjs",
     "benchmark:verbose": "node scripts/benchmark-verbose.mjs",
-    "example:dev": "pnpm --filter @stacknext/example-next-app dev",
+    "example:dev": "pnpm --filter @stacknext/example dev",
     "test:packages": "node scripts/validate-packages.mjs",
     "test:consumer": "node scripts/consumer-smoke.mjs",
     "pack:release": "node scripts/pack-release.mjs",

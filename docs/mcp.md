@@ -131,7 +131,7 @@ Every successful response adds a top-level `meta` object:
   "meta": {
     "tool": "list_requests",
     "generatedAt": "2026-11-02T12:00:00.000Z",
-    "project": "tasklight",
+    "project": "stacknext-example",
     "timeRange": {
       "firstEventTime": "2026-11-02T11:55:00.000Z",
       "lastEventTime": "2026-11-02T11:59:59.000Z"
