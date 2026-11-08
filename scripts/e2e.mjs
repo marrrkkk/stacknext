@@ -3,8 +3,8 @@
  * Real end-to-end smoke test for the built StackNext CLI, collector, example
  * app, dashboard API and MCP server. Run `pnpm build` first.
  *
- * If the example app already has a live StackNext runtime, the script reuses it
- * and leaves it running. Otherwise it starts `stacknext dev` and stops it.
+ * Starts a dedicated example runtime with an isolated database and stops it.
+ * Stop any existing example runtime before running this suite.
  */
 import { spawn, spawnSync } from 'node:child_process'
 import { access, readFile, rm } from 'node:fs/promises'
@@ -166,8 +166,7 @@ async function startDev() {
   const existing = await readRuntime()
   if (existing && processAlive(existing.pid)) {
     await fetchJson(`${existing.collectorUrl}/api/ping`, null)
-    console.log(`Reusing running StackNext at ${existing.dashboardUrl}\n`)
-    return existing
+    throw new Error('Stop the running example before e2e so the suite can start its isolated test database.')
   }
   if (existing) await rm(RUNTIME_FILE, { force: true })
 
@@ -177,6 +176,7 @@ async function startDev() {
     env: {
       ...process.env,
       NEXT_TELEMETRY_DISABLED: '1',
+      STACKNEXT_EXAMPLE_DATA_DIR: path.join(APP_DIR, 'data', 'e2e'),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: process.platform !== 'win32',

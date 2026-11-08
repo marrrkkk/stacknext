@@ -113,7 +113,7 @@ function initializeDatabase(client: Database.Database): void {
 }
 
 function createDatabase(): ReturnType<typeof drizzle<typeof schema>> {
-  const dataDir = path.join(process.cwd(), 'data')
+  const dataDir = process.env.STACKNEXT_EXAMPLE_DATA_DIR ?? path.join(process.cwd(), 'data')
   mkdirSync(dataDir, { recursive: true })
   const client = new Database(path.join(dataDir, 'stacknext-demo.db'))
   client.pragma('busy_timeout = 5000')

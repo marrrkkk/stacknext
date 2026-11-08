@@ -75,9 +75,9 @@ export default function ScenariosPage(): React.ReactElement {
                     {route.evidence}
                   </p>
                   <div className="scenario__curl">
-                    <code>curl -s http://127.0.0.1:4402{route.path}</code>
+                    <code>{`curl -s 'http://127.0.0.1:4402${route.path}'`}</code>
                     <CopyButton
-                      value={`curl -s http://127.0.0.1:4402${route.path}`}
+                      value={`curl -s 'http://127.0.0.1:4402${route.path}'`}
                       label="Copy curl"
                       small
                     />

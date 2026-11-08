@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { TRAFFIC_ROUTES } from '@/lib/demo-routes'
+import { EXPECTED_ERROR_IDS, TRAFFIC_ROUTES } from '@/lib/demo-routes'
 import { Icon } from './Icon'
 
 interface RunResult {
@@ -12,8 +12,6 @@ interface RunResult {
   ms: number
   expected: boolean
 }
-
-const EXPECTED_ERROR_IDS = new Set(['error', 'action-failure'])
 
 export function ScenarioRunner({
   dashboardUrl,
@@ -29,33 +27,36 @@ export function ScenarioRunner({
     setError(null)
     setResults([])
     const next: RunResult[] = []
-    for (const route of TRAFFIC_ROUTES) {
-      const started = performance.now()
-      try {
-        const response = await fetch(route.path, { cache: 'no-store' })
-        await response.arrayBuffer()
-        next.push({
-          id: route.id,
-          label: route.title,
-          path: route.path,
-          status: response.status,
-          ms: Math.round(performance.now() - started),
-          expected: response.ok || EXPECTED_ERROR_IDS.has(route.id),
-        })
-      } catch (cause) {
-        next.push({
-          id: route.id,
-          label: route.title,
-          path: route.path,
-          status: null,
-          ms: Math.round(performance.now() - started),
-          expected: false,
-        })
-        setError(cause instanceof Error ? cause.message : String(cause))
+    try {
+      for (const route of TRAFFIC_ROUTES) {
+        const started = performance.now()
+        try {
+          const response = await fetch(route.path, { cache: 'no-store', signal: AbortSignal.timeout(15_000) })
+          await response.arrayBuffer()
+          next.push({
+            id: route.id,
+            label: route.title,
+            path: route.path,
+            status: response.status,
+            ms: Math.round(performance.now() - started),
+            expected: EXPECTED_ERROR_IDS.has(route.id) ? response.status === 500 : response.ok,
+          })
+        } catch (cause) {
+          next.push({
+            id: route.id,
+            label: route.title,
+            path: route.path,
+            status: null,
+            ms: Math.round(performance.now() - started),
+            expected: false,
+          })
+          setError(cause instanceof Error ? cause.message : String(cause))
+        }
+        setResults([...next])
       }
-      setResults([...next])
+    } finally {
+      setRunning(false)
     }
-    setRunning(false)
   }
 
   const completed = results.length

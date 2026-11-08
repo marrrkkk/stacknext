@@ -99,6 +99,7 @@ export function AppShell({
     open: false,
     path: pathname,
   })
+  const sidebarRef = useRef<HTMLElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const navOpen = nav.open && nav.path === pathname
   const openNav = useCallback((): void => {
@@ -111,11 +112,31 @@ export function AppShell({
 
   useEffect(() => {
     if (!navOpen) return
+    const sidebar = sidebarRef.current
+    if (!sidebar) return
+    const focusable = (): HTMLElement[] => Array.from(
+      sidebar.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex="0"]'),
+    ).filter((element) => element.getClientRects().length > 0)
+    const focusFirst = (): void => { (focusable()[0] ?? sidebar).focus() }
+    focusFirst()
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') closeNav()
+      if (event.key !== 'Tab') return
+      const elements = focusable()
+      const first = elements[0] ?? sidebar
+      const last = elements[elements.length - 1] ?? sidebar
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
     window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+    }
   }, [navOpen, closeNav])
 
   const toggleTheme = (): void => {
@@ -139,7 +160,7 @@ export function AppShell({
         Skip to content
       </a>
 
-      <aside className="sidebar" id="app-sidebar">
+      <aside ref={sidebarRef} tabIndex={-1} className="sidebar" id="app-sidebar">
         <div className="sidebar__brand">
           <Link className="brand" href="/" aria-label="StackNext example overview">
             <span className="brand__mark">

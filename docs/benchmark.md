@@ -251,10 +251,16 @@ pnpm benchmark:verbose
 - The script reads `/api/health` and `/api/coverage` and fails if the effective
   verbose state does not match the requested mode.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:aa6c68a2a4f38ac23ebbed6904022b2348161c07b7b4b7d1cacbe82753feb33a -->
+
 ### Results
 
-Measured 2026-11-02 on the environment above, with no other build or test
-workload running:
+Historical measurements of the former `apps/example-next-app`, taken 2026-11-02
+on the environment above with no other build or test workload running. These
+results do not measure the rebuilt `apps/example`; the method above describes
+how to rerun against the current app:
 
 | Mode | Endpoint | p50 | p95 | max |
 | --- | --- | ---: | ---: | ---: |
@@ -298,3 +304,6 @@ verbose tracing produced about **2.3×** as many spans per measured request
   span volume, not just request latency.
 - **No production claim.** Verbose tracing is a local debugging tool. Measure
   your own app if you need a capacity estimate.
+
+
+<!-- /coderabbit-ai-generated:v1 -->

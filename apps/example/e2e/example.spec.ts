@@ -1,3 +1,4 @@
+import { EXPECTED_ERROR_IDS, TRAFFIC_ROUTES } from '../lib/demo-routes'
 import { stackNextFixtures } from '@stacknext/playwright'
 
 const { test, expect } = stackNextFixtures()
@@ -8,6 +9,11 @@ const { test, expect } = stackNextFixtures()
  * file does not change the scenario id.
  */
 test.describe('Example runtime scenarios', () => {
+  test.beforeEach(async ({ request }) => {
+    // Restore the seeded fixture in the dedicated test runtime before each sample.
+    const response = await request.post('/api/seed')
+    expect(response.ok()).toBe(true)
+  })
   test(
     'renders the example overview',
     { annotation: { type: 'stacknext.scenario', description: 'example.overview' } },
@@ -20,7 +26,15 @@ test.describe('Example runtime scenarios', () => {
       await expect(page.getByRole('link', { name: 'Open StackNext' })).toBeVisible()
 
       await page.goto('/scenarios')
+      const responses = TRAFFIC_ROUTES.map((route) => page.waitForResponse(
+        (response) => response.url() === new URL(route.path, page.url()).href
+          && response.request().method() === route.method,
+      ))
       await page.getByRole('button', { name: 'Generate demo traffic' }).click()
+      for (const [index, response] of (await Promise.all(responses)).entries()) {
+        const route = TRAFFIC_ROUTES[index]!
+        expect(response.status(), route.path).toBe(EXPECTED_ERROR_IDS.has(route.id) ? 500 : 200)
+      }
       await expect(page.getByText('10/10 requests completed')).toBeVisible({ timeout: 30_000 })
     },
   )

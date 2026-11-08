@@ -193,3 +193,5 @@ export const DEMO_GROUPS: DemoGroup[] = [
 export const TRAFFIC_ROUTES: DemoRoute[] = DEMO_GROUPS.flatMap((group) =>
   group.routes.filter((route) => route.inTrafficRun),
 )
+
+export const EXPECTED_ERROR_IDS = new Set(['error', 'action-failure'])

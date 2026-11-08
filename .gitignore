@@ -9,6 +9,8 @@ coverage/
 .DS_Store
 .env
 .env.local
+apps/example-next-app/data/
+apps/example-next-app/next-env.d.ts
 apps/example/data/
 apps/example/next-env.d.ts
 docs/screenshots/*.tmp.png
