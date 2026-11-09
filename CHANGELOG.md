@@ -6,6 +6,14 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Added opt-in `stacknext init --agents`, which creates or updates only the
+  managed StackNext block in `AGENTS.md`. It lists the package documentation
+  that resolves from the project, preserves user content and CRLF line endings,
+  is idempotent, and refuses duplicate or partial marker blocks. Default
+  `stacknext init` behavior is unchanged.
+
 ## [0.8.0] - 2026-11-08
 
 ## [0.7.0] - 2026-11-07
