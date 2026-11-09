@@ -1,6 +1,6 @@
 {
   "name": "@stacknext/playwright",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Playwright fixtures that correlate browser scenarios with StackNext server telemetry",
   "license": "MIT",
   "type": "module",
