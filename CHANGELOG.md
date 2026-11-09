@@ -6,6 +6,8 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-09
+
 ### Added
 
 - Added opt-in `stacknext init --agents`, which creates or updates only the
