@@ -16,10 +16,6 @@ not require an account, a hosted service or an AI provider.
 
 Install inside the application directory, not in a parent folder.
 
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:c14ade822c43d4992d67016d56e2afa0c3005c359c22f5b2e42617ee842785d9 -->
-
 ## Install the CLI and instrumentation package
 
 npm:
@@ -63,8 +59,6 @@ Add these only when you use the integration:
 | `@stacknext/drizzle` | Drizzle query logger. `drizzle-orm` is an optional peer. |
 | `@stacknext/prisma` | Prisma query event adapter. `@prisma/client` is an optional peer. |
 | `@stacknext/playwright` | Playwright fixtures for runtime regression capture. `@playwright/test` is an optional peer. |
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 ## Initialize the project
 
@@ -219,10 +213,6 @@ Upgrading packages does not delete `.stacknext/runs`, `.stacknext/baselines` or
 `.stacknext/comparisons`. Those records are versioned and kept until you remove
 them explicitly.
 
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:82fb71c9458733fc915b275d8996b2b8c28470ccdf23b330cc9b75fb72bb092f -->
-
 ## Workspaces and monorepos
 
 Install StackNext in the Next.js application package, not at the workspace root,
@@ -235,8 +225,6 @@ pnpm --filter ./apps/my-app add -D @stacknext/cli
 pnpm --filter ./apps/my-app exec stacknext init
 pnpm --filter ./apps/my-app exec stacknext dev
 ```
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 ## Removing StackNext
 

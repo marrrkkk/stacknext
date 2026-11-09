@@ -7,10 +7,6 @@ StackNext is designed for agents that need runtime evidence before changing
 code, and for agents that must use the APIs of the installed version rather than
 the latest documentation on the internet.
 
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:0a4fd72927beac821721efa54ee9c7b12459ac74a97fbeef8e05954aaa4fec90 -->
-
 ## The four pieces
 
 | Piece | What it gives the agent | Where it lives |
@@ -23,8 +19,6 @@ the latest documentation on the internet.
 The pieces are intentionally separate. Package docs contain technical
 reference; the skill contains procedures; the MCP server contains runtime data;
 `AGENTS.md` carries the short project-level rules.
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 ## The evidence contract
 

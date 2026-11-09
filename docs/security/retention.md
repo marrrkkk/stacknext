@@ -20,10 +20,6 @@ counts.
 The store is reset when the collector process exits. Use an explicit snapshot
 if you need evidence after a restart.
 
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:6b6f0561488e38ef461b5990773e6f66db72d178ad88448bdfcb9d4ff71ea956 -->
-
 ## Regression records
 
 Runs, baselines and comparisons are local files under
@@ -33,8 +29,6 @@ To remove an individual run or comparison, delete its corresponding JSON file in
 `.stacknext/runs` or `.stacknext/comparisons`; there are no CLI removal commands
 for those records. Never overwrite without an explicit request. Each record is
 capped at 16 MiB.
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 ## Snapshots
 

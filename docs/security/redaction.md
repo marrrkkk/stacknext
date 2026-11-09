@@ -11,10 +11,6 @@ StackNext redacts twice:
 A field that bypasses either layer is a bug. Captured records are re-sanitized
 when written and snapshots are re-normalized and re-redacted on import.
 
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:c7ab46ceaafff2f930507173fdb27865ff8a1018ad7a2a38ebe476f79a8dad0d -->
-
 ## Rules
 
 | Data | Treatment |
@@ -26,8 +22,6 @@ when written and snapshots are re-normalized and re-redacted on import.
 | Resource attributes | Allowlist only |
 | Headers, bodies, cookies | Never captured; privacy flags must remain `false` |
 | Span attributes | Sanitized with the same rules before export |
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 ## Sensitive keys
 

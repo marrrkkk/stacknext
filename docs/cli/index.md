@@ -13,10 +13,6 @@ process you start directly. The binary:
 - writes and reads regression and snapshot records;
 - launches the read-only MCP server.
 
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:f5775710951899d483360c1c62fdcb53e464118942edf88edf3bdf372050082b -->
-
 ## Install
 
 ```bash
@@ -30,8 +26,6 @@ pnpm exec stacknext dev
 exists, follow [existing instrumentation](../getting-started/first-app#existing-instrumentation)
 to configure span reporting. `init --agents` adds managed project instructions for AI
 agents.
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 ## Command groups
 

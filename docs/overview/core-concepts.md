@@ -3,10 +3,6 @@ title: Core concepts
 description: The sample, traces, coverage, diagnostics, snapshots and regression records that StackNext exposes.
 ---
 
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:f991bd381c025d0188f0e951e58adfb0d635a56cec2d5c178b14b8bf29869950 -->
-
 ## Sample and retention
 
 A **sample** is the telemetry currently held in the collector's in-memory store.
@@ -15,8 +11,6 @@ capacities derived from that setting; each type can hold up to its own capacity.
 `collector.retentionMs` bounds retention (10 minutes by default). When capacity or retention removes data, the store records drops.
 Every count and finding describes this sample, not all activity since the app
 started. See [configuration](../packages/core/configuration).
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 ## Requests, traces and spans
 

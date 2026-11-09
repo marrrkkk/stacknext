@@ -7,10 +7,6 @@ StackNext links Playwright scenarios to the server traces they produced, saves
 verified samples as local records and compares a later run against a baseline.
 It is report-only unless `--fail-on` is used.
 
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:a77bfa337901f7fdd7def7b125f917412ac3e47f1efe7fbf8da10fa813de499a -->
-
 ## Prerequisites
 
 - A working StackNext collector and instrumented app.
@@ -22,8 +18,6 @@ It is report-only unless `--fail-on` is used.
 - One Playwright worker for captured runs. Parallel correlation is not verified.
 - At least three samples for a meaningful comparison, and warm `/`, `/projects/1`
   and `/api/n-plus-one` before capturing a baseline in the example app.
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 ## Capture, save, compare
 

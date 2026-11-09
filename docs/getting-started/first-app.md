@@ -29,10 +29,6 @@ export async function onRequestError(
 The generated types are narrower than this sketch; use the file that `init`
 writes rather than retyping it.
 
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:f4ace9c5e6a09e09f05a29a92bb9ec0c9fce66976833c8669d09bec7f34d1a22 -->
-
 ### Existing instrumentation
 
 `init` never overwrites an existing `instrumentation.ts`. Add the imports and
@@ -71,13 +67,7 @@ export async function onRequestError(
 instead of replacing it. If another provider is active, StackNext may have no
 exporter to attach to; `stacknext doctor` reports what it can observe.
 
-<!-- /coderabbit-ai-generated:v1 -->
-
 ## Database adapters
-
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:a9b0471a4089f8ac81dec02b395e5dccdf23a79677b48a7528c7f1096ade316c -->
 
 ### Drizzle
 
@@ -98,12 +88,6 @@ export const db = drizzle(client, {
 
 Bind parameters are counted but never sent. Drizzle's logger does not expose
 duration, so queries have `durationMs: null`.
-
-<!-- /coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:33f369173e8e5d1ae9ef24ba9027a8651597d1de6abb4a1217de8e843090f872 -->
 
 ### Prisma
 
@@ -129,8 +113,6 @@ const stop = instrumentPrismaClient(prisma, {
 Call `stop()` during graceful shutdown. SQL text is redacted and `params` are
 never read. Registration is idempotent for the same client.
 
-<!-- /coderabbit-ai-generated:v1 -->
-
 ## Custom spans and actions
 
 ```ts
@@ -143,10 +125,6 @@ const digest = withStackNextSpanSync('auth.hash', () => hash(input))
 Wrap an exported action body with `withStackNextAction`. Successful Server
 Actions are not inferred automatically; without the wrapper only failures that
 reach Next.js's error hook appear. See [Server Actions](../server-actions).
-
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:ba118722ea61aaf54d02552fa47fe95d18c8049bd3776663e3249723714c711c -->
 
 ## Verify
 
@@ -164,5 +142,3 @@ pnpm exec stacknext coverage
 If the app runs but no data appears, read
 [troubleshooting](../troubleshooting). StackNext supports Next.js 15/16 App
 Router on the Node.js runtime only.
-
-<!-- /coderabbit-ai-generated:v1 -->

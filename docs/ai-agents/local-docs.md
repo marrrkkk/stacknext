@@ -3,16 +3,10 @@ title: Local documentation
 description: Find and use the version-matched Markdown documentation shipped inside installed StackNext packages.
 ---
 
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:4a6d69048067b9c0fa22c54e26d073bd43511c7c8c73c2f7826db6c4df37e571 -->
-
 StackNext releases that bundle package documentation include a `docs/`
 directory in each documented package's npm archive. These docs sit next to the
 installed implementation and describe the same version. Earlier releases may
 not include bundled docs.
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 ## Entry point
 
@@ -48,10 +42,6 @@ appear at the app-root `node_modules` path; use its relative path in
 Before reading a path, check that it exists. Do not tell an agent to read a
 package that the project does not use.
 
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:03fdd3a4951676d14a0f51098c732c30c57de13b5fa40a67542803ac0d977afa -->
-
 ## Confirm the version
 
 The package's `package.json` is the source of truth:
@@ -69,8 +59,6 @@ is the primary version safeguard. If your release has no bundled docs, use the
 for example [v0.6.1 documentation](https://github.com/marrrkkk/stacknext/tree/v0.6.1/docs).
 The [release procedure](../releasing) defines these version tags. Verify the tag
 against the installed package version; the website reflects the current checkout.
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 ## Prefer local docs over this site
 

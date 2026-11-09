@@ -285,10 +285,6 @@ role of each record is visible before opening it. The dashboard reads the same
 disk-backed records through the collector's loopback APIs. It does not compute
 a second comparison.
 
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:ab1d2d02f6d660fd414299a3ba9785a9ac88f580376962848b40c242939951ec -->
-
 ## MCP
 
 The six read-only regression tools keep the same output and metadata contract as
@@ -302,8 +298,6 @@ They accept bounded pagination or a validated id, and they return evidence with
 warnings and limitations. They cannot capture, save, compare, delete or mutate
 anything. See [MCP server](mcp.md) and the
 [Agent Skill](ai-agents/skill).
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 ## Privacy
 

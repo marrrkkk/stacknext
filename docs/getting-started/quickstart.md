@@ -3,10 +3,6 @@ title: Quickstart
 description: Install StackNext, start the collector and inspect your first request.
 ---
 
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:0ecf66edd64d774f513fa8530ae4ea3c38396e393e08f0c3219cae0f6920c1b5 -->
-
 ## 1. Install
 
 Inside the Next.js app project:
@@ -19,10 +15,8 @@ pnpm exec stacknext init
 
 `init` creates `stacknext.config.json` and an `instrumentation.ts` or
 `instrumentation.js` file when they do not exist. It never overwrites an
-existing instrumentation file. See [installation](https://github.com/marrrkkk/stacknext/blob/main/docs/installation.md) for the
+existing instrumentation file. See [installation](../installation) for the
 manual patch and monorepo details.
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 ## 2. Optional: install project agent instructions
 
