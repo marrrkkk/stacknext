@@ -1,21 +1,35 @@
-<!-- coderabbit-ai-generated:v1 -->
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/png/app-icon-dark-256.png">
+    <source media="(prefers-color-scheme: light)" srcset="brand/png/app-icon-light-256.png">
+    <img src="brand/png/app-icon-light-256.png" width="112" height="112" alt="StackNext app icon">
+  </picture>
+</p>
 
-<!-- coderabbit-ai-generated-section:v1:d4a210ca7a233e80973450de4a1f94be495d53c9a019e281a8e9e023d2f8d144 -->
+<h1 align="center">StackNext</h1>
 
-# StackNext
+<p align="center"><strong>Local-first runtime inspection for Next.js App Router applications.</strong></p>
 
-**Local-first runtime inspection for Next.js App Router applications.**
+<p align="center">
+  <a href="https://www.npmjs.com/package/@stacknext/cli"><img alt="npm version" src="https://img.shields.io/npm/v/@stacknext/cli?color=111111"></a>
+  <img alt="Next.js 15 and 16" src="https://img.shields.io/badge/Next.js-15%20%7C%2016-111111">
+  <img alt="Node.js 20.9 or newer" src="https://img.shields.io/badge/Node.js-20.9%2B-111111">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-111111"></a>
+</p>
 
 StackNext is a free, MIT-licensed debugging center for Next.js. It collects
 OpenTelemetry spans from your dev server, adds Drizzle/Prisma query events and
 server errors, and shows them in a local dashboard, CLI and read-only MCP
 server. It also derives deterministic diagnostic findings, compares
-Playwright-linked runtime captures against saved baselines, and can freeze the
+Playwright-linked runtime captures against saved baselines, and freezes the
 current sample into redacted snapshots that outlive the live retention window.
-There is no cloud account, no hosted backend, no AI API client and no telemetry
-upload.
+There is no cloud account, hosted backend, AI API client or telemetry upload.
 
-![StackNext overview](docs/screenshots/overview.png)
+**Start here:** [Quick start](#quick-start) · [Installation](docs/installation.md) · [CLI commands](docs/getting-started.md#commands) · [MCP server](docs/mcp.md) · [Privacy](docs/privacy.md)
+
+![StackNext dashboard in dark mode](docs/screenshots/overview-dark.png)
+
+<p align="center"><sub>Local telemetry, deterministic findings and saved evidence — no hosted backend.</sub></p>
 
 ## Quick start
 
@@ -66,10 +80,6 @@ Node 24 is pinned in `.nvmrc`; `.devcontainer/` provides the same toolchain and
 Playwright browsers for VS Code Dev Containers and the Dev Containers CLI. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the full development setup, including
 Playwright browser dependencies on Linux and the Codespaces limitation.
-
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:c5da945860e3f7c90451accada409e057ad94ef220c8ae77a0360a863f03c1cb -->
 
 ### Recover data from the former example
 
@@ -124,8 +134,8 @@ and requires any existing example runtime to be stopped first.
 
 Then visit the demo routes listed below.
 
-<!-- /coderabbit-ai-generated:v1 --> This path is for contributors; the
-package quick start above is the normal user path.
+This path is for contributors; the package quick start above is the normal user
+path.
 
 ## Why it exists
 
@@ -182,7 +192,7 @@ the request, waterfall, database queries and errors on your machine.
 - Next.js **15 or 16** with the **App Router**, on the **Node.js runtime**.
 - Playwright **1.40+** only if you use runtime regression testing.
 
-> 0.6 is the first public package release. All ten packages are published under
+> 0.8.0 is the current package release. All ten packages are published under
 > `@stacknext/cli` and `@stacknext/*`; the dashboard and regression packages are
 > installed automatically as CLI dependencies. Next.js runtime verification in
 > this repository used **Next.js 16.4.3** and **15.5.28**.
@@ -221,20 +231,9 @@ pnpm exec stacknext diagnose --json
 
 ## Dashboard
 
-| Trace detail | Database |
+| Trace detail | Database queries |
 | --- | --- |
-| ![Trace detail](docs/screenshots/request-detail.png) | ![Database queries](docs/screenshots/database.png) |
-
-More captures: [dark overview](docs/screenshots/overview-dark.png),
-[traces](docs/screenshots/traces.png),
-[errors](docs/screenshots/errors.png),
-[error detail](docs/screenshots/error-detail.png),
-[settings](docs/screenshots/settings.png),
-[command menu](docs/screenshots/command-menu.png),
-[collapsed sidebar](docs/screenshots/sidebar-collapsed.png),
-[1920 overview](docs/screenshots/overview-1920.png),
-[1024 overview](docs/screenshots/overview-1024.png),
-[mobile overview](docs/screenshots/overview-mobile.png).
+| ![Trace detail in dark mode](docs/screenshots/request-detail-dark.png) | ![Database queries in dark mode](docs/screenshots/database-dark.png) |
 
 Routes: `/`, `/traces` (`?view=requests` for the HTTP-request view),
 `/traces/:traceId`, `/database`, `/errors`, `/errors/:errorId`, `/diagnostics`,
@@ -627,6 +626,3 @@ verification workflow.
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
-
-<!-- /coderabbit-ai-generated:v1 -->
