@@ -1,4 +1,7 @@
-# Comparison methodology
+---
+title: Comparison methodology
+description: How StackNext matches scenarios and classifies comparisons with medians and thresholds.
+---
 
 A StackNext comparison is a deterministic classification of a saved baseline
 and a candidate capture run. It uses stable keys, medians over verified samples

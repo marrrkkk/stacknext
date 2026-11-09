@@ -1,4 +1,7 @@
-# MCP server
+---
+title: MCP server
+description: Use the read-only stdio MCP server, its twenty tools and five prompts.
+---
 
 StackNext exposes collected telemetry and saved regression records to AI coding
 clients through a **read-only** Model Context Protocol server over stdio. It
@@ -148,8 +151,8 @@ Every successful response adds a top-level `meta` object:
       "instrumentation": "connected",
       "instances": 1,
       "lastSeen": "2026-11-02T11:59:59.000Z",
-      "sdkVersion": "0.6.1",
-      "collectorVersion": "0.6.1"
+      "sdkVersion": "<installed-version>",
+      "collectorVersion": "<installed-version>"
     },
     "completeness": { "complete": true, "reasons": [] },
     "notes": []
@@ -352,7 +355,7 @@ add capabilities or execute tools on their own.
 ## Agent Skill
 
 The portable skill at
-[`skills/stacknext-debugging`](../skills/stacknext-debugging/SKILL.md) teaches
+[`skills/stacknext-debugging`](ai-agents/skill.md) teaches
 evidence-first workflows for runtime errors, slow requests, database activity,
 general investigation, diagnostic findings, runtime regression evidence and
 saved snapshot evidence. It also carries mandatory reasoning rules for

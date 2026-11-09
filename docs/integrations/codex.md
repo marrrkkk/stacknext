@@ -1,4 +1,7 @@
-# Codex setup
+---
+title: Codex setup
+description: Configure StackNext MCP and repository skills in Codex.
+---
 
 Codex CLI can load stdio MCP servers from `config.toml` and repository skills
 from `.agents/skills/`. Codex also reads the MCP server's `instructions` during

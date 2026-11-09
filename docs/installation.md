@@ -1,4 +1,7 @@
-# Installation
+---
+title: Installation
+description: Install StackNext in a Next.js App Router project and verify the collector.
+---
 
 StackNext is installed into the Next.js application you want to inspect. It does
 not require an account, a hosted service or an AI provider.
@@ -199,7 +202,7 @@ Query text is redacted and `params` are never read.
 3. Run `stacknext init` again. It preserves user-owned files and validates the
    existing config.
 4. Run `stacknext doctor`, then `stacknext dev`.
-5. Review the [changelog](../CHANGELOG.md) for behavior changes.
+5. Review the [changelog](https://github.com/marrrkkk/stacknext/blob/main/CHANGELOG.md) for behavior changes.
 
 Upgrading packages does not delete `.stacknext/runs`, `.stacknext/baselines` or
 `.stacknext/comparisons`. Those records are versioned and kept until you remove

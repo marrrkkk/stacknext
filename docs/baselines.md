@@ -1,4 +1,7 @@
-# Baselines
+---
+title: Baselines
+description: Baseline format, immutable storage and lifecycle.
+---
 
 A baseline is an immutable snapshot of a completed capture run. It records the
 scenario identities, verified samples, redacted telemetry, environment facts and

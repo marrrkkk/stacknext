@@ -1,4 +1,7 @@
-# Server Actions
+---
+title: Server Actions
+description: Record Server Action work explicitly with withStackNextAction.
+---
 
 Next.js Server Actions are POST requests that run an exported `'use server'`
 function. StackNext can record them explicitly with `withStackNextAction()`,

@@ -1,4 +1,7 @@
-# Claude Code setup
+---
+title: Claude Code setup
+description: Configure StackNext MCP and the Agent Skill in Claude Code.
+---
 
 Claude Code can load stdio MCP servers from project or user scope and discovers
 project skills in `.claude/skills/`.

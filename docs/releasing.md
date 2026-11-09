@@ -1,4 +1,7 @@
-# Releasing StackNext
+---
+title: Releasing StackNext
+description: Versioning, archive validation, trusted publishing and rollback.
+---
 
 Releases are automated from Conventional Commit titles. Each push to `main`
 plans the next version; releasable commits open or refresh one
@@ -477,7 +480,7 @@ document breaking changes in the changelog and migration notes.
   the dependency range resolves.
 - Wrong dist-tag: move the tag with `npm dist-tag add <package>@<version> latest`
   and verify with `npm view <package> dist-tags`.
-- Security issue: follow [SECURITY.md](../SECURITY.md), publish a patched
+- Security issue: follow [SECURITY.md](https://github.com/marrrkkk/stacknext/blob/main/SECURITY.md), publish a patched
   version, and deprecate affected versions with a clear upgrade instruction.
 
 Never delete `.stacknext` records or rewrite a published package to hide a

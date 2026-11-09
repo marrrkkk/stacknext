@@ -1,4 +1,7 @@
-# Instrumentation coverage
+---
+title: Instrumentation coverage
+description: Read evidence-based coverage statuses without turning them into a score.
+---
 
 StackNext can tell you what it actually observed in the current telemetry
 sample, not just whether the collector is running. Coverage answers questions

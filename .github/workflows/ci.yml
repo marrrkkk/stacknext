@@ -53,6 +53,8 @@ jobs:
     name: Documentation
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    env:
+      MINTLIFY_CLI_VERSION: 4.2.1165
     steps:
       - uses: actions/checkout@v4
 
@@ -70,6 +72,14 @@ jobs:
 
       - name: Repository documentation checks
         run: pnpm check:docs
+
+      - name: Validate Mintlify site
+        working-directory: docs
+        run: npx --yes mint@$MINTLIFY_CLI_VERSION validate --no-build --format json
+
+      - name: Check Mintlify links
+        working-directory: docs
+        run: npx --yes mint@$MINTLIFY_CLI_VERSION broken-links
 
   package-archives:
     name: Package archives

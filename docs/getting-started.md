@@ -1,3 +1,8 @@
+---
+title: Full setup guide
+description: Configuration, dashboard routes, adapters, commands, custom spans and troubleshooting in one reference.
+---
+
 # Getting started
 
 StackNext is a local debugging center for Next.js App Router applications. It
@@ -38,15 +43,10 @@ pnpm exec stacknext dev --open
 - `http://127.0.0.1:4402/api/repeated-fetch` — three uncached fetches
 
 The example app seeds `apps/example/data/stacknext-demo.db` on first use.
-<!-- coderabbit-ai-generated:v1 -->
-
-<!-- coderabbit-ai-generated-section:v1:9cbc9ed3d46a6a823b388027018de2083e2fc818595f2a32435e12db1e7577fc -->
 
 To start over by deleting that directory, stop the app first, delete the directory,
 then restart the app. Alternatively, use `POST /api/seed` while the app is running
 to reset the demo data without restarting.
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 Check what the current sample actually observed:
 
@@ -129,6 +129,11 @@ pnpm exec stacknext dev
 4. Detects Drizzle and Prisma and prints the adapter snippets.
 5. Prints the exact install command when `@stacknext/next` is missing. Pass
    `--install` to run it automatically.
+6. Adds or updates managed AI-agent instructions in `AGENTS.md` only when
+   `--agents` is passed. `--skip-agents` explicitly skips them.
+
+See [agent setup](cli/agent-setup.md) and
+[AGENTS.md integration](ai-agents/agents-md.md).
 
 ### Existing instrumentation is never replaced
 
@@ -320,7 +325,7 @@ attributes.
 ## Commands
 
 ```bash
-stacknext init [--install]
+stacknext init [--install] [--agents | --skip-agents]
 stacknext dev [--open] [--quiet] [--token <token>] [nextArgs...]
 stacknext status [--json]
 stacknext doctor [--json]
@@ -398,7 +403,7 @@ Start `stacknext dev`, then configure the MCP server for your client:
 - [Claude Code](integrations/claude-code.md)
 
 The portable skill at
-[`skills/stacknext-debugging`](../skills/stacknext-debugging/SKILL.md) adds
+[`skills/stacknext-debugging`](ai-agents/skill.md) adds
 evidence-first workflows for runtime errors, slow requests, database activity,
 traces, diagnostic findings and runtime regression evidence. It ships inside
 `@stacknext/cli`:

@@ -1,4 +1,7 @@
-# Custom instrumentation
+---
+title: Custom instrumentation
+description: Add application spans with withStackNextSpan and withStackNextSpanSync.
+---
 
 Next.js emits request, route and render spans, but it does not know which part
 of your application is slow or important. `@stacknext/next` provides two helpers
