@@ -61,7 +61,10 @@ if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
 if (!/^[A-Za-z][0-9A-Za-z._-]*$/.test(tag)) {
   throw new Error(`Invalid npm dist-tag "${tag}"`)
 }
-const registryWaitMs = Number(process.env.STACKNEXT_REGISTRY_WAIT_MS ?? 120_000)
+// npm registry replicas can serve stale 404s for several minutes after a
+// successful publish. Five minutes covers the observed propagation window
+// without hiding a genuinely missing package.
+const registryWaitMs = Number(process.env.STACKNEXT_REGISTRY_WAIT_MS ?? 300_000)
 if (!Number.isFinite(registryWaitMs) || registryWaitMs < 0) {
   throw new Error('STACKNEXT_REGISTRY_WAIT_MS must be a non-negative number')
 }
