@@ -45,25 +45,32 @@ Before the first release:
 1. Create the repository and push `main`. Do not publish from a fork.
 2. Enable GitHub Discussions and private vulnerability reporting.
 3. Protect `main`: require pull requests, the CI workflow, and a linear history.
-   Do not allow force pushes. Release PRs need `RELEASE_PR_TOKEN` (step 7) for
-   normal CI, because pull requests opened with `GITHUB_TOKEN` do not trigger
-   workflows.
+   Do not allow force pushes. Release PRs need a trusted token (step 7) for
+   normal CI, because pull requests opened with `GITHUB_TOKEN` do not run the
+   `pull_request` workflows.
 4. Create an `npm` environment under **Settings → Environments** with required
    reviewers and a deployment branch rule limited to `main`.
 5. Leave repository Actions permissions at read-only by default. The release
    workflows request `contents: write`, `pull-requests: write`, `actions: write`
    or `id-token: write` explicitly in the jobs that need them.
 6. Under **Settings → Actions → General**, enable **Allow GitHub Actions to
-   create and approve pull requests** so the release PR can be opened with the
-   repository token. Opening the PR does not require a personal access token.
-7. Recommended for gated release PRs: add a `RELEASE_PR_TOKEN` repository
-   secret. Use a fine-grained personal access token limited to this repository
-   with **Contents: read and write** and **Pull requests: read and write**.
-   Release PRs created with `GITHUB_TOKEN` do not start `pull_request`
-   workflows, so required checks cannot attach to them. With this secret the
-   workflow pushes and opens the PR as the token owner, and normal CI runs. Do
-   not grant workflow, npm or organization permissions.
-8. Confirm that `SECURITY.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md` and
+   create and approve pull requests**. This is only needed for the
+   `GITHUB_TOKEN` fallback; the release App opens its own pull requests.
+7. Recommended: create a GitHub App for release PRs and install it on this
+   repository. Grant **Contents: read and write**, **Pull requests: read and
+   write** and **Metadata: read-only**. Store the App ID as `RELEASE_APP_ID`
+   and the private key as `RELEASE_APP_PRIVATE_KEY`. The Release PR workflow
+   exchanges them for a short-lived installation token, so the push and pull
+   request events are trusted and CI runs automatically.
+   As an alternative, use a fine-grained personal access token stored as
+   `RELEASE_PR_TOKEN` with the same **Contents** and **Pull requests**
+   permissions. The App takes precedence when both are configured. Do not grant
+   workflow, npm or organization permissions.
+8. Enable **Allow auto-merge** under **Settings → General → Pull requests** so
+   the Release PR workflow can queue the release PR to merge after required
+   checks pass. Set the `RELEASE_PR_AUTO_MERGE` repository variable to `false`
+   to keep release PRs manual.
+9. Confirm that `SECURITY.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md` and
    `.github/ISSUE_TEMPLATE/config.yml` use the real repository and contact
    links.
 
@@ -187,8 +194,9 @@ Verify the publisher configuration on each package page and with
 5. Pushes `release/vX.Y.Z`, opens or refreshes the `chore: release X.Y.Z`
    pull request, and closes any older bot release PR that the new plan
    supersedes.
-6. Starts normal CI through the `push` and `pull_request` events when
-   `RELEASE_PR_TOKEN` is configured.
+6. Starts normal CI through the `push` and `pull_request` events with the
+   release App token or `RELEASE_PR_TOKEN`, then queues the PR for auto-merge
+   when `RELEASE_PR_AUTO_MERGE` is not `false`.
 
 Only one release PR is open at a time. Later pushes refresh it. When the PR
 merges, `release.yml` publishes and tags that exact version. If the repository
@@ -206,13 +214,15 @@ release branch.
 
 GitHub does not run `pull_request` workflows for pull requests created with the
 repository's `GITHUB_TOKEN`, and checks from a `workflow_dispatch` run do not
-satisfy branch protection. Configure the `RELEASE_PR_TOKEN` secret as described
-in [One-time repository setup](#one-time-repository-setup) so the generated
-branch and PR are written with a fine-grained token and normal CI runs.
+satisfy branch protection. Configure the release App
+(`RELEASE_APP_ID`/`RELEASE_APP_PRIVATE_KEY`) or the `RELEASE_PR_TOKEN` secret
+as described in [One-time repository setup](#one-time-repository-setup) so the
+generated branch and PR are written with a trusted token and normal CI runs.
 
-Without the secret the PR is still opened, but required checks remain pending
-and it must be merged with the administrator bypass. The Release workflow still
-runs every gate before publishing, so the npm publication is gated either way.
+Without a trusted token the PR is still opened, but required checks remain
+pending and it must be merged with the administrator bypass. The Release
+workflow still runs every gate before publishing, so the npm publication is
+gated either way.
 
 ### Bump rules
 
