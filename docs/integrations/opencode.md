@@ -1,4 +1,7 @@
-# OpenCode setup
+---
+title: OpenCode setup
+description: Configure StackNext MCP and the Agent Skill in OpenCode.
+---
 
 OpenCode can load local MCP servers and Agent Skills. This guide uses
 project-level configuration so the setup is reviewable and does not change the

@@ -1,4 +1,7 @@
-# Runtime regression testing
+---
+title: Runtime regression testing
+description: Capture Playwright runs, save baselines and compare deterministic evidence.
+---
 
 StackNext 0.6 includes a local regression loop on top of the existing telemetry
 sample. Playwright tests exercise the App Router; the optional StackNext
@@ -294,7 +297,7 @@ the existing tools:
 They accept bounded pagination or a validated id, and they return evidence with
 warnings and limitations. They cannot capture, save, compare, delete or mutate
 anything. See [MCP server](mcp.md) and the
-[Agent Skill](../skills/stacknext-debugging/SKILL.md).
+[Agent Skill](ai-agents/skill).
 
 ## Privacy
 

@@ -1,3 +1,8 @@
+---
+title: "ADR 0001: native-only runtime"
+description: Why StackNext runs as a native Node.js process instead of a managed container.
+---
+
 # ADR 0001: Native-only runtime
 
 - Status: Accepted

@@ -1,4 +1,7 @@
-# Installation
+---
+title: Installation
+description: Install StackNext in a Next.js App Router project and verify the collector.
+---
 
 StackNext is installed into the Next.js application you want to inspect. It does
 not require an account, a hosted service or an AI provider.
@@ -18,29 +21,34 @@ Install inside the application directory, not in a parent folder.
 npm:
 
 ```bash
-npm install --save-dev @stacknext/cli @stacknext/next
+npm install @stacknext/next
+npm install --save-dev @stacknext/cli
 ```
 
 pnpm:
 
 ```bash
-pnpm add -D @stacknext/cli @stacknext/next
+pnpm add @stacknext/next
+pnpm add -D @stacknext/cli
 ```
 
 yarn:
 
 ```bash
-yarn add -D @stacknext/cli @stacknext/next
+yarn add @stacknext/next
+yarn add -D @stacknext/cli
 ```
 
 bun:
 
 ```bash
-bun add -d @stacknext/cli @stacknext/next
+bun add @stacknext/next
+bun add -d @stacknext/cli
 ```
 
 `@stacknext/cli` contains the CLI, collector and dashboard. `@stacknext/next` is the
-instrumentation and OpenTelemetry exporter loaded by your app. The collector,
+instrumentation and OpenTelemetry exporter loaded by your app, so install it as a
+production dependency. Keep the CLI as a development dependency. The collector,
 dashboard, diagnostics, regression and MCP packages are installed automatically
 as dependencies of the CLI.
 
@@ -199,7 +207,7 @@ Query text is redacted and `params` are never read.
 3. Run `stacknext init` again. It preserves user-owned files and validates the
    existing config.
 4. Run `stacknext doctor`, then `stacknext dev`.
-5. Review the [changelog](../CHANGELOG.md) for behavior changes.
+5. Review the [changelog](https://github.com/marrrkkk/stacknext/blob/main/CHANGELOG.md) for behavior changes.
 
 Upgrading packages does not delete `.stacknext/runs`, `.stacknext/baselines` or
 `.stacknext/comparisons`. Those records are versioned and kept until you remove
@@ -212,7 +220,8 @@ so the CLI can find that app's `package.json`, `dev` script and Next.js version.
 In a pnpm workspace:
 
 ```bash
-pnpm --filter ./apps/my-app add -D @stacknext/cli @stacknext/next
+pnpm --filter ./apps/my-app add @stacknext/next
+pnpm --filter ./apps/my-app add -D @stacknext/cli
 pnpm --filter ./apps/my-app exec stacknext init
 pnpm --filter ./apps/my-app exec stacknext dev
 ```

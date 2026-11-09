@@ -1,4 +1,7 @@
-# Compatibility
+---
+title: Compatibility
+description: Tested Node.js, Next.js, package manager and client combinations.
+---
 
 StackNext targets Next.js App Router applications on the Node.js runtime. This
 page separates combinations that were actually exercised in release validation
@@ -141,4 +144,4 @@ Open an issue with the StackNext version, Node.js version, Next.js version,
 package manager, OS, the output of `stacknext doctor --json` and the smallest
 reproduction you can share. Remove tokens, URLs with query values, customer data
 and any captured records before posting. Security reports follow
-[SECURITY.md](../SECURITY.md), not public issues.
+[SECURITY.md](https://github.com/marrrkkk/stacknext/blob/main/SECURITY.md), not public issues.

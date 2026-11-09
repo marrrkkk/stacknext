@@ -1,3 +1,8 @@
+---
+title: Dashboard layout specification
+description: The dashboard shell, navigation, page headers and interaction criteria.
+---
+
 # Prompt: dashboard layout and navigation
 
 Use this prompt to reproduce or review the StackNext dashboard shell redesign.

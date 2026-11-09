@@ -1,4 +1,7 @@
-# CI integration
+---
+title: CI integration
+description: Run capture, comparison and evidence artifacts in a normal CI job.
+---
 
 StackNext regression checks fit into a normal CI job without a hosted StackNext
 service. The CI runner is the machine: the collector binds to loopback, the

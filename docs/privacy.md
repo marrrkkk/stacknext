@@ -1,4 +1,7 @@
-# Privacy and redaction
+---
+title: Privacy and redaction
+description: The local-first data boundary, two redaction layers and captured-file contents.
+---
 
 StackNext is designed around a strict local-first boundary. Telemetry is
 produced by your app, sent over loopback to the collector on this machine, and

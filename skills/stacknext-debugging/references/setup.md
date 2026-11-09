@@ -15,9 +15,15 @@ pnpm exec stacknext dev
 `dev` starts the collector and the app's own `dev` script, then writes
 `.stacknext/run.json` with a short-lived bearer token. Leave it running.
 
-If the project is not set up yet, see the repository's
-[docs/getting-started.md](../../../docs/getting-started.md). In a source
-checkout, run `pnpm install && pnpm build` first.
+If the project is not set up yet:
+
+1. Read the CLI package's `docs/index.md` and the Next.js package's
+   `docs/installation.md` for the installed version. Resolve the CLI from the app
+   directory; it may be hoisted to the workspace root.
+2. Run `pnpm exec stacknext init` in the app. Add `--agents` if the user wants a
+   managed StackNext block in `AGENTS.md`.
+3. In a StackNext source checkout, run `pnpm install && pnpm build` first and
+   see `docs/getting-started/quickstart.md`.
 
 Check the collector and instrumentation:
 

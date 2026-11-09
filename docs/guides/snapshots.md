@@ -1,0 +1,80 @@
+---
+title: Snapshots
+description: Save, inspect, export and import frozen redacted samples without replaying them into the live store.
+---
+
+A snapshot is a versioned, redacted copy of one sample saved under
+`.stacknext/snapshots`. It is evidence from the save time, not live telemetry.
+Snapshots are never replayed into the collector and snapshot reads carry no live
+diagnostics or coverage.
+
+## Create
+
+```bash
+pnpm exec stacknext snapshot save --label "before change"
+```
+
+`stacknext dev` can also save automatically on graceful exit and on the first
+error, with a 60-second cooldown. Automatic behavior is configured under
+`snapshots` in `stacknext.config.json`:
+
+```json
+{
+  "snapshots": {
+    "autoOnExit": true,
+    "autoOnError": true,
+    "autoKeep": 10,
+    "maxBytes": 67108864
+  }
+}
+```
+
+Manual and imported snapshots are never auto-deleted. Automatic exit/error
+snapshots rotate beyond `autoKeep`. Oversized saves fail instead of truncating.
+
+## Inspect
+
+```bash
+pnpm exec stacknext snapshot list
+pnpm exec stacknext snapshot show <snapshot-id>
+```
+
+The dashboard `/snapshots` page shows the sample window, counts, traces, errors
+and queries. If the snapshot was saved before a change, say so when reporting
+evidence.
+
+## Export and import
+
+```bash
+pnpm exec stacknext snapshot export <snapshot-id> -o sample.json
+pnpm exec stacknext snapshot import sample.json --label "reported issue"
+```
+
+Exports are redacted local JSON with `0600` permissions. Imports are
+re-normalized and re-redacted, so a modified file cannot introduce unredacted
+fields. Import is not a live replay.
+
+## Delete
+
+```bash
+pnpm exec stacknext snapshot delete <snapshot-id> --yes
+```
+
+Deletion is explicit. The CLI does not delete manual or imported snapshots
+automatically.
+
+## MCP boundary
+
+The three snapshot MCP tools are read-only:
+
+- `stacknext_list_snapshots`
+- `stacknext_get_snapshot`
+- `stacknext_get_snapshot_trace`
+
+They cannot save, import, rotate or delete a snapshot. An agent should point to
+the CLI or dashboard instead.
+
+## Related
+
+- [Snapshot storage](../packages/core/snapshots)
+- [Privacy and redaction](../privacy)

@@ -1,4 +1,7 @@
-# Limitations
+---
+title: Limitations
+description: Intentional boundaries of StackNext telemetry, diagnostics and regression evidence.
+---
 
 StackNext 0.6 is a local development tool, not a production APM. These are
 intentional boundaries, not claims of completeness.

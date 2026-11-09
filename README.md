@@ -593,7 +593,7 @@ pnpm build
 pnpm test:e2e      # starts the built example app and checks the real stack
 pnpm test:packages # packs and validates all ten public archives
 pnpm test:consumer # installs archives in an external Next.js fixture
-pnpm check:docs    # checks internal links and documented commands
+pnpm check:docs    # generated docs, links, navigation and documented commands
 pnpm benchmark     # synthetic ingest + read API benchmark
 pnpm benchmark:diagnostics # synthetic findings + diagnostics read benchmark
 pnpm benchmark:verbose # real-app standard vs verbose tracing comparison

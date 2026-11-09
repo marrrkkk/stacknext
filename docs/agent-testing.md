@@ -1,4 +1,7 @@
-# Agent compatibility testing
+---
+title: Agent compatibility testing
+description: Recorded client and protocol checks for the MCP server and Agent Skill.
+---
 
 StackNext 0.6 includes deterministic diagnostic findings, 20 read-only MCP
 tools, five guided prompts, six read-only regression tools, three read-only
@@ -345,7 +348,7 @@ Do not use a real collector token in test fixtures or transcripts.
 
 ## Related documentation
 
-- [Agent Skill](../skills/stacknext-debugging/SKILL.md)
+- [Agent Skill](ai-agents/skill.md)
 - [MCP tools and security model](mcp.md)
 - [Project instructions for agents](integrations/agent-instructions.md)
 - [OpenCode setup](integrations/opencode.md)

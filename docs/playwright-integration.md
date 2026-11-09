@@ -1,4 +1,7 @@
-# Playwright integration
+---
+title: Playwright integration
+description: Set up the optional fixture, scenario annotations and verified correlation.
+---
 
 `@stacknext/playwright` is an optional fixture package that connects Playwright
 scenarios to the server traces they produced. It injects W3C trace context into

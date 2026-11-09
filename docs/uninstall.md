@@ -1,4 +1,7 @@
-# Uninstall and cleanup
+---
+title: Uninstall and cleanup
+description: Remove StackNext-generated files, runtime state and data without touching user work.
+---
 
 `stacknext uninstall` removes only files that StackNext generated. It does not
 delete user-authored instrumentation, application data, saved regression records

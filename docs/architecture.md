@@ -1,4 +1,7 @@
-# Architecture
+---
+title: Architecture
+description: How the packages, collector, dashboard, diagnostics and MCP fit together.
+---
 
 StackNext is a pnpm monorepo. Everything runs on the developer machine: a
 Next.js app emits spans, a loopback collector stores and serves them, and the
