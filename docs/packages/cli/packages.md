@@ -19,10 +19,13 @@ directory to confirm the installed version.
 | `@stacknext/cli` | 0.9.0 | public | CLI, collector and dashboard host | `index.md` |
 | `@stacknext/next` | 0.9.0 | public | Next.js instrumentation | `../../next/docs/index.md` |
 | `@stacknext/core` | 0.9.0 | internal | Shared base package | `../../core/docs/index.md` |
+| `@stacknext/diagnostics` | 0.9.0 | internal | Diagnostic engine | `../../diagnostics/docs/index.md` |
 | `@stacknext/regression` | 0.9.0 | internal | Regression data model | `../../regression/docs/index.md` |
 | `@stacknext/playwright` | 0.9.0 | public | Playwright fixture | `../../playwright/docs/index.md` |
 | `@stacknext/drizzle` | 0.9.0 | public | Database adapter | `../../drizzle/docs/index.md` |
 | `@stacknext/prisma` | 0.9.0 | public | Database adapter | `../../prisma/docs/index.md` |
+| `@stacknext/mcp` | 0.9.0 | internal | Read-only MCP server | `../../mcp/docs/index.md` |
+| `@stacknext/dashboard` | 0.9.0 | internal | Static dashboard | `../../dashboard/docs/index.md` |
 
 ## How to use this index
 

@@ -431,9 +431,11 @@ async function checkAgentPackageDocs() {
       problems.push(`${relative(file)}: PACKAGE_DOCS is missing ${slug}`)
     }
   }
-  // PACKAGE_DOCS also lists packages whose documentation lands in a follow-up
-  // change; require every documented package to be present without rejecting
-  // the not-yet-documented entries.
+  for (const slug of slugs) {
+    if (!expected.includes(slug)) {
+      problems.push(`${relative(file)}: PACKAGE_DOCS has unknown package ${slug}`)
+    }
+  }
   if (new Set(slugs).size !== slugs.length) {
     problems.push(`${relative(file)}: PACKAGE_DOCS contains duplicate packages`)
   }

@@ -20,6 +20,9 @@
     "packages/core/schemas.md",
     "packages/core/snapshots.md",
     "packages/core/transport.md",
+    "packages/diagnostics/findings.md",
+    "packages/diagnostics/index.md",
+    "packages/diagnostics/rules.md",
     "packages/regression/captures.md",
     "packages/regression/comparisons.md",
     "packages/regression/index.md",
@@ -33,6 +36,13 @@
     "packages/drizzle/troubleshooting.md",
     "packages/prisma/configuration.md",
     "packages/prisma/index.md",
-    "packages/prisma/troubleshooting.md"
+    "packages/prisma/troubleshooting.md",
+    "packages/mcp/index.md",
+    "packages/mcp/prompts.md",
+    "packages/mcp/security.md",
+    "packages/mcp/tools.md",
+    "packages/dashboard/development.md",
+    "packages/dashboard/index.md",
+    "packages/dashboard/routes.md"
   ]
 }

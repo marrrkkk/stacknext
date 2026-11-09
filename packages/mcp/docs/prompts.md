@@ -1,0 +1,35 @@
+---
+title: Prompts
+description: The five guided MCP prompts and what they can and cannot do.
+---
+
+# Prompts
+
+The server publishes five optional prompts. They shape an investigation and
+suggest tool calls; they do not execute tools, add capabilities or bypass the
+read-only boundary.
+
+| Prompt | Arguments | Use |
+| --- | --- | --- |
+| `diagnose-error` | `errorId?`, `route?` | Find an error, inspect its stack and follow the correlated trace. |
+| `investigate-slow-request` | `minDurationMs?`, `route?` | Rank slow requests and break down the slowest trace. |
+| `inspect-database-activity` | `traceId?`, `minDurationMs?` | Inspect SQL, failures, null durations and trace correlation. |
+| `investigate-trace` | `traceId` | Inspect one timeline, its errors and queries. |
+| `diagnose-runtime-issue` | `diagnosticId?`, `traceId?`, `route?` | Start from a finding or trace, verify evidence and report what remains unproven. |
+
+## Evidence rules
+
+Prompts should preserve these rules:
+
+- cite tool results and identifiers;
+- separate observation from causation;
+- treat `possible` and `observed` findings as evidence, not root causes;
+- treat `inconclusive` comparisons as inconclusive, not passes;
+- state when data comes from a snapshot rather than the live sample;
+- report pagination, drops, missing parents and null durations.
+
+## MCP instructions
+
+The server also publishes initialization `instructions`. Codex reads them
+directly; other clients may show or ignore them. Prompts and instructions are
+convenience layers over the same tools, not a separate implementation.
