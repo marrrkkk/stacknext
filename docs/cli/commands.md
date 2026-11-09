@@ -31,21 +31,19 @@ stacknext export [-o <file> | --stdout] [--force]
 `coverage` reports observed evidence, not a health score. `export` writes a
 redacted JSON file with mode `0600` and refuses to overwrite without `--force`.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:fe3f92fc0cfcc5fc92e9ab4ca1a2ef6dbd0157b55159cb16bcd2e158837a2679 -->
+
 ## Regression
 
-```bash
-stacknext capture [--name <name>] [--json] [--quiet] -- <test command...>
-stacknext runs list [--limit <n>] [--offset <n>] [--json]
-stacknext runs show <run-id> [--json]
-stacknext baseline save <run-id> --name <name> [--notes <text>] [--json]
-stacknext baseline list [--limit <n>] [--offset <n>] [--json]
-stacknext baseline show <baseline-id> [--json]
-stacknext baseline remove <baseline-id> --yes [--json]
-stacknext compare <baseline-id> <candidate-run-id> [--json] [--fail-on regression|inconclusive|any]
-```
+See the [CLI package regression command reference](../packages/cli/commands#stacknext-capture)
+for signatures, arguments and flags.
 
 Capture uses one Playwright worker. `--fail-on` is the only CI gate. See
 [runtime regression](../guides/regression).
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## Snapshots
 

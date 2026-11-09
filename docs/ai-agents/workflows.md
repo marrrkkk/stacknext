@@ -42,12 +42,18 @@ trace. Do not call a `null`-duration query slow.
 `sample`, `notes` and `limitations`. Report the finding id, rule, status,
 severity and the evidence actually checked.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:00ed8496d41da19587868576c639479f66cf8f280e2d52d76c93426d0b1f1b0a -->
+
 ## Regression
 
 `stacknext_list_test_runs` → `stacknext_get_test_run` →
-`stacknext_list_baselines` / `get_baseline` →
-`stacknext_list_comparisons` / `get_comparison`. Report status and severity
+`stacknext_list_baselines` / `stacknext_get_baseline` →
+`stacknext_list_comparisons` / `stacknext_get_comparison`. Report status and severity
 separately. Never create a comparison from telemetry.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## Snapshot
 

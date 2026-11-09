@@ -7,11 +7,15 @@ StackNext is designed for agents that need runtime evidence before changing
 code, and for agents that must use the APIs of the installed version rather than
 the latest documentation on the internet.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:0a4fd72927beac821721efa54ee9c7b12459ac74a97fbeef8e05954aaa4fec90 -->
+
 ## The four pieces
 
 | Piece | What it gives the agent | Where it lives |
 | --- | --- | --- |
-| Package docs | Version-matched API references | `node_modules/@stacknext/*/docs/` and this site's [Packages](../packages/index) section |
+| Package docs | Version-matched API references in installed packages | `node_modules/@stacknext/*/docs/`; this site's [Packages](../packages/index) section reflects the current checkout, so verify the installed StackNext version before relying on website references |
 | Managed `AGENTS.md` | A pointer to local docs and evidence rules | Project `AGENTS.md`, installed by `stacknext init --agents` |
 | Agent Skill | Debugging, diagnostics, regression and snapshot workflows | Client skill directory, installed by `stacknext skill install` |
 | MCP server | Read-only access to live telemetry and saved records | `stacknext mcp` over stdio |
@@ -19,6 +23,8 @@ the latest documentation on the internet.
 The pieces are intentionally separate. Package docs contain technical
 reference; the skill contains procedures; the MCP server contains runtime data;
 `AGENTS.md` carries the short project-level rules.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## The evidence contract
 

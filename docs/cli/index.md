@@ -13,17 +13,25 @@ process you start directly. The binary:
 - writes and reads regression and snapshot records;
 - launches the read-only MCP server.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:f5775710951899d483360c1c62fdcb53e464118942edf88edf3bdf372050082b -->
+
 ## Install
 
 ```bash
+pnpm add @stacknext/next
 pnpm add -D @stacknext/cli
 pnpm exec stacknext init
 pnpm exec stacknext dev
 ```
 
-`@stacknext/cli` is public, but most projects also add `@stacknext/next` for
-instrumentation. `init --agents` adds managed project instructions for AI
+`@stacknext/next` provides instrumentation. If an instrumentation file already
+exists, follow [existing instrumentation](../getting-started/first-app#existing-instrumentation)
+to configure span reporting. `init --agents` adds managed project instructions for AI
 agents.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## Command groups
 

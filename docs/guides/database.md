@@ -51,6 +51,10 @@ const stop = instrumentPrismaClient(prisma, {
 The event-based `query` log level is required. `instrumentPrismaClient` is
 idempotent for the same client and returns a stop function.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:a8e196b69f220b510c2ec4621bfde2eca867e3a847a308c698ce01b124df5b84 -->
+
 ## Verification and limits
 
 Make a request that queries the database, then check the **Database** page or:
@@ -60,9 +64,12 @@ pnpm exec stacknext coverage
 ```
 
 `not-observed` means the current sample has no query evidence, not necessarily
-that the adapter is broken. Query text is redacted; `$1`, `?` and literal
-parameters are not captured. StackNext does not run SQL, `EXPLAIN` or index
+that the adapter is broken. Query text uses pattern-based redaction and may
+retain placeholders such as `$1` and `?`, as well as inline literals. Bind
+values are not captured. StackNext does not run SQL, `EXPLAIN` or index
 analysis.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## Related
 

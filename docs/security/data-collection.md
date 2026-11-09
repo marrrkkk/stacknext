@@ -19,15 +19,22 @@ regression checks.
   environment facts and verified trace samples.
 - For snapshots: a bounded copy of the current redacted sample.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:ec3ab88cd296d503904e365307733ea05cff09dbf7dfb62f76ffc06f48a034d3 -->
+
 ## Never collected
 
 - Request or response bodies.
 - Headers, cookies or authorization values.
-- URL query values or fragments. URLs keep the path only.
+- URL query values or fragments. Absolute URLs may retain their scheme and
+  hostname as well as the path; check hostnames before sharing exports.
 - SQL bind parameters.
 - Playwright screenshots, videos or trace archives.
 - Machine or user identifiers.
 - Bearer tokens outside the local runtime file.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## Where it goes
 

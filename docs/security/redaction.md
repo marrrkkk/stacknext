@@ -11,17 +11,23 @@ StackNext redacts twice:
 A field that bypasses either layer is a bug. Captured records are re-sanitized
 when written and snapshots are re-normalized and re-redacted on import.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:c7ab46ceaafff2f930507173fdb27865ff8a1018ad7a2a38ebe476f79a8dad0d -->
+
 ## Rules
 
 | Data | Treatment |
 | --- | --- |
-| URLs | Keep the path only; drop query values and fragments |
+| URLs | Drop query values and fragments; absolute URLs may retain scheme, hostname and path. Check hostnames before sharing exports |
 | Sensitive keys | Replace values with `[redacted]` |
-| Error messages and stacks | Text-redacted for tokens, secrets and absolute user paths |
-| SQL | Keep the normalized shape; remove literal values and bind parameters |
+| Error messages and stacks | Known token and secret patterns are redacted; absolute user paths may remain. Inspect paths before sharing exports or snapshots |
+| SQL | Pattern-based redaction; inline literals may remain. Bind parameters are not captured. Review exports before sharing |
 | Resource attributes | Allowlist only |
 | Headers, bodies, cookies | Never captured; privacy flags must remain `false` |
 | Span attributes | Sanitized with the same rules before export |
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## Sensitive keys
 

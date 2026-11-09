@@ -102,6 +102,10 @@ comparison is report-only unless `--fail-on` matches. See
 [Playwright integration](playwright-integration.md) and
 [comparison methodology](comparison-methodology.md).
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:002eca79d52e2d16b67c5b09259753ebf4c6fc1aca81c436b01d31f5ca3dbb59 -->
+
 ## Use it in an existing app
 
 Inside the app project:
@@ -132,8 +136,10 @@ pnpm exec stacknext dev
 6. Adds or updates managed AI-agent instructions in `AGENTS.md` only when
    `--agents` is passed. `--skip-agents` explicitly skips them.
 
-See [agent setup](cli/agent-setup.md) and
-[AGENTS.md integration](ai-agents/agents-md.md).
+See [agent setup](cli/agent-setup) and
+[AGENTS.md integration](ai-agents/agents-md).
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ### Existing instrumentation is never replaced
 
@@ -394,6 +400,10 @@ Common causes:
 - **Stale runtime state** — if a previous process was killed, remove
   `.stacknext/run.json` and run `stacknext dev` again.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:fc2c43f010bd3445c8f12cefd00fdd35b2950d72930b2abc0d90760c20f255ec -->
+
 ## Use it with a coding agent
 
 Start `stacknext dev`, then configure the MCP server for your client:
@@ -403,7 +413,7 @@ Start `stacknext dev`, then configure the MCP server for your client:
 - [Claude Code](integrations/claude-code.md)
 
 The portable skill at
-[`skills/stacknext-debugging`](ai-agents/skill.md) adds
+[`skills/stacknext-debugging`](ai-agents/skill) adds
 evidence-first workflows for runtime errors, slow requests, database activity,
 traces, diagnostic findings and runtime regression evidence. It ships inside
 `@stacknext/cli`:
@@ -424,3 +434,5 @@ See [privacy and redaction](privacy.md), [instrumentation coverage](instrumentat
 [custom instrumentation](custom-instrumentation.md), [Server Actions](server-actions.md),
 [runtime regression testing](regression-testing.md), [MCP](mcp.md),
 [architecture](architecture.md) and [limitations](limitations.md).
+
+<!-- /coderabbit-ai-generated:v1 -->
