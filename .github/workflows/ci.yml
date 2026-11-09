@@ -43,14 +43,33 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Documentation checks
-        run: pnpm check:docs
-
       - name: Unit and integration tests
         run: pnpm test
 
       - name: Build
         run: pnpm build
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.16.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Repository documentation checks
+        run: pnpm check:docs
 
   package-archives:
     name: Package archives

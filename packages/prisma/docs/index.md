@@ -1,0 +1,84 @@
+---
+title: "@stacknext/prisma"
+description: Prisma Client query event instrumentation for StackNext.
+---
+
+# @stacknext/prisma
+
+`@stacknext/prisma` subscribes to Prisma `query` events and sends redacted query
+evidence to the active StackNext transport.
+
+## Who should read this
+
+Applications using Prisma. This is a **public, optional integration package**.
+It is not required unless the project uses Prisma.
+
+## Installation
+
+```bash
+pnpm add @stacknext/prisma
+```
+
+`@prisma/client >=5.0.0` is an optional peer dependency. The adapter accepts a
+structural subset of the client and does not import Prisma at runtime.
+
+## Usage
+
+```ts
+import { PrismaClient } from '@prisma/client'
+import { instrumentPrismaClient } from '@stacknext/prisma'
+
+const prisma = new PrismaClient({
+  log: [{ emit: 'event', level: 'query' }],
+})
+
+const stop = instrumentPrismaClient(prisma, {
+  databaseSystem: 'postgresql',
+})
+
+// Optional: call stop() during shutdown.
+```
+
+Prisma must be configured to emit query events. Without the `log` event
+configuration, the adapter receives nothing.
+
+## API
+
+### `instrumentPrismaClient(client, options?)`
+
+Subscribes to `$on('query', listener)` and returns a cleanup function. It is
+idempotent for the same client instance: a second call returns a no-op cleanup
+and does not attach a second listener.
+
+`StackNextPrismaOptions`:
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `databaseSystem` | string | `'prisma'` | Reported as `db.system.name`. |
+| `transport` | `Pick<StackNextTransport, 'enqueueDatabaseQuery'>` | global transport | Override for tests or custom setups. |
+| `onError` | `(error: unknown) => void` | none | Called when the sink throws. |
+
+## What is recorded
+
+- redacted SQL text (capped at 20,000 characters);
+- inferred operation;
+- `durationMs` when Prisma supplies a finite, non-negative duration;
+- active trace/span ids when a valid OTel context exists;
+- `databaseSystem`, `source: 'prisma'`, `success: true`;
+- `db.duration.measured`;
+- `db.prisma.target` (bounded to 200 characters), when present.
+
+## Privacy
+
+`event.params` is typed as a JSON string but is **never read**. SQL text passes
+through `redactSql`. Query events do not include request bodies or headers.
+
+## Documentation map
+
+- [Configuration](configuration.md)
+- [Troubleshooting](troubleshooting.md)
+
+## Related packages
+
+- `@stacknext/core` owns the transport and redaction.
+- `@stacknext/cli` runs the collector.

@@ -1,0 +1,100 @@
+---
+title: Configuration
+description: stacknext.config.json, runtime state, ports and environment variables.
+---
+
+# Configuration
+
+## Project config
+
+`stacknext init` creates `stacknext.config.json` at the application root. The
+full schema, defaults and validation rules live in
+the `@stacknext/core` package's `docs/configuration.md` (follow its relative path
+in `packages.md`).
+
+Minimal generated example:
+
+```json
+{
+  "projectName": "my-app",
+  "dashboard": { "port": 4400 },
+  "collector": { "maxSpans": 5000, "retentionMs": 600000 },
+  "instrumentation": { "verbose": false, "captureFetch": true, "captureErrors": true },
+  "privacy": {
+    "captureHeaders": false,
+    "captureRequestBodies": false,
+    "captureSqlParameters": false,
+    "redactSensitiveData": true
+  },
+  "database": { "drizzle": false, "prisma": false },
+  "slowRequestMs": 500
+}
+```
+
+Missing fields are filled with defaults when loaded. Unknown fields are
+rejected. Privacy capture flags must remain `false` and redaction must remain
+`true`.
+
+## Runtime state
+
+While `stacknext dev` runs:
+
+```text
+.stacknext/
+├── .gitignore
+├── run.json        # mode 0600, contains the bearer token
+├── snapshots/
+├── runs/
+├── baselines/
+└── comparisons/
+```
+
+`run.json` is written on startup and removed on graceful shutdown. If a process
+is killed, the file can be stale; `stacknext doctor` detects a dead pid. Never
+commit or share `run.json`.
+
+`.stacknext` is created with mode `0700`; saved records use `0600`.
+
+## Ports
+
+- Preferred dashboard/collector port: 4400.
+- If busy, StackNext tries the next 25 ports.
+- The example app listens on 4402 by default.
+
+The collector binds only to `127.0.0.1` or `localhost` and rejects non-loopback
+`Host` headers.
+
+## Environment variables
+
+| Variable | Used by | Meaning |
+| --- | --- | --- |
+| `STACKNEXT_COLLECTOR_URL` | app, Playwright | Loopback collector URL. |
+| `STACKNEXT_TOKEN` | app, capture | Bearer token. |
+| `STACKNEXT_PROJECT_NAME` | app | Project name. |
+| `STACKNEXT_SERVICE_NAME` | app | OTel service name. |
+| `STACKNEXT_NEXT_VERSION` | app | Next.js version for environment checks. |
+| `STACKNEXT_CAPTURE_FETCH` | app | `0` drops fetch spans. |
+| `STACKNEXT_CAPTURE_ERRORS` | app | `0` disables error collection. |
+| `STACKNEXT_DEBUG` | app, CLI | `1` enables debug logs. |
+| `NEXT_OTEL_VERBOSE` | app | `1` enables documented verbose Next.js spans. |
+| `STACKNEXT_TEST_RUN_ID` | Playwright | Active run id. |
+| `STACKNEXT_CAPTURE_SETTLE_MS` | Playwright | Probe delay (default 500). |
+| `STACKNEXT_CAPTURE_TIMEOUT_MS` | Playwright | Probe timeout (default 5000). |
+| `STACKNEXT_PACK_DIR` | release scripts | Archive output directory. |
+
+`stacknext dev` exports the first group to the Next.js child process. An
+explicit value wins over the config; for example `NEXT_OTEL_VERBOSE=0` disables
+verbose tracing even when `instrumentation.verbose` is `true`.
+
+## Config ownership
+
+- `stacknext dev` reads and validates the config.
+- `stacknext doctor` reports invalid fields with issue paths.
+- `stacknext uninstall` removes the config unless `--keep-config` is passed.
+- Regression and snapshots record the resolved config with their evidence.
+
+## Related
+
+- [@stacknext/core configuration](../../core/docs/configuration.md)
+- [Agent setup](agent-setup.md)
+- [Troubleshooting](troubleshooting.md)

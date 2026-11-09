@@ -1,0 +1,85 @@
+---
+title: "@stacknext/core"
+description: Shared wire types, configuration, redaction, bounded storage and snapshot primitives used by every StackNext package.
+---
+
+# @stacknext/core
+
+`@stacknext/core` is the base package of StackNext. It defines the telemetry
+wire format, validates collector payloads, redacts sensitive values, owns the
+in-memory telemetry store and provides the snapshot storage used by the CLI.
+
+## Who should read this
+
+- **Contributors and maintainers** changing a shared type, schema, limit or
+  redaction rule.
+- **Advanced users** building a custom adapter or reading the collector API
+  types.
+- **AI coding agents** that need the exact field names or limits before
+  changing StackNext code.
+
+Most applications should install `@stacknext/cli` and `@stacknext/next`
+instead of installing this package directly. `@stacknext/core` is installed
+automatically as a dependency of the CLI, instrumentation and adapter packages.
+
+## Package boundary
+
+`core` is the base of the dependency graph. It must not import CLI, Next.js,
+React, Playwright or adapter code. Packages that may depend on it:
+
+- `@stacknext/diagnostics`
+- `@stacknext/regression`
+- `@stacknext/next`
+- `@stacknext/drizzle`
+- `@stacknext/prisma`
+- `@stacknext/mcp`
+- `@stacknext/cli`
+
+## Installation
+
+Normally no direct install is needed. For adapter or tooling work:
+
+```bash
+pnpm add @stacknext/core
+```
+
+The package is ESM-only and requires Node.js `>=20.9.0`.
+
+## Entry points
+
+| Import | Contents |
+| --- | --- |
+| `@stacknext/core` | Wire types, Zod schemas, redaction, normalization, bounded store, framework span allowlist, coverage, diagnostics wire types, config, verbose status. |
+| `@stacknext/core/transport` | The process-wide bounded transport, environment resolution and loopback validation. |
+| `@stacknext/core/config-file` | `stacknext.config.json` path, reading and loading with Zod validation. |
+| `@stacknext/core/snapshots` | Snapshot payloads, atomic local storage, listing, import/export and detached read views. |
+
+The `./package.json` export lets tools read the installed version.
+
+## Version and compatibility
+
+Read the installed version from the package metadata, not from this page:
+
+```bash
+node -p "require('./node_modules/@stacknext/core/package.json').version"
+```
+
+This documentation ships in the same package archive as the code, so it matches
+that installed version. It is not a substitute for the TypeScript declarations
+in `dist`.
+
+## Documentation map
+
+- [Wire schemas](schemas.md) — envelope, spans, errors, queries, responses.
+- [Transport](transport.md) — environment variables, queue limits and the
+  ingest request.
+- [Redaction](redaction.md) — both redaction layers and what is never captured.
+- [Configuration](configuration.md) — `StackNextConfig` fields and defaults.
+- [Snapshots](snapshots.md) — payloads, storage and detached views.
+
+## Related packages
+
+- `@stacknext/next` converts OpenTelemetry spans into these wire types.
+- `@stacknext/diagnostics` reads the diagnostic types and computes findings.
+- `@stacknext/regression` uses the diagnostic and trace shapes for comparisons.
+- `@stacknext/cli` hosts the collector and imports `core` directly.

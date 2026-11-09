@@ -1,4 +1,7 @@
-# Troubleshooting
+---
+title: Troubleshooting
+description: Diagnose missing telemetry, connection, port, MCP and regression problems.
+---
 
 Start with:
 
@@ -260,7 +263,7 @@ pnpm exec stacknext skill install --client claude-code
 
 `stacknext skill path` prints the bundled location. Do not copy only `SKILL.md`.
 If an older copy exists, re-run with `--force`. See the client guides under
-[docs/integrations](integrations/).
+[agent instruction docs](integrations/agent-instructions.md).
 
 ## Windows and WSL
 
@@ -283,11 +286,11 @@ If an older copy exists, re-run with `--force`. See the client guides under
 - A captured record must never contain request/response bodies, headers,
   cookies, URL query values, SQL bind parameters, Playwright screenshots, video
   or trace archives. Treat unexpected data as a security issue and report it
-  through [SECURITY.md](../SECURITY.md).
+  through [SECURITY.md](https://github.com/marrrkkk/stacknext/blob/main/SECURITY.md).
 
 ## Still stuck
 
 Run `npx stacknext doctor --json` and open an issue with the StackNext, Node.js
 and Next.js versions, package manager, operating system, reproduction steps and
 redacted output. Do not include tokens, customer data or full `.stacknext`
-records. See [SUPPORT.md](../SUPPORT.md).
+records. See [SUPPORT.md](https://github.com/marrrkkk/stacknext/blob/main/SUPPORT.md).

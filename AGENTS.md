@@ -29,6 +29,9 @@ pnpm test:e2e       # real CLI + collector + example app + dashboard + MCP + reg
 pnpm benchmark      # synthetic ingest and read API benchmark (docs/benchmark.md)
 pnpm benchmark:diagnostics # synthetic findings + diagnostics read benchmark
 pnpm benchmark:verbose # real-app verbose-tracing overhead comparison
+pnpm docs:sync      # regenerate package docs in the CLI and Mintlify tree
+pnpm docs:check     # generated docs + links + navigation validation
+pnpm docs:dev       # local Mintlify preview from docs/
 ```
 
 Useful scoped commands:
@@ -76,6 +79,32 @@ uses `http://127.0.0.1:4400` by default. `stacknext dev` writes
 | `skills/stacknext-debugging` | Portable Agent Skill with tool reference and evidence-first workflows. |
 | `apps/example` | StackNext Example demo with Drizzle/better-sqlite3, slow, error, N+1, slow-DB and repeated-fetch routes plus annotated Playwright scenarios. |
 | `scripts/` | Real e2e and benchmark scripts, including the capture → baseline → candidate → compare flow. |
+
+## Documentation architecture
+
+Documentation is part of the package distribution, not only a website.
+
+- Canonical developer documentation for a package lives in
+  `packages/<package>/docs/`. It is plain Markdown with `title` and
+  `description` frontmatter, relative links and no Mintlify-only components.
+- Published packages include `docs` in `files`. Public packages also pass the
+  archive checks in `scripts/lib/release.mjs`.
+- `scripts/sync-docs.mjs` generates the CLI index
+  (`packages/cli/docs/packages.md`) and the Mintlify copies under
+  `docs/packages/<slug>/`. Do not edit either output; edit the canonical file
+  and run `pnpm docs:sync`.
+- `docs/docs.json` is the Mintlify configuration and hand-authored navigation.
+  Every navigation entry must resolve, and every generated package page must be
+  in it. `docs/` is the Mintlify root, so site URLs stay extensionless.
+- `docs/` hand-authored pages are the cross-package, conceptual website. They
+  must not duplicate package API reference; link to the package docs instead.
+- Consumer agent instructions are opt-in via `stacknext init --agents` and are
+  managed between the `BEGIN/END STACKNEXT AGENT RULES` markers. The root
+  `AGENTS.md` is for contributors only and is never installed into consumers.
+- `skills/stacknext-debugging` stays procedural and points at local
+  `node_modules/@stacknext/*/docs`; API reference belongs in package docs.
+- Mintlify is a documentation development/deployment concern. It is not a
+  runtime dependency and does not affect `stacknext dev`.
 
 Dependency direction: `core` is the base. `diagnostics`, `next`, `drizzle`,
 `prisma`, `mcp` and `cli` may depend on `core`; `regression` depends on `core`
@@ -157,6 +186,11 @@ import CLI, Next.js, React, Playwright or adapter code from `core`.
   context/provider, preserve return values and errors, sanitize attributes, and
   must not create a second SDK. Never claim automatic Server Component or
   Server Action tracing.
+- **Package documentation is distributed.** A public package is not complete
+  until its `docs/` directory is present in the npm archive, listed in
+  `DOCUMENTED_PACKAGES`, reachable from `docs/docs.json`, and validated by
+  `pnpm check:docs` and `pnpm test:packages`. Never edit generated copies under
+  `docs/packages` or `packages/cli/docs/packages.md`.
 - **Read-only MCP.** All tools stay `readOnlyHint: true`; the API client only
   performs GETs and refuses non-loopback URLs. stdout is protocol-only. Prompts
   and the Agent Skill shape investigations but cannot add capabilities, mutate
@@ -231,7 +265,8 @@ Before declaring a change complete:
    itself. It must cover capture → baseline → candidate → compare, the
    collector regression APIs, CLI records, snapshot save/list/read/export/delete,
    MCP regression and snapshot tools and dashboard deep links.
-6. For user-facing changes, exercise `stacknext dev` manually and check the
+6. Run `pnpm check:docs` and `pnpm test:packages` for documentation or package
+   changes. For user-facing changes, exercise `stacknext dev` manually and check the
    dashboard Overview coverage and diagnostics cards, request/trace timelines,
    database, errors, `/diagnostics` and `/diagnostics/:id`, `/runs`, `/runs/:id`,
    `/baselines`, `/baselines/:id`, `/comparisons`, `/comparisons/:id`, the

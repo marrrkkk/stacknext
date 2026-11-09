@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { DOCUMENTED_PACKAGES } from './docs.mjs'
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -104,6 +105,7 @@ const CLI_SKILL_FILES = [
   'skills/stacknext-debugging/references/setup.md',
   'skills/stacknext-debugging/references/tools.md',
   'skills/stacknext-debugging/references/workflows.md',
+  'skills/stacknext-debugging/references/documentation.md',
 ]
 
 function skillVersionFrom(source) {
@@ -132,6 +134,17 @@ export async function inspectTarball(entry) {
   if (!files.includes('README.md')) problems.push('README.md is missing')
   if (!files.includes('LICENSE')) problems.push('LICENSE is missing')
   if (!files.some((file) => file.startsWith('dist/'))) problems.push('dist/ is missing')
+  if (!manifest.files?.includes('docs')) {
+    problems.push('package.json files must include "docs"')
+  }
+  const documented = DOCUMENTED_PACKAGES.find((candidate) => candidate.name === entry.name)
+  if (documented) {
+    for (const required of documented.required) {
+      if (!files.includes(`docs/${required}`)) {
+        problems.push(`package documentation is missing: docs/${required}`)
+      }
+    }
+  }
   if (entry.name === '@stacknext/cli' && !files.includes('dist/bin.js')) {
     problems.push('CLI bin entry is missing')
   }

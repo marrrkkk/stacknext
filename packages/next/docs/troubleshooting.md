@@ -1,0 +1,78 @@
+---
+title: Troubleshooting
+description: Diagnose missing Next.js telemetry, provider conflicts, Edge warnings and startup failures.
+---
+
+# Troubleshooting
+
+## The dashboard is empty
+
+1. Confirm the app is started through `stacknext dev`, not `next dev`. The CLI
+   supplies the collector URL and token.
+2. Run `stacknext doctor`. It checks Node.js, Next.js, the App Router, config,
+   instrumentation, the dashboard build and collector health.
+3. Run `stacknext status --json` and inspect `runtime` and `connections`.
+4. Make a request after the app has fully started.
+5. Check `stacknext coverage`: `active` with no requests means the app is
+   connected but the feature has not been exercised yet.
+
+## `register()` returns `null`
+
+Possible causes:
+
+- `STACKNEXT_COLLECTOR_URL` or `STACKNEXT_TOKEN` is missing. Start the app with
+  `stacknext dev`.
+- Another OpenTelemetry provider is already registered. Run with
+  `STACKNEXT_DEBUG=1` and look for the "leaving it untouched" message. StackNext
+  intentionally yields instead of replacing another APM.
+- The runtime is not Node.js. Edge is unsupported.
+- `enabled: false` was passed explicitly.
+
+## No error records
+
+- Check `instrumentation.captureErrors` and `STACKNEXT_CAPTURE_ERRORS`.
+- Confirm `instrumentation.ts` exports `onRequestError`.
+- An existing `onRequestError` must call `stackNextOnRequestError(...)`.
+- Control-flow errors from not-found/redirect responses are intentionally
+  excluded from diagnostics.
+- Errors without an active span context are correlated by route/method and a
+  30-second window. They may show as fallback-correlated or uncorrelated.
+
+## Missing fetch spans
+
+Set `instrumentation.captureFetch` to `true` (the default) and ensure
+`STACKNEXT_CAPTURE_FETCH` is not `0`. Only Next.js-emitted fetch spans can be
+captured.
+
+## Edge build warnings or failures
+
+Keep every StackNext import behind:
+
+```ts
+if (process.env.NEXT_RUNTIME !== 'nodejs') return
+```
+
+Use a dynamic import inside the hook. Do not import `@stacknext/next` at the top
+level of a module that Edge also bundles.
+
+## Existing monitoring stopped working
+
+StackNext must never replace a provider. If another tool stops receiving data,
+check whether it registered before or after `registerStackNext()` and whether
+the generated hook was merged into the existing `instrumentation.ts` rather than
+replacing it. `stacknext init` prints a manual patch when a file exists.
+
+## Telemetry is dropped
+
+The in-memory store is bounded by `collector.maxSpans` and
+`collector.retentionMs`. `/api/health`, `stacknext status` and the dashboard
+settings page report drop counters. `NEXT_OTEL_VERBOSE=1` increases span volume
+and can shorten the effective retention window.
+
+## Verify
+
+```bash
+stacknext doctor --json
+stacknext status --json
+stacknext coverage --json
+```
