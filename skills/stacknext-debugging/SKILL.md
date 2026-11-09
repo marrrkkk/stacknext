@@ -77,6 +77,24 @@ run SQL or call an AI service.
   route/method plus 30-second fallback. Say "correlated" rather than "caused"
   when the link is fallback-based.
 
+## Documentation sources
+
+The package API reference lives in the installed npm archives, not in this
+skill. Before using an API, configuration key or command that you are not
+certain about:
+
+1. Read the CLI package's `docs/index.md` and `docs/packages.md`. Resolve it from
+   the app directory; in a workspace the CLI may be hoisted to the root.
+2. Read the docs for every package involved in the task.
+3. Confirm the version in the package.json next to those docs. Prefer the local
+   docs over the website or model memory; they match the installed version.
+4. If a documented path does not resolve, that package is not available. Do not
+   reference it or assume its APIs are available.
+
+This skill owns investigation procedure and reasoning rules. Package docs own
+the technical reference. See `references/documentation.md` for discovery,
+version checks and optional-package handling.
+
 ## Tool map
 
 | Goal | Tool |
@@ -304,3 +322,4 @@ as current live telemetry.
 - `references/tools.md` — tool arguments, response shapes and `meta`.
 - `references/workflows.md` — detailed investigation playbooks and report examples.
 - `references/setup.md` — install, MCP configuration, skill locations and troubleshooting.
+- `references/documentation.md` — local package docs, version checks and optional packages.

@@ -1,0 +1,70 @@
+---
+title: Configuration
+description: Configure the Drizzle adapter, transport and database settings.
+---
+
+# Configuration
+
+## Adapter options
+
+```ts
+import { createStackNextDrizzleLogger } from '@stacknext/drizzle'
+
+const logger = createStackNextDrizzleLogger({
+  databaseSystem: 'postgresql',
+})
+```
+
+| Option | Required | Default | Notes |
+| --- | --- | --- | --- |
+| `databaseSystem` | No | `'sql'` | Use the engine name, for example `sqlite`, `postgresql` or `mysql`. |
+| `transport` | No | Process-wide transport | Must expose `enqueueDatabaseQuery`. |
+| `onError` | No | none | Receives telemetry failures; they never reach Drizzle. |
+
+## Connect the logger
+
+```ts
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { createStackNextDrizzleLogger } from '@stacknext/drizzle'
+
+export const db = drizzle(client, {
+  logger: createStackNextDrizzleLogger({ databaseSystem: 'sqlite' }),
+})
+```
+
+The logger is registered when the Drizzle client is created. There is no
+automatic global registration and no monkey-patching.
+
+## `stacknext.config.json`
+
+```json
+{
+  "database": { "drizzle": true, "prisma": false }
+}
+```
+
+`database.drizzle` is setup intent used by `stacknext init` and
+`stacknext doctor`. Setting it does **not** attach the logger. The adapter must
+be passed to `drizzle(...)` explicitly.
+
+## Environment
+
+The adapter uses the active transport. `stacknext dev` exports
+`STACKNEXT_COLLECTOR_URL` and `STACKNEXT_TOKEN`; outside that environment the
+global transport is absent and the logger is inert.
+
+Optional adapter overrides for tests are passed through `options.transport`, not
+environment variables.
+
+## Captured fields
+
+See [the package overview](index.md#what-is-recorded). There is no option to
+enable bind-parameter capture, SQL parameter logging or query bodies.
+
+## Verify
+
+1. Start `stacknext dev` and make a request that queries the database.
+2. Run `stacknext coverage`; the database category should show observed
+   evidence.
+3. Open the dashboard Database page or call `list_database_queries` through MCP.
+4. Confirm durations are `null` and marked unmeasured. That is expected.

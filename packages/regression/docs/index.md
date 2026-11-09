@@ -1,0 +1,92 @@
+---
+title: "@stacknext/regression"
+description: Capture, baseline, comparison schemas and deterministic local storage for StackNext runtime regression testing.
+---
+
+# @stacknext/regression
+
+`@stacknext/regression` owns the data model behind `stacknext capture`,
+`stacknext baseline`, `stacknext compare`, the Playwright fixture, the dashboard
+regression views and the MCP regression tools.
+
+## Who should read this
+
+Maintainers and advanced users building on the regression records. This is an
+**internal implementation package**; applications use the CLI and the optional
+`@stacknext/playwright` fixture instead of importing it directly.
+
+## Package boundary
+
+`regression` depends on `@stacknext/core` and `@stacknext/diagnostics`. It does
+not run Playwright itself, start a collector, serve HTTP or contact a remote
+service. Storage is local and report-only.
+
+## Public API
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:27de812198c94ba1d63f3e6f4ab6e1cc83191a39d69ae91a0151c6ea756a7c51 -->
+
+```ts
+import {
+  compareBaseline,
+  verifyTraceCorrelation,
+  capturedSampleFromSubmission,
+  buildEnvironmentSnapshot,
+  compareEnvironments,
+  saveRun,
+  loadRun,
+  listRuns,
+  saveBaseline,
+  loadBaseline,
+  listBaselines,
+  saveComparison,
+  loadComparison,
+  listComparisons,
+  createRunId,
+  createBaselineId,
+  createComparisonId,
+  createSampleId,
+  scenarioIdentity,
+  DEFAULT_COMPARISON_OPTIONS,
+} from '@stacknext/regression'
+```
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+See the installed declarations for every helper. The main concepts:
+
+| Concept | Purpose |
+| --- | --- |
+| `scenarioIdentity` | Stable `scn-...` id from an explicit annotation, test id or file/title/project fallback. |
+| `verifyTraceCorrelation` | Accepts a sample only when the injected trace and a server span parented to the injected span exist. |
+| `buildEnvironmentSnapshot` | Records Node.js, Next.js, OS, runtime, adapters, instrumentation, rule set and Playwright versions. |
+| `compareEnvironments` | Lists environment differences before a comparison. |
+| `compareBaseline` | Deterministic median/threshold comparison of a baseline and candidate. |
+| `saveRun` / `saveBaseline` / `saveComparison` | Atomic local writes under `.stacknext`. |
+
+## Formats
+
+| Constant | Value |
+| --- | --- |
+| `STACKNEXT_RUN_FORMAT` | `stacknext-test-run` |
+| `STACKNEXT_BASELINE_FORMAT` | `stacknext-baseline` |
+| `STACKNEXT_COMPARISON_FORMAT` | `stacknext-comparison` |
+| `STACKNEXT_REGRESSION_FORMAT_VERSION` | `1` |
+| `STACKNEXT_REGRESSION_ENGINE_VERSION` | The installed package version |
+
+Ids are strict: `run-<16 hex>`, `base-<16 hex>`, `cmp-<16 hex>`,
+`scn-<16 hex>` and `smp-<16 hex>`.
+
+## Documentation map
+
+- [Captures](captures.md) — run and baseline lifecycle, correlation and statuses.
+- [Comparisons](comparisons.md) — metrics, thresholds and inconclusive rules.
+- [Storage](storage.md) — directories, permissions, atomic writes and retention.
+
+## Related packages
+
+- `@stacknext/playwright` submits correlated samples during `stacknext capture`.
+- `@stacknext/cli` orchestrates capture, baseline and compare commands.
+- `@stacknext/mcp` reads saved runs, baselines and comparisons.
+- `@stacknext/dashboard` renders the same records.
