@@ -18,16 +18,22 @@ A bug in one layer does not automatically expose raw data through the other.
 The exact exports are listed in `packages/core/src/index.ts`; the functions most
 commonly used by adapters and instrumentation are:
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:db60a7dcdc0f7b028f4b8bb8b881845bc8d1616febbc9a3cce86a9dc48b6bfed -->
+
 | Function | Purpose |
 | --- | --- |
 | `redactText(value, maxLength?)` | Replaces recognized secret patterns and bounds the length. |
 | `redactErrorText(value)` | Text redaction for messages and stacks. |
 | `redactSql(sql)` | Removes credential-shaped values from SQL text. |
-| `sanitizeAttributes(attributes)` | Redacts sensitive keys, header-shaped maps and URL query values. |
+| `sanitizeAttributes(attributes)` | Redacts sensitive keys, header-shaped maps and query values in recognized URL attributes. |
 | `sanitizeResource(attributes)` | Keeps only the resource allowlist. |
 | `stripUrlQuery(value)` | Removes query strings and fragments from a URL or path. |
 | `stripUrlQueryInText(value)` | Removes embedded URLs' query strings from free text. |
 | `normalizeSpan(...)` / normalization helpers | Convert and bound stored telemetry. |
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 Check the current TypeScript declarations in the installed package before
 calling a helper that is not listed here; this page deliberately does not invent
@@ -35,8 +41,14 @@ exports.
 
 ## What is redacted
 
-- **URLs** lose query values and fragments. `http://host/path?token=secret`
-  becomes `http://host/path`.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:c0de03cf3ce70089f21a3f2d704c9698d940710f517613abe5dcaae2e71cb0ce -->
+
+- **Recognized URL attributes and fields** lose query values and fragments.
+  For example, `http.url: "http://host/path?item=123"` becomes
+  `http.url: "http://host/path"`. Custom attributes with unrecognized keys
+  can retain URL query values, subject to text-pattern redaction.
 - **Sensitive keys** containing authorization, cookie, password, secret, API
   key, access/refresh/private token, client secret, credential, connection
   string, database URL, DSN and similar terms become `[redacted]`.
@@ -50,11 +62,20 @@ exports.
 - **Resource attributes** are reduced to an allowlist: service name, version,
   namespace, SDK metadata, runtime, Next.js version and environment.
 
+<!-- /coderabbit-ai-generated:v1 -->
+
 ## What is never captured
 
-StackNext has no field for request or response bodies, headers, cookies, URL
-query values, SQL bind parameters, Playwright artifacts, machine identifiers or
-the collector token in telemetry records.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:f481c88cbb487056b04357bf8bb24ce14da784fa467267760b99bfac22773387 -->
+
+StackNext has no dedicated field for request or response bodies, headers,
+cookies, URL query values, SQL bind parameters, Playwright artifacts, machine
+identifiers or the collector token in telemetry records. Custom attributes
+with unrecognized keys can still retain URL query values.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 The configuration schema rejects attempts to enable header, body or SQL
 parameter capture. See [configuration](configuration.md).

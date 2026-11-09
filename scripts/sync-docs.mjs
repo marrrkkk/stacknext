@@ -195,7 +195,7 @@ function stripDuplicateTitle(source) {
   // The H1 can follow a generated comment (the CLI package index), so match it
   // anywhere before the first H2 instead of only at the start of the body.
   const heading = new RegExp(
-    `^#\\s+${escapeRegExp(frontmatter.title)}\\s*#*\\s*(?:\\r?\\n)?`,
+    `^#[\\t ]+${escapeRegExp(frontmatter.title)}[\\t ]*#*[\\t ]*(?:\\r?\\n|$)`,
     'm',
   )
   if (!heading.test(rest)) return source
@@ -216,7 +216,9 @@ function withGeneratedBanner(source, sourcePath) {
   // MDX does not accept HTML comments. This form is valid MDX and still clearly
   // marks the generated website copy; canonical package docs keep their H1.
   const banner = `{/* ${GENERATED_MARKER} from ${relative(sourcePath)}. Do not edit this copy. */}`
-  const rewritten = stripDuplicateTitle(stripGeneratedComment(rewriteGeneratedLinks(source)))
+  // Preserve provenance in the MDX-compatible copies.
+  const marked = source.replace(/<!-- (\/?coderabbit-ai-generated[^>]*?) -->/g, '{/* $1 */}')
+  const rewritten = stripDuplicateTitle(stripGeneratedComment(rewriteGeneratedLinks(marked)))
   if (!frontmatter) return `${banner}\n\n${rewritten}`
   const end = frontmatter.match[0].length
   return `${rewritten.slice(0, end)}${banner}\n\n${rewritten.slice(end)}`

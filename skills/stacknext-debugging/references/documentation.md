@@ -31,16 +31,28 @@ and cross-package reference; it may describe a newer release.
 
 ## What each reference owns
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:288ca3f0efa2b410cf1f3bece0fab59bbb1407b61e1f2e543eda24a9230e58d8 -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:a8fa35dd707530ebdf92d07c80b1058c90cff608b5fd3bf71a1c4876289a1632 -->
+
 | Need | Read |
 | --- | --- |
 | Configuration, wire types, redaction | `@stacknext/core/docs` |
 | Registration, manual spans, actions | `@stacknext/next/docs` |
-| Diagnostic rules and evidence | `@stacknext/diagnostics/docs` |
+| Diagnostic rules and evidence | `@stacknext/diagnostics/docs` (only when the package ships documentation) |
 | Capture, baseline and comparison formats | `@stacknext/regression/docs` |
 | Fixture and correlation | `@stacknext/playwright/docs` |
 | CLI commands and local index | `@stacknext/cli/docs` |
-| MCP tools, prompts and security | `@stacknext/mcp/docs` |
+| MCP tools, prompts and security | `@stacknext/mcp/docs` (only when the package ships documentation) |
 | Query adapters | `@stacknext/drizzle/docs`, `@stacknext/prisma/docs` |
+
+<!-- /coderabbit-ai-generated:v1 -->
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 The skill owns procedures. The package docs own API details. Do not copy large
 API tables into a report; cite the package and page you used.

@@ -12,6 +12,10 @@ flushed on timers.
 
 ## Configuration from the environment
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:ae5631127163a0e4e5963cd1aafd24ac92839a0b64f169636b78433e01038da9 -->
+
 ```ts
 import {
   getStackNextTransport,
@@ -20,10 +24,13 @@ import {
 } from '@stacknext/core/transport'
 
 const resolved = transportOptionsFromEnv()
-if ('options' in resolved) {
-  const transport = getStackNextTransport(resolved.options)
+if ('error' in resolved) {
+  throw new Error(resolved.error)
 }
+const transport = getStackNextTransport(resolved.options)
 ```
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 `transportOptionsFromEnv()` reads:
 
@@ -36,11 +43,19 @@ if ('options' in resolved) {
 | `STACKNEXT_NEXT_VERSION` | No | Next.js version used for environment snapshots. |
 | `STACKNEXT_DEBUG` | No | Set to `1` for transport debug logs. |
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:47067ada81a00e3b67dc70a931d2be33cd6d33b65434b42fc33d1b76a434d04d -->
+
 If both required variables are absent, the transport is disabled and
 instrumentation is inert. That is intentional: the same production build can
-run without a local collector. If only one is present, or the URL is not
-loopback, configuration fails with a clear error instead of silently sending
-data elsewhere.
+run without a local collector. Partial configuration, a short token or a
+non-loopback URL yields an `{ error }` result from `transportOptionsFromEnv()`.
+The no-argument `getStackNextTransport()` discards that error and returns
+`null`. Inspect the result explicitly, as above, to receive the configuration
+error.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 `isLoopbackUrl()` accepts `http` or `https` URLs whose hostname is `127.0.0.1`,
 `localhost`, `[::1]` or `::1`, and rejects embedded credentials.

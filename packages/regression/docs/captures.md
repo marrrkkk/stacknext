@@ -57,8 +57,15 @@ Samples are capped at 100 per scenario, 20 traces per sample, and 500 spans,
 
 ## Baselines
 
-`saveBaseline()` copies a completed run into an immutable record. A baseline
-contains:
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:82f70de6927a543f3381425f6ccfd4279d9449b3dc78859c33e5b620c80a7527 -->
+
+Convert a completed run with `baselineFromRun(run, { name })`, then pass the
+resulting `Baseline` to `saveBaseline(projectDir, baseline)` to persist the
+immutable record. A baseline contains:
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 - `sourceRunId`, project name, scenario identities and samples;
 - verified trace/query/error evidence;

@@ -49,8 +49,15 @@ Returns a `DrizzleLoggerLike` with `logQuery(query, params)`.
 | `transport` | `Pick<StackNextTransport, 'enqueueDatabaseQuery'>` | global transport | Override for tests or custom setups. |
 | `onError` | `(error: unknown) => void` | none | Called when the telemetry sink throws. |
 
-The instrumentation never throws into Drizzle. If no transport is active, the
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:92e6ad51fd00b5bd40b76d93991b902366deea6ad1bb299cee86b066438eac33 -->
+
+Telemetry failures are caught, but a throwing `onError` callback can propagate
+its error to Drizzle. Callers must ensure `onError` does not throw. If no transport is active, the
 logger is a no-op.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## What is recorded
 

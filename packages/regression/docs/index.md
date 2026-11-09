@@ -23,6 +23,10 @@ service. Storage is local and report-only.
 
 ## Public API
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:27de812198c94ba1d63f3e6f4ab6e1cc83191a39d69ae91a0151c6ea756a7c51 -->
+
 ```ts
 import {
   compareBaseline,
@@ -44,9 +48,11 @@ import {
   createComparisonId,
   createSampleId,
   scenarioIdentity,
-  DEFAULTS,
+  DEFAULT_COMPARISON_OPTIONS,
 } from '@stacknext/regression'
 ```
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 See the installed declarations for every helper. The main concepts:
 

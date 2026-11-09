@@ -37,9 +37,15 @@ const stop = instrumentPrismaClient(prisma, {
 
 ## Lifecycle
 
-`instrumentPrismaClient` returns a cleanup function. Calling it removes the
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:28f70536dac55a5bf479d919dd7e163c76b9148c7a914e348e3b8decef5a2e95 -->
+
+`instrumentPrismaClient` returns a cleanup function. Calling it deactivates the
 listener and clears the idempotency guard. Calling `instrumentPrismaClient`
 again for the same client before cleanup returns a no-op cleanup.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 Register the adapter once per Prisma client, after the client is created and
 before the first request.
