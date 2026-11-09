@@ -33,7 +33,12 @@ Every tool is annotated `readOnlyHint: true`, `destructiveHint: false`,
 
 ## Limits and enums
 
-- `limit` is 1–200, default 50.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:7db5ccc5e057299c65170bdefbd1b81dff6cc558d08acf2b6c062a910bedb8a4 -->
+
+- `limit` is 1–200, default 50 except for `find_slow_requests`, which defaults
+  to 20. Callers can request a larger limit within that range.
 - `minDurationMs` is 0–600,000.
 - Request `status` is `2xx`, `3xx`, `4xx`, `5xx` or `none`.
 - `sort` is `recent`, `oldest` or `slowest`.
@@ -43,8 +48,10 @@ Every tool is annotated `readOnlyHint: true`, `destructiveHint: false`,
 - Diagnostic `status` is `observed`, `possible` or `insufficient-evidence`.
 - Diagnostic `ruleId` is one of the six documented rule ids.
 - `since` and `until` are epoch milliseconds.
-- Regression ids are `run-`, `base-` or `cmp-` plus 16 hex characters.
-- Snapshot ids are `snap-` plus 16 hex characters.
+- Regression ids are `run-`, `base-` or `cmp-` plus 16 lowercase hexadecimal characters.
+- Snapshot ids are `snap-` plus 16 lowercase hexadecimal characters.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 Invalid ids are rejected before storage is read.
 

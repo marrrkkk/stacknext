@@ -114,6 +114,6 @@ application.
 
 ## Related
 
-- [Schemas](schemas.md)
-- [Redaction](redaction.md)
-- [@stacknext/next instrumentation](../next/instrumentation.md)
+- [Schemas](schemas)
+- [Redaction](redaction)
+- [@stacknext/next instrumentation](../next/instrumentation)

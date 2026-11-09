@@ -107,7 +107,11 @@ async function buildCliIndex(packages) {
     const docsDir = path.join(ROOT, entry.dir, 'docs')
     const index = parseFrontmatter(await readText(path.join(docsDir, 'index.md')))
     const localPath =
-      entry.slug === 'cli' ? 'index.md' : `../../${entry.slug}/docs/index.md`
+      entry.slug === 'cli'
+        ? 'index.md'
+        : ['diagnostics', 'mcp', 'dashboard'].includes(entry.slug)
+          ? `${entry.name}/docs/index.md (resolve from CLI)`
+          : `../../${entry.slug}/docs/index.md`
     rows.push({
       ...entry,
       version: pkg.version,
@@ -143,7 +147,7 @@ async function buildCliIndex(packages) {
     '## How to use this index',
     '',
     'Starting from `node_modules/@stacknext/cli/docs/`, read `index.md`. For every',
-    'other package, use the relative path in the table. For example:',
+    'other package with a relative path, use the table. For example:',
     '',
     '```text',
     'node_modules/@stacknext/cli/docs/index.md',
@@ -151,8 +155,21 @@ async function buildCliIndex(packages) {
     '```',
     '',
     'Do not assume an internal package is at the app-root `node_modules` path.',
-    'If a documented path does not resolve, the package is not available. Do not',
-    'instruct an agent to read a missing package directory.',
+    'For diagnostics, MCP and dashboard, resolve the package from the installed',
+    'CLI so the docs match its dependency version, including hoisted installs.',
+    'Run this from the project directory:',
+    '',
+    '```js',
+    "const { createRequire } = require('node:module')",
+    "const { dirname, join } = require('node:path')",
+    "const cliRequire = createRequire(require.resolve('@stacknext/cli/package.json'))",
+    "for (const name of ['@stacknext/diagnostics', '@stacknext/mcp', '@stacknext/dashboard']) {",
+    "  console.log(join(dirname(cliRequire.resolve(`${name}/package.json`)), 'docs', 'index.md'))",
+    '}',
+    '```',
+    '',
+    'If resolution fails, the dependency is unavailable. Do not instruct an',
+    'agent to read a missing package directory.',
     '',
     '## Public, optional and internal packages',
     '',
@@ -180,7 +197,7 @@ function rewriteGeneratedLinks(source) {
   return source.replace(
     /\]\(\.\.\/\.\.\/([a-z][a-z0-9-]*)\/docs\//g,
     '](../$1/',
-  )
+  ).replace(/(\]\((?![a-z][a-z0-9+.-]*:|\/\/)[^\s)]+?)\.md(?=[#)])/gi, '$1')
 }
 
 function escapeRegExp(value) {
@@ -195,7 +212,7 @@ function stripDuplicateTitle(source) {
   // The H1 can follow a generated comment (the CLI package index), so match it
   // anywhere before the first H2 instead of only at the start of the body.
   const heading = new RegExp(
-    `^#[\\t ]+${escapeRegExp(frontmatter.title)}[\\t ]*#*[\\t ]*(?:\\r?\\n|$)`,
+    `^#[ \t]+${escapeRegExp(frontmatter.title)}[ \t]*#*[ \t]*(?:\\r?\\n|$)`,
     'm',
   )
   if (!heading.test(rest)) return source

@@ -33,7 +33,7 @@ The seven packages listed in `DOCUMENTED_PACKAGES` ship `docs/`:
 `@stacknext/regression`, `@stacknext/playwright`, `@stacknext/drizzle` and
 `@stacknext/prisma`. Start with the CLI package's
 `docs/index.md`; the managed block below records its actual path, which may be
-at the workspace root. The generated [package index](packages.md) lists the
+at the workspace root. The generated [package index](packages) lists the
 documented packages and which docs to read.
 
 {/* /coderabbit-ai-generated:v1 */}
@@ -100,8 +100,8 @@ stacknext mcp     # stdio server
 {/* coderabbit-ai-generated-section:v1:95c82a21ffd412dd8a9b62c44104a3f93a3959e02214cd944fb055ce979258e0 */}
 
 Configure the client to start the command from the app directory. See
-[commands](commands.md) for `stacknext mcp` and
-[troubleshooting](troubleshooting.md) for client connection issues.
+[commands](commands) for `stacknext mcp` and
+[troubleshooting](troubleshooting) for client connection issues.
 
 {/* /coderabbit-ai-generated:v1 */}
 

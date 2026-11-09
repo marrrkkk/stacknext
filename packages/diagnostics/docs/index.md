@@ -23,6 +23,10 @@ The caller provides a snapshot of the current sample and its config.
 
 ## Public API
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:229f05792b12cd2c7b8ecfd7ca0dd7a43169429e4dafaf6f3a989b137a4d9d1d -->
+
 ```ts
 import {
   generateDiagnosticReport,
@@ -30,13 +34,17 @@ import {
   getDiagnosticDetail,
   diagnosticOverview,
   evaluateDiagnosticRules,
-  DIAGNOSTIC_RULES,
   DIAGNOSTICS_ENGINE_VERSION,
+} from '@stacknext/diagnostics'
+import {
+  DIAGNOSTIC_RULES,
   STACKNEXT_DIAGNOSTICS_FORMAT,
   STACKNEXT_DIAGNOSTICS_FORMAT_VERSION,
   STACKNEXT_DIAGNOSTICS_RULE_SET_VERSION,
-} from '@stacknext/diagnostics'
+} from '@stacknext/core'
 ```
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 | Function | Purpose |
 | --- | --- |

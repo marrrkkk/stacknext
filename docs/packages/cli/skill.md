@@ -72,5 +72,5 @@ recorded test in `docs/agent-testing.md`.
 
 ## Client paths
 
-See [Agent setup](agent-setup.md) for the project paths and the recommended
+See [Agent setup](agent-setup) for the project paths and the recommended
 installation order.

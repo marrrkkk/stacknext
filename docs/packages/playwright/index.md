@@ -90,9 +90,9 @@ Running `playwright test` directly does not capture or compare anything.
 
 ## Documentation map
 
-- [Fixture](fixture.md) — annotations, identity and capture lifecycle.
-- [Correlation](correlation.md) — injection, probing and verified samples.
-- [Troubleshooting](troubleshooting.md) — missing samples and incomplete runs.
+- [Fixture](fixture) — annotations, identity and capture lifecycle.
+- [Correlation](correlation) — injection, probing and verified samples.
+- [Troubleshooting](troubleshooting) — missing samples and incomplete runs.
 
 ## Related packages
 

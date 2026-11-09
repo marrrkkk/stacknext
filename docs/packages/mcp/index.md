@@ -53,9 +53,9 @@ MCP protocol messages; logs go to stderr.
 
 ## Documentation map
 
-- [Tools](tools.md) — all twenty read-only tools and arguments.
-- [Prompts](prompts.md) — the five guided prompts.
-- [Security](security.md) — loopback, redaction and read-only guarantees.
+- [Tools](tools) — all twenty read-only tools and arguments.
+- [Prompts](prompts) — the five guided prompts.
+- [Security](security) — loopback, redaction and read-only guarantees.
 
 ## Related packages
 

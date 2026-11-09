@@ -41,7 +41,7 @@ The dashboard includes:
 - Settings.
 
 It also provides a command menu and responsive layouts. The exact routes are in
-[Routes](routes.md).
+[Routes](routes).
 
 ## Brand
 
@@ -52,7 +52,7 @@ shadows or a brand accent.
 
 ## Development
 
-See [Development](development.md). User-facing dashboard documentation belongs
+See [Development](development). User-facing dashboard documentation belongs
 on the public docs site, not in this package.
 
 ## Related packages

@@ -79,7 +79,7 @@ with unrecognized keys can still retain URL query values.
 {/* /coderabbit-ai-generated:v1 */}
 
 The configuration schema rejects attempts to enable header, body or SQL
-parameter capture. See [configuration](configuration.md).
+parameter capture. See [configuration](configuration).
 
 ## Limits
 

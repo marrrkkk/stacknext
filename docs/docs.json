@@ -1,0 +1,108 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "StackNext",
+  "colors": {
+    "primary": "#18181b"
+  },
+  "markdown": {
+    "instructions": "Use the package reference for API details. Keep sample limits and privacy boundaries explicit."
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "@stacknext/cli",
+        "pages": [
+          "packages/cli/index",
+          "packages/cli/commands",
+          "packages/cli/configuration",
+          "packages/cli/agent-setup",
+          "packages/cli/skill",
+          "packages/cli/troubleshooting",
+          "packages/cli/packages"
+        ]
+      },
+      {
+        "group": "@stacknext/next",
+        "pages": [
+          "packages/next/index",
+          "packages/next/installation",
+          "packages/next/instrumentation",
+          "packages/next/configuration",
+          "packages/next/custom-spans",
+          "packages/next/troubleshooting"
+        ]
+      },
+      {
+        "group": "@stacknext/core",
+        "pages": [
+          "packages/core/index",
+          "packages/core/schemas",
+          "packages/core/transport",
+          "packages/core/redaction",
+          "packages/core/configuration",
+          "packages/core/snapshots"
+        ]
+      },
+      {
+        "group": "@stacknext/diagnostics",
+        "pages": [
+          "packages/diagnostics/index",
+          "packages/diagnostics/rules",
+          "packages/diagnostics/findings"
+        ]
+      },
+      {
+        "group": "@stacknext/regression",
+        "pages": [
+          "packages/regression/index",
+          "packages/regression/captures",
+          "packages/regression/comparisons",
+          "packages/regression/storage"
+        ]
+      },
+      {
+        "group": "@stacknext/playwright",
+        "pages": [
+          "packages/playwright/index",
+          "packages/playwright/fixture",
+          "packages/playwright/correlation",
+          "packages/playwright/troubleshooting"
+        ]
+      },
+      {
+        "group": "@stacknext/drizzle",
+        "pages": [
+          "packages/drizzle/index",
+          "packages/drizzle/configuration",
+          "packages/drizzle/troubleshooting"
+        ]
+      },
+      {
+        "group": "@stacknext/prisma",
+        "pages": [
+          "packages/prisma/index",
+          "packages/prisma/configuration",
+          "packages/prisma/troubleshooting"
+        ]
+      },
+      {
+        "group": "@stacknext/mcp",
+        "pages": [
+          "packages/mcp/index",
+          "packages/mcp/tools",
+          "packages/mcp/prompts",
+          "packages/mcp/security"
+        ]
+      },
+      {
+        "group": "@stacknext/dashboard",
+        "pages": [
+          "packages/dashboard/index",
+          "packages/dashboard/routes",
+          "packages/dashboard/development"
+        ]
+      }
+    ]
+  }
+}

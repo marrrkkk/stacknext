@@ -59,7 +59,7 @@ environment variables.
 
 ## Captured fields
 
-See [the package overview](index.md#what-is-recorded). There is no option to
+See [the package overview](index#what-is-recorded). There is no option to
 enable bind-parameter capture, SQL parameter logging or query bodies.
 
 ## Verify

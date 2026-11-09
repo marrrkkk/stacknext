@@ -120,8 +120,8 @@ const config = await loadConfig(process.cwd())
 
 {/* coderabbit-ai-generated-section:v1:348259e466fbc63f4d33e03c868398187bcd79370317321a30a260c922c3d47a */}
 
-- [Snapshots](snapshots.md)
-- [Transport](transport.md)
+- [Snapshots](snapshots)
+- [Transport](transport)
 - CLI configuration: locate the installed `@stacknext/cli` package and read
   its `docs/configuration.md`, or see the
   [repository guide](https://github.com/marrrkkk/stacknext/blob/main/packages/cli/docs/configuration.md)

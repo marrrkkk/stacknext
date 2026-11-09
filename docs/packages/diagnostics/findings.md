@@ -23,8 +23,15 @@ description: Diagnostic report, finding, evidence and filter shapes, including b
 | `notes` | Sample-specific caveats. |
 | `limitations` | Engine-level limits. |
 
-`maxFindings` defaults to 100 and is capped at 1,000. A capped report is not a
-complete inventory.
+{/* coderabbit-ai-generated:v1 */}
+
+{/* coderabbit-ai-generated-section:v1:5887425eb7c9a43245e26845f65dc19ead389e09ea90c9f1599e7af4699b512c */}
+
+`parseStackNextConfig` defaults `diagnostics.maxFindings` to 100 and rejects
+values outside 10–1,000. `generateDiagnosticReport` uses the supplied value
+without validating or capping it. A capped report is not a complete inventory.
+
+{/* /coderabbit-ai-generated:v1 */}
 
 ## Finding
 
@@ -54,8 +61,16 @@ Evidence is bounded and re-sanitized before it is returned. Fields may include:
   preview;
 - `errors` — name, message, ids, route/render context and timestamp.
 
-The engine never returns request bodies, headers, cookies, URL query values or
-SQL bind parameters, because they are not captured.
+{/* coderabbit-ai-generated:v1 */}
+
+{/* coderabbit-ai-generated-section:v1:e80d88b864f4308ac871adb9b30807e2b34389a656aed3ed4915afa83596c76b */}
+
+Request bodies, headers, cookies, URL query values and SQL bind parameters
+are not captured directly. Application error messages may include body values
+that appear in diagnostic evidence despite text redaction. Review reports for
+sensitive information before sharing them.
+
+{/* /coderabbit-ai-generated:v1 */}
 
 ## List and filters
 

@@ -12,6 +12,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
 import {
   DOCUMENTED_PACKAGES,
   GENERATED_MANIFEST,
@@ -271,8 +272,10 @@ function collectPages(node, output) {
 }
 
 async function checkMintlifyConfig() {
-  // The Mintlify site is added after the package documentation foundation.
-  if (!(await fileInfo(DOCS_CONFIG))) return null
+  if (!(await fileInfo(DOCS_CONFIG))) {
+    problems.push('docs/docs.json: site configuration is missing')
+    return null
+  }
   let config
   try {
     config = JSON.parse(await readFile(DOCS_CONFIG, 'utf8'))
@@ -416,15 +419,29 @@ async function checkAgentPackageDocs() {
     problems.push(`${relative(file)}: ${error.message}`)
     return
   }
-  const start = source.indexOf('const PACKAGE_DOCS')
-  const end = source.indexOf('async function exists', start)
-  if (start === -1 || end === -1) {
-    problems.push(`${relative(file)}: PACKAGE_DOCS block not found`)
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+  const declaration = parsed.statements
+    .filter(ts.isVariableStatement)
+    .flatMap((statement) => [...statement.declarationList.declarations])
+    .find((node) => ts.isIdentifier(node.name) && node.name.text === 'PACKAGE_DOCS')
+  if (!declaration?.initializer || !ts.isArrayLiteralExpression(declaration.initializer)) {
+    problems.push(`${relative(file)}: PACKAGE_DOCS array not found`)
     return
   }
-  const slugs = [
-    ...source.slice(start, end).matchAll(/\bslug:\s*'([^']+)'/g),
-  ].map((match) => match[1])
+  const slugs = []
+  for (const entry of declaration.initializer.elements) {
+    const properties = ts.isObjectLiteralExpression(entry)
+      ? entry.properties.filter((property) =>
+        property.name && (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) &&
+        property.name.text === 'slug')
+      : []
+    if (properties.length !== 1 || !ts.isPropertyAssignment(properties[0]) ||
+        !ts.isStringLiteral(properties[0].initializer)) {
+      problems.push(`${relative(file)}: cannot interpret PACKAGE_DOCS slug expression`)
+      continue
+    }
+    slugs.push(properties[0].initializer.text)
+  }
   const expected = DOCUMENTED_PACKAGES.map((entry) => entry.slug)
   for (const slug of expected) {
     if (!slugs.includes(slug)) {

@@ -8,14 +8,20 @@ description: The six deterministic diagnostic rules, their thresholds, evidence 
 The engine implements exactly six rules. `DIAGNOSTIC_RULES` exports their ids,
 labels, categories and default severities.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:10596212a48954811031c9de36743ec468719d7e83705fad34d911da5d4e0455 -->
+
 | Rule id | Category | Status | Severity | Trigger |
 | --- | --- | --- | --- | --- |
-| `n-plus-one-queries` | `database` | `possible` | `warning` | One normalized SQL shape repeats at least `diagnostics.repeatedQueryMin` times (default 5) in a request trace. |
-| `slow-request` | `performance` | `observed` | `warning` | A request root exceeds `slowRequestMs` (default 500 ms). |
+| `n-plus-one-queries` | `database` | `possible` | `warning` | One normalized SQL shape repeats at least `diagnostics.repeatedQueryMin` times (default 5) in a request trace; each counted query must have a `spanId` attributed to the request root. |
+| `slow-request` | `performance` | `observed` | `warning` | A request root reaches or exceeds `slowRequestMs` (default 500 ms). |
 | `slow-span` | `performance` | `observed` | `warning` | A non-root span's self time exceeds its category threshold while the request itself is not already reported as slow. |
 | `repeated-external-http` | `http` | `possible` | `warning` | One normalized outbound endpoint repeats at least `diagnostics.repeatedHttpMin` times (default 3) in one trace. |
 | `error-fingerprint` | `errors` | `observed` | `error` | A single or repeated request error grouped by canonical route and normalized signature. |
 | `server-error-response` | `errors` | `observed` | `error` | A request root returns 5xx without a correlated non-control-flow error record. |
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## N+1 queries
 
@@ -80,6 +86,14 @@ integrity metadata instead of being guessed into a request.
 
 ## Thresholds
 
-All thresholds come from `stacknext.config.json` `diagnostics`. `enabled: false`
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:a904184de13c123e8ce5a38fe44806d966a9f19751cfbda9e0846de9453c0acc -->
+
+Most thresholds come from `stacknext.config.json` `diagnostics`; `slowRequestMs`
+is a top-level property of `stacknext.config.json`. `enabled: false`
 returns an empty report, not an error. `maxFindings` caps the report after all
 rules run.
+
+
+<!-- /coderabbit-ai-generated:v1 -->

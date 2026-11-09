@@ -151,5 +151,5 @@ read `meta.completeness` or response `limitations` before drawing conclusions.
   correlation.
 - Redaction runs before enqueueing and again before storage.
 
-See [redaction](redaction.md) and the collector's
+See [redaction](redaction) and the collector's
 the repository `docs/privacy.md` for the data boundary.

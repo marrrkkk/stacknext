@@ -95,4 +95,4 @@ npx stacknext status
 ```
 
 Then make one request and confirm `requests` and `spans` increase. If the
-dashboard is empty, see [Troubleshooting](troubleshooting.md).
+dashboard is empty, see [Troubleshooting](troubleshooting).

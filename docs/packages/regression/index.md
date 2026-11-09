@@ -81,9 +81,9 @@ Ids are strict: `run-<16 hex>`, `base-<16 hex>`, `cmp-<16 hex>`,
 
 ## Documentation map
 
-- [Captures](captures.md) — run and baseline lifecycle, correlation and statuses.
-- [Comparisons](comparisons.md) — metrics, thresholds and inconclusive rules.
-- [Storage](storage.md) — directories, permissions, atomic writes and retention.
+- [Captures](captures) — run and baseline lifecycle, correlation and statuses.
+- [Comparisons](comparisons) — metrics, thresholds and inconclusive rules.
+- [Storage](storage) — directories, permissions, atomic writes and retention.
 
 ## Related packages
 
