@@ -6,6 +6,8 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-09
+
 ## [0.9.0] - 2026-11-09
 
 ### Added
