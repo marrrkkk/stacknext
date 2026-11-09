@@ -76,8 +76,8 @@ through `redactSql`. Query events do not include request bodies or headers.
 
 ## Documentation map
 
-- [Configuration](configuration.md)
-- [Troubleshooting](troubleshooting.md)
+- [Configuration](configuration)
+- [Troubleshooting](troubleshooting)
 
 ## Related packages
 

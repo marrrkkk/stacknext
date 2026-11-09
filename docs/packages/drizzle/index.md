@@ -86,8 +86,8 @@ values are never read, logged or transmitted. SQL text passes through
 
 ## Documentation map
 
-- [Configuration](configuration.md)
-- [Troubleshooting](troubleshooting.md)
+- [Configuration](configuration)
+- [Troubleshooting](troubleshooting)
 
 ## Related packages
 

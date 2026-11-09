@@ -93,7 +93,7 @@ dashboard and MCP traffic do not appear as application requests.
 ## What is not automatic
 
 - Server Components are not traced individually.
-- Server Actions are not named automatically. See [Custom spans](custom-spans.md).
+- Server Actions are not named automatically. See [Custom spans](custom-spans).
 - Application functions and arbitrary database drivers are not inferred.
 - Browser/client tracing is out of scope.
 - Edge runtime is not supported.

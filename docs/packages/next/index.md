@@ -62,7 +62,7 @@ export async function onRequestError(
 
 Do not replace an existing `instrumentation.ts`. Import `registerStackNext` and
 `onRequestError` into the existing hook instead. See
-[Installation](installation.md).
+[Installation](installation).
 
 ## Behavior
 
@@ -78,11 +78,11 @@ Do not replace an existing `instrumentation.ts`. Import `registerStackNext` and
 
 ## Documentation map
 
-- [Installation](installation.md) — peer requirements and safe setup.
-- [Instrumentation](instrumentation.md) — `register`, options and lifecycle.
-- [Configuration](configuration.md) — environment variables and verbose tracing.
-- [Custom spans](custom-spans.md) — `withStackNextSpan*` and Server Actions.
-- [Troubleshooting](troubleshooting.md) — no telemetry, provider conflicts and
+- [Installation](installation) — peer requirements and safe setup.
+- [Instrumentation](instrumentation) — `register`, options and lifecycle.
+- [Configuration](configuration) — environment variables and verbose tracing.
+- [Custom spans](custom-spans) — `withStackNextSpan*` and Server Actions.
+- [Troubleshooting](troubleshooting) — no telemetry, provider conflicts and
   Edge warnings.
 
 ## Related packages

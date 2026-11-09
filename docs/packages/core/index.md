@@ -71,12 +71,12 @@ in `dist`.
 
 ## Documentation map
 
-- [Wire schemas](schemas.md) — envelope, spans, errors, queries, responses.
-- [Transport](transport.md) — environment variables, queue limits and the
+- [Wire schemas](schemas) — envelope, spans, errors, queries, responses.
+- [Transport](transport) — environment variables, queue limits and the
   ingest request.
-- [Redaction](redaction.md) — both redaction layers and what is never captured.
-- [Configuration](configuration.md) — `StackNextConfig` fields and defaults.
-- [Snapshots](snapshots.md) — payloads, storage and detached views.
+- [Redaction](redaction) — both redaction layers and what is never captured.
+- [Configuration](configuration) — `StackNextConfig` fields and defaults.
+- [Snapshots](snapshots) — payloads, storage and detached views.
 
 ## Related packages
 

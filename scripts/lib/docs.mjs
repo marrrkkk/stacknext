@@ -55,6 +55,15 @@ export const DOCUMENTED_PACKAGES = [
     ],
   },
   {
+    name: '@stacknext/diagnostics',
+    dir: 'packages/diagnostics',
+    slug: 'diagnostics',
+    visibility: 'internal',
+    role: 'Diagnostic engine',
+    summary: 'The six deterministic rules, fingerprinting, filtering and finding evidence.',
+    required: ['index.md', 'rules.md', 'findings.md'],
+  },
+  {
     name: '@stacknext/regression',
     dir: 'packages/regression',
     slug: 'regression',
@@ -89,6 +98,24 @@ export const DOCUMENTED_PACKAGES = [
     role: 'Database adapter',
     summary: 'Prisma query events with redacted SQL and measured durations when available.',
     required: ['index.md', 'configuration.md', 'troubleshooting.md'],
+  },
+  {
+    name: '@stacknext/mcp',
+    dir: 'packages/mcp',
+    slug: 'mcp',
+    visibility: 'internal',
+    role: 'Read-only MCP server',
+    summary: 'Twenty read-only tools and five prompts over the local collector API.',
+    required: ['index.md', 'tools.md', 'prompts.md', 'security.md'],
+  },
+  {
+    name: '@stacknext/dashboard',
+    dir: 'packages/dashboard',
+    slug: 'dashboard',
+    visibility: 'internal',
+    role: 'Static dashboard',
+    summary: 'React/Vite dashboard served by the CLI collector.',
+    required: ['index.md', 'routes.md', 'development.md'],
   },
 ]
 

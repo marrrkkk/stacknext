@@ -96,6 +96,6 @@ verbose tracing even when `instrumentation.verbose` is `true`.
 
 ## Related
 
-- [@stacknext/core configuration](../core/configuration.md)
-- [Agent setup](agent-setup.md)
-- [Troubleshooting](troubleshooting.md)
+- [@stacknext/core configuration](../core/configuration)
+- [Agent setup](agent-setup)
+- [Troubleshooting](troubleshooting)

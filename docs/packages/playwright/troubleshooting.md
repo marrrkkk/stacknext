@@ -37,7 +37,7 @@ Do not set these manually; let `stacknext capture` supply them.
 
 The scenario identity changed. Prefer a stable `stacknext.scenario` annotation
 and keep it unchanged between the baseline and candidate. See
-[Fixture](fixture.md).
+[Fixture](fixture).
 
 ## The test passes but the run exits 3
 

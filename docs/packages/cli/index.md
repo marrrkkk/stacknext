@@ -12,12 +12,12 @@ the installed StackNext version, without network access.
 
 ## Start here
 
-1. Read [commands](commands.md) for the CLI surface.
-2. Read [configuration](configuration.md) for `stacknext.config.json`.
-3. Read [agent setup](agent-setup.md) when configuring an AI client.
+1. Read [commands](commands) for the CLI surface.
+2. Read [configuration](configuration) for `stacknext.config.json`.
+3. Read [agent setup](agent-setup) when configuring an AI client.
 4. Read the package document for every package involved in the task.
 
-The generated [package index](packages.md) lists the documented packages, their
+The generated [package index](packages) lists the documented packages, their
 versions, their role and the path to each package's own documentation.
 
 ## Version matching
@@ -50,7 +50,7 @@ branch.
 
 Package docs ship inside installed packages that currently include a `docs/` directory. Start from this CLI `docs/`
 directory and use the relative paths in the generated
-[package index](packages.md), because optional and internal packages may not sit
+[package index](packages), because optional and internal packages may not sit
 at the app's root `node_modules` path.
 
 {/* /coderabbit-ai-generated:v1 */}
@@ -96,11 +96,11 @@ its APIs are available.
 | Install, configure or run StackNext | `cli`, `next` |
 | Change `instrumentation.ts` or manual spans | `next` |
 | Work with shared types, redaction, transport or snapshots | `core` |
-| Change or interpret diagnostic findings | CLI [commands](commands.md) |
+| Change or interpret diagnostic findings | CLI [commands](commands) |
 | Work with Playwright capture, baselines or comparisons | `playwright`, `regression` |
 | Add Drizzle query evidence | `drizzle` |
 | Add Prisma query evidence | `prisma` |
-| Configure an MCP client or use runtime evidence | CLI [agent setup](agent-setup.md) |
+| Configure an MCP client or use runtime evidence | CLI [agent setup](agent-setup) |
 
 {/* /coderabbit-ai-generated:v1 */}
 
@@ -137,7 +137,7 @@ its APIs are available.
 
 ## More documentation
 
-- [Agent setup](agent-setup.md) — `stacknext init --agents`, MCP and skills.
-- [Skill installation](skill.md) — supported clients and paths.
-- [Troubleshooting](troubleshooting.md) — missing telemetry, ports and clients.
-- [Package index](packages.md) — generated list of installed package docs.
+- [Agent setup](agent-setup) — `stacknext init --agents`, MCP and skills.
+- [Skill installation](skill) — supported clients and paths.
+- [Troubleshooting](troubleshooting) — missing telemetry, ports and clients.
+- [Package index](packages) — generated list of installed package docs.

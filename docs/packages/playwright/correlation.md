@@ -64,4 +64,4 @@ requests.
 - Browser-side rendering and network timing are not captured.
 - Playwright screenshots, video and trace archives are never read or stored.
 
-See [regression captures](../regression/captures.md).
+See [regression captures](../regression/captures).
