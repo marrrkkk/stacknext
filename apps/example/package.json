@@ -1,6 +1,6 @@
 {
   "name": "@stacknext/example",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
   "description": "StackNext example: a task tracker wired to the local collector, diagnostics and regression flows",
   "type": "module",
