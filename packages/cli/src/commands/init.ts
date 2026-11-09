@@ -10,6 +10,8 @@ import {
   type ProjectInfo,
 } from '../project.js'
 import { printCheck, printSection, style } from '../output.js'
+import { CLI_VERSION } from '../version.js'
+import { discoverAgentPackages, installAgentRules } from '../agents.js'
 
 function instrumentationTarget(project: ProjectInfo): string {
   const inSrc =
@@ -120,6 +122,8 @@ async function runInstall(project: ProjectInfo): Promise<boolean> {
 
 export interface InitOptions {
   install?: boolean
+  agents?: boolean
+  skipAgents?: boolean
 }
 
 export async function runInit(options: InitOptions, cwd = process.cwd()): Promise<number> {
@@ -238,6 +242,25 @@ export async function runInit(options: InitOptions, cwd = process.cwd()): Promis
     )
   }
 
+  if (options.agents && !options.skipAgents) {
+    const packages = await discoverAgentPackages(project.dir)
+    const installed = await installAgentRules(project.dir, {
+      version: CLI_VERSION,
+      packages,
+    })
+    if (installed.status === 'unchanged') {
+      printCheck('pass', `${installed.file} is up to date`, 'managed StackNext block')
+    } else {
+      const action =
+        installed.status === 'created'
+          ? 'Created'
+          : installed.status === 'appended'
+            ? 'Appended StackNext rules to'
+            : 'Updated StackNext rules in'
+      printCheck('pass', `${action} ${path.relative(project.dir, installed.file)}`, 'managed block only')
+    }
+  }
+
   printSection('Next steps')
   console.log(
     `1. Run ${style.cyan('stacknext dev')} (or ${style.cyan('stacknext dev --install')} if packages are missing).`,
@@ -255,6 +278,8 @@ export function registerInitCommand(program: Command, cwd: string): void {
     .command('init')
     .description('Configure a Next.js project for StackNext')
     .option('--install', 'install @stacknext/next with the detected package manager')
+    .option('--agents', 'add or update the managed StackNext block in AGENTS.md')
+    .option('--skip-agents', 'skip the AGENTS.md managed block (the default)')
     .action(async (options: InitOptions) => {
       const code = await runInit(options, cwd)
       if (code !== 0) process.exitCode = code
