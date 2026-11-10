@@ -12,6 +12,16 @@ pnpm docs:dev    # from the repository root
 Mintlify includes in AI-readable output. The site is deployed independently from
 npm publishing.
 
+## Mintlify deployment
+
+The Mintlify project must have **docs.json is in a subdirectory** enabled with
+the path `/apps/docs` in its Git settings. The repository root also contains the
+engineering knowledge base under `docs/`, so the default root lookup cannot
+find the site configuration. Without this setting the Mintlify GitHub App
+reports `Unable to find docs.json` and does not publish previews or production
+deployments. The setting is configured in the Mintlify dashboard, not in this
+repository.
+
 ## Source of truth
 
 - Hand-authored public pages live here.

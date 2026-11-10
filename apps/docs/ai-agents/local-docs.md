@@ -56,7 +56,7 @@ StackNext does not maintain a separate versioned-docs service; the local archive
 is the primary version safeguard. If your release has no bundled docs, use the
 `packages/<package>/docs/` directory at its matching `v<version>` tag in the
 [StackNext source repository](https://github.com/marrrkkk/stacknext/tags),
-for example [v0.10.0 package documentation](https://github.com/marrrkkk/stacknext/tree/v0.10.0/packages).
+for example [v0.11.0 package documentation](https://github.com/marrrkkk/stacknext/tree/v0.11.0/packages).
 The [release procedure](https://github.com/marrrkkk/stacknext/blob/main/docs/deployment/release-process.md)
 defines these version tags. Verify the tag
 against the installed package version; the website reflects the current checkout.
