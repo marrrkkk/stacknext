@@ -69,5 +69,4 @@ add capabilities. They must not instruct an agent to bypass redaction, read
 
 ## Reporting
 
-Security issues follow the repository the repository `SECURITY.md`,
-not public issues.
+Security issues follow the repository `SECURITY.md`, not public issues.

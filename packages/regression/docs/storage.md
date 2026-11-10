@@ -72,4 +72,4 @@ diagnostic references, environment facts and a sanitized command snapshot.
 They never contain request/response bodies, headers, cookies, URL query values,
 SQL bind parameters, Playwright screenshots/video/trace archives or the
 collector token. The full boundary is in
-the repository `docs/privacy.md`.
+the repository `apps/docs/privacy.md`.

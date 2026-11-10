@@ -14,7 +14,7 @@ another.
 
 | Surface | Purpose | Command |
 | --- | --- | --- |
-| Local package documentation | Version-matched API reference | Ships in the seven documented packages |
+| Local package documentation | Version-matched API reference | Ships in the ten documented packages |
 | Managed `AGENTS.md` block | Short project rules and documentation pointers | `stacknext init --agents` |
 | Agent Skill | Detailed evidence-first workflows | `stacknext skill install` |
 | MCP server | Read-only runtime evidence | `stacknext mcp` |
@@ -27,10 +27,11 @@ another.
 
 <!-- coderabbit-ai-generated-section:v1:5322f074c4bd22377289b52567028ebfbba0bcf2a8678742f28a42cbc3ec8e3c -->
 
-The seven packages listed in `DOCUMENTED_PACKAGES` ship `docs/`:
+The ten packages listed in `DOCUMENTED_PACKAGES` ship `docs/`:
 `@stacknext/cli`, `@stacknext/next`, `@stacknext/core`,
-`@stacknext/regression`, `@stacknext/playwright`, `@stacknext/drizzle` and
-`@stacknext/prisma`. Start with the CLI package's
+`@stacknext/diagnostics`, `@stacknext/regression`, `@stacknext/playwright`,
+`@stacknext/drizzle`, `@stacknext/prisma`, `@stacknext/mcp` and
+`@stacknext/dashboard`. Start with the CLI package's
 `docs/index.md`; the managed block below records its actual path, which may be
 at the workspace root. The generated [package index](packages.md) lists the
 documented packages and which docs to read.

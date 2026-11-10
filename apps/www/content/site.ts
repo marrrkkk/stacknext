@@ -1,24 +1,24 @@
 export const LINKS = {
   github: 'https://github.com/marrrkkk/stacknext',
-  docs: 'https://github.com/marrrkkk/stacknext/tree/main/docs',
+  docs: 'https://github.com/marrrkkk/stacknext/tree/main/apps/docs',
   quickstart:
-    'https://github.com/marrrkkk/stacknext/blob/main/docs/getting-started/quickstart.md',
+    'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/getting-started/quickstart.md',
   installation:
-    'https://github.com/marrrkkk/stacknext/blob/main/docs/getting-started/quickstart.md',
-  cli: 'https://github.com/marrrkkk/stacknext/blob/main/docs/cli/commands.md',
+    'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/getting-started/quickstart.md',
+  cli: 'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/cli/commands.md',
   diagnostics:
-    'https://github.com/marrrkkk/stacknext/blob/main/docs/guides/diagnostics.md',
+    'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/guides/diagnostics.md',
   regression:
-    'https://github.com/marrrkkk/stacknext/blob/main/docs/regression-testing.md',
+    'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/regression-testing.md',
   privacy: '/privacy',
   privacyDocs:
-    'https://github.com/marrrkkk/stacknext/blob/main/docs/privacy.md',
-  mcp: 'https://github.com/marrrkkk/stacknext/blob/main/docs/mcp.md',
+    'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/privacy.md',
+  mcp: 'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/mcp.md',
   snapshots:
-    'https://github.com/marrrkkk/stacknext/blob/main/docs/guides/snapshots.md',
+    'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/guides/snapshots.md',
   limitations: '/limitations',
   limitationsSource:
-    'https://github.com/marrrkkk/stacknext/blob/main/docs/limitations.md',
+    'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/limitations.md',
   npm: 'https://www.npmjs.com/package/@stacknext/cli',
   license: '/license',
   licenseFile: 'https://github.com/marrrkkk/stacknext/blob/main/LICENSE',

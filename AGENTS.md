@@ -1,7 +1,9 @@
 # AGENTS.md
 
-Repository conventions and invariants for StackNext. Read
-[docs/architecture.md](docs/architecture.md) before changing package boundaries.
+Repository conventions and invariants for StackNext contributors and coding
+agents. Read [docs/architecture/overview.md](docs/architecture/overview.md) and
+[docs/architecture/boundaries.md](docs/architecture/boundaries.md) before
+changing package boundaries or captured data.
 
 ## What this is
 
@@ -26,14 +28,14 @@ pnpm lint           # eslint over the whole repo
 pnpm typecheck      # per-package tsc --noEmit against source paths
 pnpm test           # vitest unit/integration tests
 pnpm test:e2e       # real CLI + collector + example app + dashboard + MCP + regression flow
-pnpm benchmark      # synthetic ingest and read API benchmark (docs/benchmark.md)
+pnpm benchmark      # synthetic ingest and read API benchmark
 pnpm benchmark:diagnostics # synthetic findings + diagnostics read benchmark
 pnpm benchmark:verbose # real-app verbose-tracing overhead comparison
-pnpm docs:sync      # regenerate package docs in the CLI and Mintlify tree
+pnpm docs:sync      # regenerate package docs in the CLI and public site
 pnpm docs:check     # generated docs + website changelog + links + navigation
 pnpm changelog:sync # regenerate website changelog data from CHANGELOG.md
 pnpm changelog:check # fail when the generated website changelog is stale
-pnpm docs:dev       # local Mintlify preview from docs/
+pnpm docs:dev       # local Mintlify preview from apps/docs/
 ```
 
 Useful scoped commands:
@@ -72,7 +74,7 @@ uses `http://127.0.0.1:4400` by default. `stacknext dev` writes
 | `packages/diagnostics` | Deterministic fingerprinting, six diagnostic rules, report filtering, overview and detail evidence. |
 | `packages/regression` | Capture/run/baseline/comparison schemas, stable scenario and trace identities, environment snapshots, deterministic comparison, private atomic storage. |
 | `packages/playwright` | Optional Playwright fixture, W3C trace-context propagation, trace probing, correlation submission. |
-| `packages/next` | `instrumentation.ts` registration, OTel provider/exporter, error hook. |
+| `packages/next` | `instrumentation.ts` registration, OTel provider/exporter, error hook, manual span helpers. |
 | `packages/drizzle` | Drizzle `Logger` adapter. |
 | `packages/prisma` | Prisma `$on('query')` adapter. |
 | `packages/cli` | `stacknext` binary, collector HTTP server, regression and snapshot commands, dashboard hosting. |
@@ -81,50 +83,57 @@ uses `http://127.0.0.1:4400` by default. `stacknext dev` writes
 | `skills/stacknext-debugging` | Portable Agent Skill with tool reference and evidence-first workflows. |
 | `apps/example` | StackNext Example demo with Drizzle/better-sqlite3, slow, error, N+1, slow-DB and repeated-fetch routes plus annotated Playwright scenarios. |
 | `apps/www` | Private marketing website: landing page plus privacy, license, limitations and generated changelog pages. Not published. |
-| `scripts/` | Real e2e and benchmark scripts, including the capture → baseline → candidate → compare flow. |
+| `apps/docs` | Public Mintlify documentation site and generated package copies. |
+| `docs` | Contributor and engineering knowledge base. Not deployed. |
+| `scripts/` | Real e2e, benchmark, docs, changelog and release tooling. |
 
-## Documentation architecture
+## Documentation map
 
 Documentation is part of the package distribution, not only a website.
 
-- Canonical developer documentation for a package lives in
-  `packages/<package>/docs/`. It is plain Markdown with `title` and
-  `description` frontmatter, relative links and no Mintlify-only components.
-- Published packages include `docs` in `files`. Public packages also pass the
-  archive checks in `scripts/lib/release.mjs`.
-- `scripts/sync-docs.mjs` generates the CLI index
-  (`packages/cli/docs/packages.md`) and the Mintlify copies under
-  `docs/packages/<slug>/`. Do not edit either output; edit the canonical file
-  and run `pnpm docs:sync`.
-- `docs/docs.json` is the Mintlify configuration and hand-authored navigation.
-  Every navigation entry must resolve, and every generated package page must be
-  in it. `docs/` is the Mintlify root, so site URLs stay extensionless.
-- `docs/` hand-authored pages are the cross-package, conceptual website. They
-  must not duplicate package API reference; link to the package docs instead.
-- `CHANGELOG.md` is the canonical changelog. The website module
+- **Public site:** `apps/docs/`. Hand-authored product guides and concepts, plus
+  generated package copies. `apps/docs/docs.json` owns navigation, redirects and
+  `markdown.instructions`. Every navigation entry must resolve and every
+  generated package page must be in the navigation.
+- **Engineering knowledge base:** `docs/`. Contributor setup, architecture,
+  testing, benchmarks, release and decisions. It is not deployed by Mintlify and
+  must not duplicate the public site. Start at [docs/README.md](docs/README.md).
+- **Package reference:** `packages/<package>/docs/`. Plain Markdown with `title`
+  and `description` frontmatter, relative links and no Mintlify-only components.
+  It ships in the npm archive and is the canonical API reference.
+- **Generated copies:** `apps/docs/packages/<slug>/` and
+  `packages/cli/docs/packages.md` are generated by `scripts/sync-docs.mjs`. Do
+  not edit them; edit the canonical file and run `pnpm docs:sync`.
+- **AI-readable docs:** Mintlify generates `/llms.txt`, `/llms-full.txt` and
+  Markdown page variants. Do not commit manual copies. Keep
+  `markdown.instructions` accurate and see `apps/docs/ai-agents/llms-txt.md`.
+- **Changelog:** `CHANGELOG.md` is canonical.
   `apps/www/content/changelog.generated.ts` is generated by
-  `scripts/sync-changelog.mjs` and verified by `pnpm changelog:check`. Never
-  edit the generated module by hand.
-- Consumer agent instructions are opt-in via `stacknext init --agents` and are
-  managed between the `BEGIN/END STACKNEXT AGENT RULES` markers. The root
-  `AGENTS.md` is for contributors only and is never installed into consumers.
-- `skills/stacknext-debugging` stays procedural and points at local
-  `node_modules/@stacknext/*/docs`; API reference belongs in package docs.
-- Mintlify is a documentation development/deployment concern. It is not a
+  `scripts/sync-changelog.mjs` and verified by `pnpm changelog:check`. Never edit
+  the generated module by hand.
+- **Consumer agent instructions:** opt-in via `stacknext init --agents`, managed
+  between the `BEGIN/END STACKNEXT AGENT RULES` markers. The root `AGENTS.md` is
+  for contributors only and is never installed into consumers.
+- **Agent Skill:** `skills/stacknext-debugging` is canonical and follows the
+  Agent Skills specification. It is copied into the `@stacknext/cli` archive at
+  pack time and points at local `node_modules/@stacknext/*/docs`.
+- **Mintlify:** a documentation development/deployment concern. It is not a
   runtime dependency and does not affect `stacknext dev`.
 
-Dependency direction: `core` is the base. `diagnostics`, `next`, `drizzle`,
-`prisma`, `mcp` and `cli` may depend on `core`; `regression` depends on `core`
-and `diagnostics`; `playwright` depends on `regression` and has
-`@playwright/test` as a peer; `cli`, `dashboard` and `mcp` may depend on
-`regression`. `cli` also depends on `dashboard`, `mcp` and `diagnostics`. Never
-import CLI, Next.js, React, Playwright or adapter code from `core`.
+## Dependency direction
+
+`core` is the base. `diagnostics`, `next`, `drizzle`, `prisma`, `mcp` and `cli`
+may depend on `core`; `regression` depends on `core` and `diagnostics`;
+`playwright` depends on `regression` and has `@playwright/test` as a peer; `cli`,
+`dashboard` and `mcp` may depend on `regression`. `cli` also depends on
+`dashboard`, `mcp` and `diagnostics`. Never import CLI, Next.js, React,
+Playwright or adapter code from `core`.
 
 ## Architecture invariants
 
-- **Supported surface only.** Next.js 15/16 App Router, Node.js runtime.
-  Do not patch undocumented Next.js internals and do not claim Edge or
-  production support.
+- **Supported surface only.** Next.js 15/16 App Router, Node.js runtime. Do not
+  patch undocumented Next.js internals and do not claim Edge or production
+  support.
 - **Never overwrite `instrumentation.ts`.** `stacknext init` must preserve an
   existing file and print manual instructions. `registerStackNext()` must yield
   to an already-registered OpenTelemetry provider instead of replacing it.
@@ -135,14 +144,14 @@ import CLI, Next.js, React, Playwright or adapter code from `core`.
 - **Native-only runtime.** The collector and dashboard run as a Node process
   started by the CLI. Do not add a managed container runtime, a `runtime.mode`
   configuration field or `--docker`/`--native` peer flags. See
-  `docs/adr/0001-native-only-runtime.md`.
+  [ADR 0001](docs/decisions/0001-native-only-runtime.md).
 - **Validate at the boundary.** Every ingest envelope is Zod-validated, body
   size is capped, and counts are bounded before entering the store.
 - **Bounded memory.** The store is in memory with capacity/retention limits and
   drop counters. Instrumentation must never block a request on network I/O.
-- **Two-layer redaction.** Redact in the app process before enqueueing and
-  again in the collector before storing. A new field is not done until both
-  layers and the privacy docs are updated.
+- **Two-layer redaction.** Redact in the app process before enqueueing and again
+  in the collector before storing. A new field is not done until both layers and
+  the privacy docs are updated.
 - **Coverage is evidence, not a score.** Coverage statuses come from the current
   store sample plus collector config/connection state. Never invent a composite
   percentage or treat `not-observed`/`unknown` as proof that a feature is broken.
@@ -195,9 +204,9 @@ import CLI, Next.js, React, Playwright or adapter code from `core`.
   Server Action tracing.
 - **Package documentation is distributed.** A public package is not complete
   until its `docs/` directory is present in the npm archive, listed in
-  `DOCUMENTED_PACKAGES`, reachable from `docs/docs.json`, and validated by
+  `DOCUMENTED_PACKAGES`, reachable from `apps/docs/docs.json`, and validated by
   `pnpm check:docs` and `pnpm test:packages`. Never edit generated copies under
-  `docs/packages` or `packages/cli/docs/packages.md`.
+  `apps/docs/packages` or `packages/cli/docs/packages.md`.
 - **Read-only MCP.** All tools stay `readOnlyHint: true`; the API client only
   performs GETs and refuses non-loopback URLs. stdout is protocol-only. Prompts
   and the Agent Skill shape investigations but cannot add capabilities, mutate
@@ -210,7 +219,28 @@ import CLI, Next.js, React, Playwright or adapter code from `core`.
   `@stacknext/cli` archive at pack time and installed with `stacknext skill
   install --client opencode|codex|claude-code`. Keep `SKILL.md` concise, put
   details in `references/`, and do not claim a client is supported without a
-  real end-to-end test recorded in `docs/agent-testing.md`.
+  real end-to-end test recorded in
+  [docs/testing/agent-compatibility.md](docs/testing/agent-compatibility.md).
+
+## API compatibility
+
+These surfaces are consumed by users, clients or saved records. Change them
+additively unless a major version is explicitly planned.
+
+- **CLI commands and flags:** keep documented names, JSON shapes and exit codes
+  stable. Add fields rather than renaming or removing them.
+- **MCP tools:** keep the twenty tool names, argument schemas and read-only
+  annotations stable. Response metadata and output fields may be added.
+- **Package exports:** keep the documented entry points and TypeScript
+  declarations compatible. `@stacknext/core` has subpath exports for transport,
+  config-file and snapshots.
+- **Wire and storage formats:** bump the format or engine version when a schema
+  changes. Keep old records readable or report them as invalid; never silently
+  repair or overwrite them.
+- **Config:** `stacknext.config.json` is Zod-validated. Add optional fields with
+  defaults; do not silently reinterpret existing values.
+- **Public docs:** keep URLs stable. Add a redirect in `apps/docs/docs.json` when
+  a public page moves.
 
 ## Privacy and security rules
 
@@ -227,8 +257,8 @@ stacks go through text redaction. Resource attributes use an allowlist. Capture
 records, baselines, comparisons and snapshots are redacted local files under
 `.stacknext`; they must never contain a token, raw body/header/query value, SQL
 bind parameter or Playwright artifact. If a change touches captured data, update
-`docs/privacy.md`, the config schema and the tests that assert secrets do not
-appear in API/export/regression/snapshot output.
+`apps/docs/privacy.md`, the config schema and the tests that assert secrets do
+not appear in API/export/regression/snapshot output.
 
 Tokens live in `.stacknext/run.json` with mode `0600`. Do not log tokens, put
 them in fixtures, commit runtime state or add a remote transport.
@@ -259,6 +289,20 @@ them in fixtures, commit runtime state or add a remote transport.
   practical), not mocks of the code under test.
 - No generated build output, logs, local databases or runtime state in commits.
 
+## Agent workflow
+
+1. Read this file, the relevant engineering page and the canonical package docs.
+2. Inspect the actual code and tests before proposing a change. Do not invent
+   commands, paths, APIs or compatibility claims.
+3. Make the smallest change that preserves the documented boundaries.
+4. Update canonical docs, the public navigation and the changelog when the
+   user-visible surface changes. Do not edit generated copies.
+5. Run the verification sequence below. Record exact commands and results.
+6. Review `git diff` for generated output, secrets, unrelated changes and stale
+   links.
+7. Report what changed, what was verified, what could not run, and any remaining
+   manual configuration. Do not claim a check passed without running it.
+
 ## Verification workflow
 
 Before declaring a change complete:
@@ -278,12 +322,13 @@ Before declaring a change complete:
    user-facing changes, exercise `stacknext dev` manually and check the
    dashboard Overview coverage and diagnostics cards, request/trace timelines,
    database, errors, `/diagnostics` and `/diagnostics/:id`, `/runs`, `/runs/:id`,
-   `/baselines`, `/baselines/:id`, `/comparisons`, `/comparisons/:id`, the
-   `/actions-demo`, `/api/custom-work`, `/api/n-plus-one`,
-   `/api/n-plus-one-fixed`, `/api/slow-db` and `/api/repeated-fetch` routes,
-   `stacknext coverage`, `stacknext diagnose`, `stacknext capture`,
-   `stacknext runs`, `stacknext baseline`, `stacknext compare` and the MCP
-   summary/diagnostics/regression tools.
+   `/baselines`, `/baselines/:id`, `/comparisons`, `/comparisons/:id`,
+   `/snapshots` and its scoped views, the `/actions-demo`, `/api/custom-work`,
+   `/api/n-plus-one`, `/api/n-plus-one-fixed`, `/api/slow-db` and
+   `/api/repeated-fetch` routes, `stacknext coverage`, `stacknext diagnose`,
+   `stacknext capture`, `stacknext runs`, `stacknext baseline`,
+   `stacknext compare`, `stacknext snapshot` and the MCP
+   summary/diagnostics/regression/snapshot tools.
 7. Warm `/`, `/projects/1` and `/api/n-plus-one` before a baseline capture.
    Cold route-module spans can appear on only one side and make a comparison
    inconclusive. Use one Playwright worker and at least three samples.
@@ -298,8 +343,8 @@ Before declaring a change complete:
    with its performance caveat.
 
 Runtime verification in this repository used Node.js 24 and Next.js 16.4.3;
-CI uses Node.js 22. Keep `engines` at Node `>=20.9.0` unless the support policy
-changes.
+CI covers Node.js 22, 24 and 26. Keep `engines` at Node `>=20.9.0` unless the
+support policy changes.
 
 When stopping a dev server, send SIGINT/SIGTERM to the `stacknext dev`
 process so it can close the collector and remove `.stacknext/run.json`. Check

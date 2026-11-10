@@ -8,7 +8,7 @@
  * once per mode per pair; no app is left running.
  *
  * Run `pnpm build` first. Numbers are machine-specific and include dev-server
- * compilation/cache effects; see docs/benchmark.md.
+ * compilation/cache effects; see docs/testing/benchmarks.md.
  */
 import { spawn } from 'node:child_process'
 import { access, readFile, rm } from 'node:fs/promises'

@@ -1,0 +1,273 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "StackNext",
+  "description": "Local-first runtime debugging, deterministic diagnostics and Playwright regression evidence for Next.js App Router apps.",
+  "colors": {
+    "primary": "#111111",
+    "light": "#111111",
+    "dark": "#F7F8F8"
+  },
+  "logo": {
+    "light": "/images/logo-black.svg",
+    "dark": "/images/logo-white.svg"
+  },
+  "favicon": "/images/favicon.png",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Overview",
+        "pages": [
+          "index",
+          "overview/what-is-stacknext",
+          "overview/core-concepts",
+          "limitations"
+        ]
+      },
+      {
+        "group": "Getting started",
+        "pages": [
+          "getting-started/requirements",
+          "installation",
+          "getting-started/quickstart",
+          "getting-started",
+          "getting-started/configuration",
+          "getting-started/first-app",
+          "uninstall",
+          "compatibility"
+        ]
+      },
+      {
+        "group": "Core concepts",
+        "pages": [
+          "guides/nextjs",
+          "guides/runtime-evidence",
+          "guides/database",
+          "guides/diagnostics",
+          "guides/regression",
+          "guides/snapshots",
+          "instrumentation-coverage",
+          "custom-instrumentation",
+          "server-actions"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "regression-testing",
+          "playwright-integration",
+          "baselines",
+          "comparison-methodology",
+          "ci-integration"
+        ]
+      },
+      {
+        "group": "CLI",
+        "pages": [
+          "cli/index",
+          "cli/commands",
+          "cli/agent-setup",
+          "troubleshooting"
+        ]
+      },
+      {
+        "group": "AI integrations",
+        "pages": [
+          "ai-agents/index",
+          "ai-agents/local-docs",
+          "ai-agents/agents-md",
+          "ai-agents/skill",
+          "ai-agents/supported-agents",
+          "ai-agents/workflows",
+          "ai-agents/llms-txt",
+          "mcp",
+          "integrations/agent-instructions",
+          "integrations/opencode",
+          "integrations/codex",
+          "integrations/claude-code"
+        ]
+      },
+      {
+        "group": "Packages",
+        "pages": [
+          "packages/index",
+          {
+            "group": "CLI",
+            "pages": [
+              "packages/cli/index",
+              "packages/cli/commands",
+              "packages/cli/configuration",
+              "packages/cli/agent-setup",
+              "packages/cli/skill",
+              "packages/cli/packages",
+              "packages/cli/troubleshooting"
+            ]
+          },
+          {
+            "group": "Next.js",
+            "pages": [
+              "packages/next/index",
+              "packages/next/installation",
+              "packages/next/instrumentation",
+              "packages/next/configuration",
+              "packages/next/custom-spans",
+              "packages/next/troubleshooting"
+            ]
+          },
+          {
+            "group": "Drizzle",
+            "pages": [
+              "packages/drizzle/index",
+              "packages/drizzle/configuration",
+              "packages/drizzle/troubleshooting"
+            ]
+          },
+          {
+            "group": "Prisma",
+            "pages": [
+              "packages/prisma/index",
+              "packages/prisma/configuration",
+              "packages/prisma/troubleshooting"
+            ]
+          },
+          {
+            "group": "Playwright",
+            "pages": [
+              "packages/playwright/index",
+              "packages/playwright/fixture",
+              "packages/playwright/correlation",
+              "packages/playwright/troubleshooting"
+            ]
+          },
+          {
+            "group": "Core",
+            "pages": [
+              "packages/core/index",
+              "packages/core/schemas",
+              "packages/core/transport",
+              "packages/core/redaction",
+              "packages/core/configuration",
+              "packages/core/snapshots"
+            ]
+          },
+          {
+            "group": "Diagnostics",
+            "pages": [
+              "packages/diagnostics/index",
+              "packages/diagnostics/rules",
+              "packages/diagnostics/findings"
+            ]
+          },
+          {
+            "group": "Regression",
+            "pages": [
+              "packages/regression/index",
+              "packages/regression/captures",
+              "packages/regression/comparisons",
+              "packages/regression/storage"
+            ]
+          },
+          {
+            "group": "MCP",
+            "pages": [
+              "packages/mcp/index",
+              "packages/mcp/tools",
+              "packages/mcp/prompts",
+              "packages/mcp/security"
+            ]
+          },
+          {
+            "group": "Dashboard",
+            "pages": [
+              "packages/dashboard/index",
+              "packages/dashboard/routes",
+              "packages/dashboard/development"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "Security and privacy",
+        "pages": [
+          "security/data-collection",
+          "security/redaction",
+          "security/retention",
+          "privacy"
+        ]
+      },
+      {
+        "group": "Architecture",
+        "pages": [
+          "architecture",
+          "architecture/packages",
+          "architecture/boundaries"
+        ]
+      },
+      {
+        "group": "Contributing",
+        "pages": [
+          "contributing/index"
+        ]
+      }
+    ]
+  },
+  "redirects": [
+    {
+      "source": "/contributing/environment",
+      "destination": "https://github.com/marrrkkk/stacknext/blob/main/docs/development/environment-setup.md"
+    },
+    {
+      "source": "/contributing/testing",
+      "destination": "https://github.com/marrrkkk/stacknext/blob/main/docs/testing/testing-strategy.md"
+    },
+    {
+      "source": "/contributing/documentation",
+      "destination": "https://github.com/marrrkkk/stacknext/blob/main/docs/development/documentation.md"
+    },
+    {
+      "source": "/releasing",
+      "destination": "https://github.com/marrrkkk/stacknext/blob/main/docs/deployment/release-process.md"
+    },
+    {
+      "source": "/agent-testing",
+      "destination": "https://github.com/marrrkkk/stacknext/blob/main/docs/testing/agent-compatibility.md"
+    },
+    {
+      "source": "/benchmark",
+      "destination": "https://github.com/marrrkkk/stacknext/blob/main/docs/testing/benchmarks.md"
+    },
+    {
+      "source": "/ux-layout-prompt",
+      "destination": "https://github.com/marrrkkk/stacknext/blob/main/docs/architecture/dashboard-layout.md"
+    },
+    {
+      "source": "/adr/0001-native-only-runtime",
+      "destination": "https://github.com/marrrkkk/stacknext/blob/main/docs/decisions/0001-native-only-runtime.md"
+    }
+  ],
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/marrrkkk/stacknext"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/marrrkkk/stacknext"
+    }
+  },
+  "search": {
+    "prompt": "Search the StackNext docs, package references and agent guides"
+  },
+  "seo": {
+    "metatags": {
+      "og:title": "StackNext documentation",
+      "og:description": "Local-first runtime debugging, diagnostics and regression evidence for Next.js."
+    }
+  },
+  "markdown": {
+    "instructions": "StackNext documentation is organized by audience. Human-facing guides live under /guides, /cli and /ai-agents. Version-matched package reference documentation lives under /packages and also ships inside each npm package. AI agents should prefer the local files at node_modules/@stacknext/<package>/docs/ for the installed version, and use this site for concepts and cross-package workflows. Mintlify generates /llms.txt, /llms-full.txt and Markdown versions of every page; see /ai-agents/llms-txt. Diagnostic findings are evidence, not confirmed root causes; regression comparisons are deterministic and report-only."
+  }
+}

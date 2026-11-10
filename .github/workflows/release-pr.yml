@@ -125,7 +125,7 @@ jobs:
           This pull request was created with `GITHUB_TOKEN`, so GitHub did not
           start the `pull_request` workflows and required checks cannot attach.
           Add `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY`, or a
-          `RELEASE_PR_TOKEN` repository secret (see `docs/releasing.md`), and
+          `RELEASE_PR_TOKEN` repository secret (see `docs/deployment/release-process.md`), and
           re-run **Release PR**, or merge with the administrator bypass. The
           Release workflow still runs the full gate set before publishing.
           EOF

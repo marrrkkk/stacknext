@@ -1,88 +1,74 @@
-# StackNext documentation
+# StackNext engineering documentation
 
-The documentation website is configured by [docs.json](docs.json) and can be
-previewed from the repository root with `pnpm docs:dev`. Start with the
-[documentation home](index.md) or the repository [README](../README.md).
+This directory is the contributor and maintainer knowledge base. It documents
+how the repository is built, tested, released and kept safe. It is not the
+public product documentation.
 
-## Using StackNext
+The public Mintlify site lives in [`apps/docs/`](../apps/docs/README.md) and is
+deployed separately. Package API reference is canonical in
+`packages/<package>/docs/` and ships inside each npm archive.
 
-| Document | What it covers |
-| --- | --- |
-| [What is StackNext?](overview/what-is-stacknext.md) | Capabilities, local-first design and intentional boundaries. |
-| [Requirements](getting-started/requirements.md) | Supported Node.js, Next.js, runtime and ports. |
-| [Installation](installation.md) | Install, initialize, verify, upgrade and monorepo setup. |
-| [Quickstart](getting-started/quickstart.md) | First collector session and dashboard checks. |
-| [Configuration](getting-started/configuration.md) | `stacknext.config.json`, environment variables and defaults. |
-| [Uninstall and cleanup](uninstall.md) | Safe removal of generated files, data and packages. |
-| [Compatibility](compatibility.md) | Tested Node.js/Next.js/package-manager combinations. |
-| [Troubleshooting](troubleshooting.md) | Missing telemetry, ports, MCP, regression and Windows/WSL issues. |
-| [Limitations](limitations.md) | Unsupported runtimes, heuristics and known gaps. |
-
-## Guides
+## Start here
 
 | Document | What it covers |
 | --- | --- |
-| [Next.js integration](guides/nextjs.md) | Registration, supported versions and existing OTel setups. |
-| [Runtime evidence](guides/runtime-evidence.md) | Traces, errors and performance investigation. |
-| [Database integrations](guides/database.md) | Drizzle and Prisma adapter choice and limits. |
-| [Diagnostics](guides/diagnostics.md) | Six deterministic rules, statuses and evidence. |
-| [Runtime regression](guides/regression.md) | Capture, baseline, compare and verified correlation. |
-| [Snapshots](guides/snapshots.md) | Frozen redacted samples and their lifecycle. |
-| [Instrumentation coverage](instrumentation-coverage.md) | Evidence-based coverage statuses and their limits. |
-| [Custom instrumentation](custom-instrumentation.md) | Manual spans and attribute sanitization. |
-| [Server Actions](server-actions.md) | `withStackNextAction` and action evidence. |
-| [Regression testing](regression-testing.md) | Full capture-to-comparison workflow. |
-| [Playwright integration](playwright-integration.md) | Fixture setup, annotations and trace probing. |
-| [Baselines](baselines.md) | Baseline format, storage and lifecycle. |
-| [Comparison methodology](comparison-methodology.md) | Medians, thresholds, severity and inconclusive rules. |
-| [CI integration](ci-integration.md) | GitHub Actions example, artifacts and environment matching. |
+| [Architecture overview](architecture/overview.md) | Runtime processes, data flow, collector, store, diagnostics and storage. |
+| [Package architecture](architecture/packages.md) | Package responsibilities, dependency direction and build topology. |
+| [Architecture boundaries](architecture/boundaries.md) | The invariants that keep StackNext local, bounded and deterministic. |
+| [Development environment](development/environment-setup.md) | Install, build, run the example app and preview the public site. |
+| [Repository conventions](development/repository-conventions.md) | Source layout, build/typecheck split, code style and change rules. |
+| [Documentation architecture](development/documentation.md) | Public site, engineering docs, package docs, generated copies and validation. |
+| [Testing strategy](testing/testing-strategy.md) | Unit, e2e, archive, consumer and documentation checks. |
+| [Benchmarks](testing/benchmarks.md) | Collector, diagnostics and verbose-tracing measurements and caveats. |
+| [Agent compatibility](testing/agent-compatibility.md) | Recorded MCP and Agent Skill client checks. |
+| [Release process](deployment/release-process.md) | Versioning, gates, archives, trusted publishing and rollback. |
+| [Scripts and tooling](tooling/scripts.md) | Repository scripts, what they touch and when to run them. |
+| [ADR 0001: native-only runtime](decisions/0001-native-only-runtime.md) | Why there is no managed container runtime. |
+| [Dashboard layout specification](architecture/dashboard-layout.md) | Dashboard shell, navigation, page headers and interaction criteria. |
 
-## Packages
+Repository-level policies live at the root:
+[AGENTS.md](../AGENTS.md), [CONTRIBUTING.md](../CONTRIBUTING.md),
+[SECURITY.md](../SECURITY.md), [SUPPORT.md](../SUPPORT.md),
+[CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) and [CHANGELOG.md](../CHANGELOG.md).
 
-The [package documentation index](packages/index.md) lists public integration
-packages and internal implementation packages. Every package ships its own
-`docs/` directory in the npm archive; the pages under `docs/packages/` are
-generated copies of those canonical files.
+## Source-of-truth map
 
-## Agents and MCP
+| Content | Canonical location | Generated copies |
+| --- | --- | --- |
+| Public product guides and concepts | `apps/docs/**/*.md` | none |
+| Package API reference | `packages/<package>/docs/**/*.md` | `apps/docs/packages/<slug>/` and `packages/cli/docs/packages.md` |
+| Contributor and engineering docs | `docs/**/*.md` | none |
+| Changelog | `CHANGELOG.md` | `apps/www/content/changelog.generated.ts` |
+| Agent Skill | `skills/stacknext-debugging/` | `packages/cli/skills/` at pack time |
+| Consumer agent instructions | `packages/cli/src/agents.ts` | managed `AGENTS.md` block in a consumer project |
 
-| Document | What it covers |
-| --- | --- |
-| [AI agent support](ai-agents/index.md) | Package docs, managed instructions, skill and MCP. |
-| [Local documentation](ai-agents/local-docs.md) | Version-matched docs inside installed packages. |
-| [AGENTS.md integration](ai-agents/agents-md.md) | Safe managed block behavior. |
-| [Agent Skill](ai-agents/skill.md) | Portable evidence-first workflows. |
-| [Supported agents](ai-agents/supported-agents.md) | OpenCode, Codex, Claude Code and other MCP clients. |
-| [Agent workflows](ai-agents/workflows.md) | The evidence-first investigation loop. |
-| [MCP server](mcp.md) | Twenty read-only tools, five prompts and response metadata. |
-| [Project instruction files](integrations/agent-instructions.md) | Managed `AGENTS.md` and manual client files. |
-| [OpenCode](integrations/opencode.md) | Client setup. |
-| [Codex](integrations/codex.md) | Client setup. |
-| [Claude Code](integrations/claude-code.md) | Client setup. |
+Never edit a generated copy. Edit the canonical source and run
+`pnpm docs:sync` or `pnpm changelog:sync`.
 
-## Design and project
+## Verification
 
-| Document | What it covers |
-| --- | --- |
-| [Architecture](architecture.md) | Package boundaries, collector, store and diagnostic engine. |
-| [Package architecture](architecture/packages.md) | Responsibilities and dependency direction. |
-| [Architecture boundaries](architecture/boundaries.md) | Local, bounded, deterministic and read-only invariants. |
-| [Privacy and redaction](privacy.md) | Data captured, redaction layers and network boundary. |
-| [Data collection](security/data-collection.md) | What is collected and what is never collected. |
-| [Redaction](security/redaction.md) | Two redaction layers and their limits. |
-| [Retention](security/retention.md) | In-memory and saved-record lifecycle. |
-| [Benchmark](benchmark.md) | Ingest, diagnostics and verbose-tracing measurements. |
-| [Dashboard layout specification](ux-layout-prompt.md) | Shell, navigation, page headers and interaction criteria. |
-| [Contributing](contributing/index.md) | Repository setup, gates and documentation conventions. |
-| [Development environment](contributing/environment.md) | Install, build, example app and docs preview. |
-| [Testing](contributing/testing.md) | Unit, e2e, archive and documentation checks. |
-| [Documentation conventions](contributing/documentation.md) | Canonical docs, generation and validation. |
-| [Releasing](releasing.md) | Versioning, package validation and publishing. |
-| [Agent testing](agent-testing.md) | Protocol and client compatibility record. |
-| [ADR 0001: native-only runtime](adr/0001-native-only-runtime.md) | Why StackNext does not ship a managed container runtime. |
+```bash
+pnpm check:docs
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm test:e2e
+pnpm test:packages
+```
 
-Repository-level documents: [Contributing](../CONTRIBUTING.md),
-[brand assets](../brand/README.md), [changelog](https://github.com/marrrkkk/stacknext/blob/main/CHANGELOG.md),
-[security policy](https://github.com/marrrkkk/stacknext/blob/main/SECURITY.md), [support](https://github.com/marrrkkk/stacknext/blob/main/SUPPORT.md),
-[code of conduct](../CODE_OF_CONDUCT.md) and
-[repository conventions](../AGENTS.md).
+`pnpm check:docs` validates the public Mintlify configuration, navigation,
+redirects, Markdown links, generated package copies, frontmatter, documented
+scripts and the generated website changelog. CI additionally runs
+`mint validate --no-build` and `mint broken-links` from `apps/docs/`.
+
+## Working rules
+
+- Read [AGENTS.md](../AGENTS.md) before changing package boundaries or captured
+  data.
+- Keep public docs and engineering docs separate. Do not duplicate the Mintlify
+  site under `docs/`.
+- A new captured field is not complete until both redaction layers, the privacy
+  docs and the secret-leak tests are updated.
+- Do not claim a test, build, benchmark or client compatibility result passed
+  without running it and recording the result.

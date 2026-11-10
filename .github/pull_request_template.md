@@ -46,7 +46,7 @@ pnpm build
 
 ## Documentation and release notes
 
-- [ ] Docs under `docs/` and `docs/README.md` are updated.
+- [ ] Public docs under `apps/docs/` and/or engineering docs under `docs/` are updated.
 - [ ] `CHANGELOG.md` has an entry for user-visible changes.
 - [ ] Screenshots were regenerated from the real StackNext app when the UI changed.
 - [ ] No generated `dist`, `.next`, `.stacknext`, `release` or test output is committed.

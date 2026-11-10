@@ -10,8 +10,9 @@ not in a public issue.
 
 ## Before you start
 
-- Read [AGENTS.md](AGENTS.md) and [docs/architecture.md](docs/architecture.md).
-  The architecture invariants are part of the review.
+- Read [AGENTS.md](AGENTS.md), [the engineering docs](docs/README.md) and
+  [architecture boundaries](docs/architecture/boundaries.md). The architecture
+  invariants are part of the review.
 - Check existing issues and pull requests to avoid duplicate work.
 - For a large feature or a package-boundary change, open an issue first and
   describe the evidence it will expose.
@@ -149,8 +150,13 @@ machine, say which one and why in the pull request.
 
 ## Documentation
 
-- Update the relevant page under `docs/` and `docs/README.md` when behavior
-  changes.
+- Public product docs live in `apps/docs/`. Update the relevant page and its
+  navigation entry when user-visible behavior changes.
+- Contributor and engineering docs live in `docs/`. Update the relevant page
+  when the build, test, release or architecture process changes.
+- Package reference is canonical in `packages/<package>/docs/`. The Mintlify
+  copies and the CLI package index are generated; edit the canonical file and
+  run `pnpm docs:sync`.
 - Keep examples copy-pasteable and free of fake production URLs or credentials.
 - Use the documented brand and identifiers only: `StackNext`, `stacknext`,
   `@stacknext/*`, `STACKNEXT_*`, `stacknext.config.json` and `.stacknext`.
@@ -160,6 +166,8 @@ machine, say which one and why in the pull request.
   by hand.
 - Regenerate screenshots if the dashboard changed. Do not commit screenshots
   that show another product, a token, a customer route or unredacted data.
+- See [documentation architecture](docs/development/documentation.md) for the
+  full source-of-truth and validation rules.
 
 ## Pull requests
 
@@ -179,7 +187,7 @@ reproduction or additional evidence before merging.
 
 Only maintainers release packages. Do not edit versions, create tags, publish to
 npm or push release commits unless you are coordinating a release. See
-[docs/releasing.md](docs/releasing.md).
+[release process](docs/deployment/release-process.md).
 
 ## License
 

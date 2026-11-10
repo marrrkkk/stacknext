@@ -23,7 +23,7 @@ If the project is not set up yet:
 2. Run `pnpm exec stacknext init` in the app. Add `--agents` if the user wants a
    managed StackNext block in `AGENTS.md`.
 3. In a StackNext source checkout, run `pnpm install && pnpm build` first and
-   see `docs/getting-started/quickstart.md`.
+   see the [quickstart](https://github.com/marrrkkk/stacknext/blob/main/apps/docs/getting-started/quickstart.md).
 
 Check the collector and instrumentation:
 
@@ -177,8 +177,8 @@ pnpm exec stacknext baseline save --run <run-id> --name main
 pnpm exec stacknext compare <baseline-id> <candidate-run-id>
 ```
 
-See [runtime regression testing](../../../docs/regression-testing.md) and
-[Playwright integration](../../../docs/playwright-integration.md).
+See [runtime regression testing](https://github.com/marrrkkk/stacknext/blob/main/apps/docs/regression-testing.md)
+and [Playwright integration](https://github.com/marrrkkk/stacknext/blob/main/apps/docs/playwright-integration.md).
 
 The three snapshot tools read frozen records from `.stacknext/snapshots`. They
 cannot save, import, rotate or delete a snapshot. Save one from the dashboard

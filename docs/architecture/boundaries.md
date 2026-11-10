@@ -1,67 +1,147 @@
----
-title: Architecture boundaries
-description: The invariants that keep StackNext local, bounded, deterministic and read-only.
----
+# Architecture boundaries
 
-These rules are not suggestions. They keep the runtime, privacy and evidence
-model consistent.
+These invariants keep the runtime, privacy and evidence model consistent. They
+are part of review. If a change crosses one, stop and document the decision
+before proceeding.
 
 ## Local-only network
 
-- The collector binds to `127.0.0.1` or `localhost` and rejects other hosts.
+- Bind the collector to `127.0.0.1` or `localhost`; reject other hosts.
 - Ingestion requires the bearer token.
 - Read APIs and SSE accept the bearer token or the dashboard session cookie.
-- Host, Origin and `Sec-Fetch-Site` checks, CSP and security headers stay intact.
+- Keep Host, Origin and `Sec-Fetch-Site` checks, CSP and security headers.
 - There is no remote transport, managed container runtime or cloud service.
+
+Enforced in `packages/cli/src/collector/server.ts` and covered by collector and
+e2e tests. Tokens live in `.stacknext/run.json` with mode `0600`.
 
 ## Native-only runtime
 
-The collector and dashboard run in a Node process started by the CLI. There is
-no `runtime.mode` field and no Docker/native peer flag. See
-[ADR 0001](../adr/0001-native-only-runtime).
+The collector, dashboard and CLI run in one Node process started by
+`stacknext dev`. Do not add a `runtime.mode` field, `--docker`/`--native`
+flags, a managed container runtime or a `stop` command. See
+[ADR 0001](../decisions/0001-native-only-runtime.md).
 
-## Bounded memory and validation
+## Validate at the boundary
 
 Every ingest envelope is Zod-validated, body size is capped, and counts are
-bounded before storage. The store has capacity and retention limits and exposes
-drops. Instrumentation never blocks a request on network I/O.
+bounded before entering the store. Validate external data with Zod and use the
+inferred types. Do not pass raw JSON or `any` into the store, dashboard, MCP or
+regression layer.
+
+## Bounded memory
+
+The store is in memory with capacity and retention limits and drop counters.
+Instrumentation must never block a request on network I/O. Keep transport
+queues bounded, batch on a timer, and preserve the drop counters in health,
+status and summary output.
 
 ## Two-layer redaction
 
 Redact in the app process before enqueueing and again in the collector before
-storing. A new field is not complete until both layers and the privacy docs are
-updated. See [redaction](../security/redaction).
+storing. A new captured field is not done until:
 
-## Evidence, not scores
+1. the app-side redaction and normalization paths handle it;
+2. the collector-side redaction handles it again;
+3. `apps/docs/privacy.md` and the package privacy docs describe it;
+4. tests assert the secret does not appear in API, export, regression,
+   comparison, snapshot or MCP output.
 
-Coverage statuses come from the current sample plus config/connection state.
-There is no composite percentage. `not-observed` and `unknown` are not proof of
-a broken feature. Diagnostics are deterministic heuristics, never confirmed
-root causes. Comparisons are report-only and never claims of significance.
+Never capture request/response bodies, headers, cookies, URL query values or
+fragments, SQL bind parameters, Playwright screenshots/videos/traces or
+machine/user identifiers.
 
-## Regression and snapshot storage
+## Coverage is evidence, not a score
 
-- Local files only, with strict versioned schemas.
-- `0700`/`0600` permissions, atomic writes and size caps.
-- Never auto-delete runs, baselines or comparisons.
-- Never overwrite a record without an explicit overwrite request.
-- Keep invalid or incomplete records visible instead of repairing them.
-- Snapshots are frozen, redacted copies; never replay them.
+Coverage statuses come from the current store sample plus collector
+config/connection state. Never invent a composite percentage or treat
+`not-observed`/`unknown` as proof that a feature is broken. Keep the sample
+window and item limitations visible in CLI, dashboard and MCP.
+
+## Diagnostics are deterministic evidence
+
+The six rules are conservative heuristics over the current store sample. Keep
+finding ids deterministic, evidence bounded and re-sanitized, and expose the
+same report through CLI, dashboard, export, MCP and the Agent Skill. Never
+present `possible` or `observed` as a confirmed root cause. No LLM/AI provider,
+source edits, SQL or EXPLAIN execution, index advice, alerting or long-term
+anomaly detection.
+
+## Regression evidence is proven, not guessed
+
+A Playwright sample is verified only when the collector finds the injected
+trace id and a server span parented to the injected span id. Never fall back to
+a time window, nearest request or synthetic sample. Ambiguous correlation
+becomes `incomplete` and forces the affected comparison to `inconclusive`.
+
+Comparisons match scenarios by stable scenario id and traces/spans by
+normalized keys, never by ids or timestamps. Use medians and explicit
+thresholds; never claim statistical significance or causality. Report
+`improved`, `regressed`, `unchanged` or `inconclusive` with severity
+separately. `--fail-on` is the only CI gate.
+
+## Regression storage is local and immutable
+
+Write runs, baselines and comparisons under
+`.stacknext/{runs,baselines,comparisons}` with strict versioned schemas,
+`0700`/`0600` permissions, atomic writes and a 16 MiB cap. Never auto-delete,
+never upload, and never overwrite an existing record without an explicit
+overwrite request. Keep invalid ids and incomplete records visible rather than
+repairing them.
+
+## Snapshots are frozen, redacted evidence
+
+A snapshot is a versioned copy of one sample under `.stacknext/snapshots`,
+never a replay into the live store. Save manually, on graceful exit and on the
+first error with a 60-second cooldown; rotate only automatic snapshots beyond
+`snapshots.autoKeep` (default 10). Manual and imported snapshots are never
+auto-deleted. Write atomically with `0700`/`0600` permissions, refuse implicit
+overwrite, cap each snapshot at `snapshots.maxBytes` (default 64 MiB) and fail
+oversized saves instead of truncating. Re-normalize and re-redact imports.
+Snapshot reads use a detached store and carry no live diagnostics or coverage.
 
 ## Read-only MCP
 
-All tools are `readOnlyHint: true`. The API client performs GETs only and
+All tools stay `readOnlyHint: true`; the API client only performs GETs and
 refuses non-loopback URLs. stdout is protocol-only. Prompts and the Agent Skill
-shape investigations but cannot add capabilities.
+shape investigations but cannot add capabilities, mutate data or bypass
+redaction. Keep tool names and arguments stable; response metadata is additive.
+The six regression tools read runs, baselines and comparisons only, and the
+three snapshot tools read snapshots only.
 
 ## Playwright stays optional and sequential
 
-The fixture is inert outside an active capture run and does not replace
-Playwright or change assertions. Captured runs use one worker until parallel
-correlation is explicitly verified. Identity comes from an annotation, never a
-time window.
+`@stacknext/playwright` must be inert outside an active capture run and must not
+replace Playwright or change assertions. Use one worker for captured runs until
+parallel correlation is explicitly verified. Prefer the explicit
+`stacknext.scenario` annotation for identity; never use time windows to link
+browser and server activity.
 
 ## Supported surface only
 
-Next.js 15/16 App Router, Node.js runtime. No Edge or production support, no
-undocumented Next.js internals, no `NEXT_PRIVATE_*` switches.
+Next.js 15/16 App Router on the Node.js runtime. Do not patch undocumented
+Next.js internals and do not claim Edge or production support. Keep the
+documented span allowlist in `packages/core/src/framework.ts` aligned with the
+supported versions and retain unknown span types as verbose evidence.
+
+## Manual helpers stay optional
+
+`withStackNextSpan`, `withStackNextSpanSync` and `withStackNextAction` use the
+existing OpenTelemetry context/provider, preserve return values and errors,
+sanitize attributes, and must not create a second SDK. Never claim automatic
+Server Component or Server Action tracing.
+
+## Verification
+
+Run the checks in [testing strategy](../testing/testing-strategy.md). For
+captured-data changes, verify the example error route still redacts
+`demo-url-secret`, `super-secret-demo-token` and `hunter2`, and that action and
+custom-span attributes do not leak `action-attribute-secret`,
+`custom-attribute-secret`, `custom-url-secret` or `e2e-url-secret`.
+
+## Related
+
+- [Architecture overview](overview.md)
+- [Package architecture](packages.md)
+- [Public boundaries page](../../apps/docs/architecture/boundaries.md)
+- [Privacy and security rules](../../AGENTS.md#privacy-and-security-rules)
