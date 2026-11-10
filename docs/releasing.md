@@ -7,7 +7,8 @@ Releases are automated from Conventional Commit titles. Each push to `main`
 plans the next version; releasable commits open or refresh one
 `chore: release X.Y.Z` pull request. Merging that PR changes the version on
 `main`, which starts the Release workflow, runs the full gate set, publishes
-after `npm` environment approval, and then creates the tag and GitHub release.
+once the `npm` environment allows the run, and then creates the tag and GitHub
+release.
 A manual dispatch remains available for bootstrap, recovery and explicitly
 chosen versions.
 
@@ -51,8 +52,10 @@ Before the first release:
    Do not allow force pushes. Release PRs need a trusted token (step 7) for
    normal CI, because pull requests opened with `GITHUB_TOKEN` do not run the
    `pull_request` workflows.
-4. Create an `npm` environment under **Settings → Environments** with required
-   reviewers and a deployment branch rule limited to `main`.
+4. Create an `npm` environment under **Settings → Environments** with a
+   deployment branch rule limited to `main`. Leave required reviewers off for
+   fully automatic publishing after CI; add a required reviewer or wait timer
+   only if you want a human delay before publishing.
 5. Leave repository Actions permissions at read-only by default. The release
    workflows request `contents: write`, `pull-requests: write`, `actions: write`
    or `id-token: write` explicitly in the jobs that need them.
@@ -378,8 +381,8 @@ After every package is verified, the finalize job creates the annotated
 `vX.Y.Z` tag and the GitHub release from the matching changelog section. The tag
 is never created before publishing succeeds. `pnpm release:publish` itself never
 tags, commits or creates releases. Finalization then dispatches the release
-planner so any commits that landed while the release waited for approval are
-planned immediately.
+planner so any commits that landed while the release was in flight are planned
+immediately.
 
 ### Manual dispatch
 
@@ -389,16 +392,16 @@ for a hotfix whose version must not follow the commit-derived bump.
 1. Open **Actions → Release → Run workflow** on `main`.
 2. Enter the exact version (for example `0.6.1`).
 3. Leave **dry run** enabled for the first run.
-4. Approve the `npm` environment when prompted.
-5. Run again with **dry run** disabled and type `publish` in the confirmation
+4. Run again with **dry run** disabled and type `publish` in the confirmation
    field.
-6. Enable **resume** only when recovering from a partial release. It skips
+5. Enable **resume** only when recovering from a partial release. It skips
    packages already published at that exact version.
-7. Approve the protected `npm` environment.
 
 The workflow refuses to run unless `github.ref` matches the repository's default
 branch. A real dispatch also creates the tag and GitHub release after a
-successful publish unless that tag already exists.
+successful publish unless that tag already exists. If the `npm` environment has
+no required reviewers, the dispatch publishes automatically after the same CI
+gates.
 
 ## After publishing
 
