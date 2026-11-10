@@ -85,4 +85,4 @@ There are no environment variables that bypass these rules.
 ## Related
 
 - [@stacknext/core configuration](../../core/docs/configuration.md)
-- the repository `docs/benchmark.md`
+- the repository `docs/testing/benchmarks.md`

@@ -401,7 +401,7 @@ function McpContent({
           </ul>
           <p className="settings-note">
             Client support is only claimed after a real end-to-end test. See{' '}
-            <code>docs/agent-testing.md</code> in the repository.
+            <code>docs/testing/agent-compatibility.md</code> in the repository.
           </p>
         </div>
       </SettingsSection>

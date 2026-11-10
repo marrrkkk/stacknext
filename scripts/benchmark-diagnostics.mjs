@@ -2,7 +2,7 @@
 /**
  * Diagnostics benchmark.
  *
- * Builds a synthetic sample that exercises all four diagnostic rules, then
+ * Builds a synthetic sample that exercises four diagnostic rules, then
  * measures cold report generation and the cached read paths. Run `pnpm build`
  * first. Numbers are machine-specific.
  */

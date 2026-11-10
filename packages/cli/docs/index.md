@@ -68,11 +68,10 @@ node_modules/@stacknext/playwright/docs/index.md
 
 <!-- coderabbit-ai-generated-section:v1:a2a2d1bacf1a7101a5884977852db99861650a2a201f6dffdf985fa4ec246abe -->
 
-`@stacknext/core` and `@stacknext/regression` are installed through the CLI
-and ship documentation. In a pnpm workspace, locate their docs using the
-relative paths listed in `packages.md`. The CLI also installs
-`@stacknext/diagnostics`, `@stacknext/mcp` and `@stacknext/dashboard`, which
-do not currently ship `docs/` directories.
+`@stacknext/core`, `@stacknext/diagnostics`, `@stacknext/regression`,
+`@stacknext/mcp` and `@stacknext/dashboard` are installed through the CLI and
+ship documentation. In a pnpm workspace, locate their docs using the relative
+paths listed in `packages.md`.
 
 <!-- /coderabbit-ai-generated:v1 -->
 
@@ -84,10 +83,6 @@ its APIs are available.
 
 <!-- coderabbit-ai-generated:v1 -->
 
-<!-- coderabbit-ai-generated-section:v1:cce8643ce7fa90852e67d36250d2daa286bf00bf29c08506b2ca194409f5b5a8 -->
-
-<!-- coderabbit-ai-generated:v1 -->
-
 <!-- coderabbit-ai-generated-section:v1:4ccde9b676836098da0c0e0810b43c6306a967030d387f11f30aed3a2b950eab -->
 
 | Task | Read |
@@ -95,13 +90,11 @@ its APIs are available.
 | Install, configure or run StackNext | `cli`, `next` |
 | Change `instrumentation.ts` or manual spans | `next` |
 | Work with shared types, redaction, transport or snapshots | `core` |
-| Change or interpret diagnostic findings | CLI [commands](commands.md) |
+| Change or interpret diagnostic findings | `diagnostics` and CLI [commands](commands.md) |
 | Work with Playwright capture, baselines or comparisons | `playwright`, `regression` |
 | Add Drizzle query evidence | `drizzle` |
 | Add Prisma query evidence | `prisma` |
 | Configure an MCP client or use runtime evidence | CLI [agent setup](agent-setup.md) |
-
-<!-- /coderabbit-ai-generated:v1 -->
 
 <!-- /coderabbit-ai-generated:v1 -->
 

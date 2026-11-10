@@ -67,7 +67,7 @@ along with package versions.
 `SKILL.md` follows the Agent Skills specification with YAML frontmatter and a
 concise body. Details live in `references/`. Keep it portable: no
 client-specific syntax in the canonical skill and no claim of support without a
-recorded test in `docs/agent-testing.md`.
+recorded test in `docs/testing/agent-compatibility.md`.
 
 ## Client paths
 

@@ -9,7 +9,7 @@ public, shared or multi-user deployment.
 
 | Version | Security support |
 | --- | --- |
-| 0.6.x | Supported |
+| 0.10.x | Supported |
 | Earlier versions | Not supported |
 
 Security fixes are released as patch or minor versions, depending on the
@@ -116,4 +116,4 @@ cover unresolved `workspace:` ranges, missing exports/declarations, README and
 LICENSE presence, the CLI executable bit, forbidden source/test/runtime files,
 known secret patterns and archive size. The release workflow publishes with npm
 provenance and requires environment approval. See
-[docs/releasing.md](docs/releasing.md).
+[docs/deployment/release-process.md](docs/deployment/release-process.md).

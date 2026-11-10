@@ -275,7 +275,7 @@ Work on a new branch and commit at the end of every checkpoint. A checkpoint is 
 4. **Screens**, in this order: Overview, Requests, Request and Trace detail, Database, Traces, Errors and Error detail, Diagnostics and Diagnostic detail, the three Testing lists and their detail pages (with `RegressionScenarios.tsx`), MCP & settings, 404. Recapture each screen as soon as you finish it.
 5. **States**: restyle every empty, loading, error and waiting state on every screen, plus any reconnecting or connection-lost state that exists today. Rows arriving over the SSE feed must not flash, animate or shift the layout.
 6. **Cleanup**: delete every class in `styles.css` that nothing references, every unused component and every inline style that a token or primitive now covers. The stylesheet should end far shorter than today's roughly 3,000 lines.
-7. **Docs**: replace the README screenshots in `docs/screenshots/` (`overview.png`, `overview-dark.png`, `overview-mobile.png`, `request-detail.png`, `database.png`, `traces.png`, `errors.png`, `error-detail.png`, `settings.png`) with fresh captures of the same views, at the same file names and dimensions, taken from the example app with its demo data. Add a `CHANGELOG.md` entry in the format that file already uses.
+7. **Docs**: replace the README screenshots in `apps/docs/screenshots/` (`overview.png`, `overview-dark.png`, `overview-mobile.png`, `request-detail.png`, `database.png`, `traces.png`, `errors.png`, `error-detail.png`, `settings.png`) with fresh captures of the same views, at the same file names and dimensions, taken from the example app with its demo data. Add a `CHANGELOG.md` entry in the format that file already uses.
 
 **When a decision is not covered**
 
@@ -347,7 +347,7 @@ pnpm check:docs
 
 - If a test selects by a class name you removed, move it to a role or text query rather than keeping a dead class. Never loosen an assertion about data or redaction.
 - When you stop `stacknext dev`, send it SIGINT or SIGTERM so it removes `.stacknext/run.json`, then check ports 4400 to 4425 for orphaned `next dev` processes, as AGENTS.md requires. Never commit anything under `.stacknext`.
-- `git diff --stat` against the base should show only `packages/dashboard`, the font dependency in the dashboard's `package.json` and `pnpm-lock.yaml` (if you used the package), `docs/screenshots`, `CHANGELOG.md`, any test selectors you had to change, and at most one small MIME change in `packages/cli`. Anything else needs an explanation in the report.
+- `git diff --stat` against the base should show only `packages/dashboard`, the font dependency in the dashboard's `package.json` and `pnpm-lock.yaml` (if you used the package), `apps/docs/screenshots`, `CHANGELOG.md`, any test selectors you had to change, and at most one small MIME change in `packages/cli`. Anything else needs an explanation in the report.
 
 ## Done when
 

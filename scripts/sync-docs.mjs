@@ -6,7 +6,7 @@
  * - `--check` verifies that committed generated files are current.
  * - `--skip-mintlify` only refreshes the CLI index (used during npm pack).
  *
- * Idempotent. Only files listed in docs/packages/.generated.json are removed.
+ * Idempotent. Only files listed in apps/docs/packages/.generated.json are removed.
  */
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -16,10 +16,11 @@ import {
   GENERATED_MANIFEST,
   GENERATED_MARKER,
   MINTLIFY_PACKAGES_DIR,
+  DOCS_DIR,
 } from './lib/docs.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const DOCS_ROOT = path.join(ROOT, 'docs')
+const DOCS_ROOT = path.join(ROOT, DOCS_DIR)
 const MINTLIFY_PACKAGES = path.join(DOCS_ROOT, MINTLIFY_PACKAGES_DIR)
 const CLI_DOCS = path.join(ROOT, 'packages', 'cli', 'docs')
 const CLI_PACKAGES_PAGE = path.join(CLI_DOCS, 'packages.md')
@@ -192,8 +193,8 @@ async function buildCliIndex(packages) {
 
 function rewriteGeneratedLinks(source) {
   // Canonical docs link across packages as ../../<slug>/docs/<file>. The
-  // Mintlify copy lives at docs/packages/<slug>/<file>, so the same target is
-  // ../<slug>/<file>. Only rewrite Markdown destinations, never code paths.
+  // Mintlify copy lives at apps/docs/packages/<slug>/<file>, so the same target
+  // is ../<slug>/<file>. Only rewrite Markdown destinations, never code paths.
   return source.replace(
     /\]\(\.\.\/\.\.\/([a-z][a-z0-9-]*)\/docs\//g,
     '](../$1/',

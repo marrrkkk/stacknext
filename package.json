@@ -31,7 +31,7 @@
     "check:docs": "node scripts/sync-docs.mjs --check && node scripts/check-docs.mjs && node scripts/sync-changelog.mjs --check",
     "docs:sync": "node scripts/sync-docs.mjs",
     "docs:check": "node scripts/sync-docs.mjs --check && node scripts/check-docs.mjs && node scripts/sync-changelog.mjs --check",
-    "docs:dev": "cd docs && npx --yes mint@4.2.1165 dev"
+    "docs:dev": "cd apps/docs && npx --yes mint@4.2.1165 dev"
   },
   "devDependencies": {
     "@playwright/test": "1.58.2",

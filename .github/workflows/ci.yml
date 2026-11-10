@@ -74,11 +74,11 @@ jobs:
         run: pnpm check:docs
 
       - name: Validate Mintlify site
-        working-directory: docs
+        working-directory: apps/docs
         run: npx --yes mint@$MINTLIFY_CLI_VERSION validate --no-build --format json
 
       - name: Check Mintlify links
-        working-directory: docs
+        working-directory: apps/docs
         run: npx --yes mint@$MINTLIFY_CLI_VERSION broken-links
 
   package-archives:

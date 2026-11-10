@@ -146,10 +146,13 @@ describe('stacknext-debugging Agent Skill', () => {
   })
 
   it('records the eight-scenario agent test results honestly', async () => {
-    const testing = await readFile(
-      path.join(ROOT, 'docs', 'agent-testing.md'),
-      'utf8',
+    const testingPath = path.join(
+      ROOT,
+      'docs',
+      'testing',
+      'agent-compatibility.md',
     )
+    const testing = await readFile(testingPath, 'utf8')
     expect(testing).toContain('## Eight scenarios')
     for (const scenario of [
       'Discovery and orientation',
@@ -173,7 +176,7 @@ describe('stacknext-debugging Agent Skill', () => {
     expect(testing).toContain('No model-driven regression scenario')
     for (const link of relativeLinks(testing)) {
       await expect(
-        stat(path.resolve(ROOT, 'docs', link)),
+        stat(path.resolve(path.dirname(testingPath), link)),
         `broken link ${link}`,
       ).resolves.toBeTruthy()
     }

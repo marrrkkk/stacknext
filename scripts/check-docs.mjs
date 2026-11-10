@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 /**
  * Validates documentation without external services:
- * - docs/docs.json navigation entries resolve and every page has frontmatter;
+ * - apps/docs/docs.json navigation entries resolve and every page has
+ *   frontmatter;
+ * - redirects resolve to local pages or documented GitHub engineering docs;
  * - generated package docs are present in the navigation and clearly marked;
  * - package docs exist, have frontmatter and are included in `files`;
  * - relative and website-root Markdown links resolve, including extensionless
- *   Mintlify links;
+ *   Mintlify links, across the public site and the engineering knowledge base;
  * - documented pnpm scripts exist in the root manifest;
+ * - no manual llms.txt/llms-full.txt is committed;
  * - no legacy brand remains in text sources.
  */
 import { readdir, readFile, stat } from 'node:fs/promises'
@@ -15,14 +18,18 @@ import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 import {
   DOCUMENTED_PACKAGES,
+  DOCS_DIR,
   GENERATED_MANIFEST,
   GENERATED_MARKER,
+  redirectDestination,
 } from './lib/docs.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const DOCS_ROOT = path.join(ROOT, 'docs')
+const DOCS_ROOT = path.join(ROOT, DOCS_DIR)
+const DOCS_LABEL = DOCS_DIR
 const DOCS_CONFIG = path.join(DOCS_ROOT, 'docs.json')
 const IGNORED_PATHS = new Set([path.join(DOCS_ROOT, 'src')])
+const GITHUB_BLOB = 'https://github.com/marrrkkk/stacknext/blob/main/'
 const IGNORED_DIRS = new Set([
   '.git',
   '.next',
@@ -273,24 +280,24 @@ function collectPages(node, output) {
 
 async function checkMintlifyConfig() {
   if (!(await fileInfo(DOCS_CONFIG))) {
-    problems.push('docs/docs.json: site configuration is missing')
+    problems.push(`${DOCS_LABEL}/docs.json: site configuration is missing`)
     return null
   }
   let config
   try {
     config = JSON.parse(await readFile(DOCS_CONFIG, 'utf8'))
   } catch (error) {
-    problems.push(`docs/docs.json: ${error.message}`)
+    problems.push(`${DOCS_LABEL}/docs.json: ${error.message}`)
     return
   }
   if (config.$schema !== 'https://mintlify.com/docs.json') {
-    problems.push('docs/docs.json: $schema must be https://mintlify.com/docs.json')
+    problems.push(`${DOCS_LABEL}/docs.json: $schema must be https://mintlify.com/docs.json`)
   }
-  if (!config.name) problems.push('docs/docs.json: missing name')
-  if (!config.theme) problems.push('docs/docs.json: missing theme')
-  if (!config.colors?.primary) problems.push('docs/docs.json: missing colors.primary')
+  if (!config.name) problems.push(`${DOCS_LABEL}/docs.json: missing name`)
+  if (!config.theme) problems.push(`${DOCS_LABEL}/docs.json: missing theme`)
+  if (!config.colors?.primary) problems.push(`${DOCS_LABEL}/docs.json: missing colors.primary`)
   if (typeof config.markdown?.instructions !== 'string' || !config.markdown.instructions.trim()) {
-    problems.push('docs/docs.json: markdown.instructions is required for AI-readable docs')
+    problems.push(`${DOCS_LABEL}/docs.json: markdown.instructions is required for AI-readable docs`)
   }
 
   for (const [field, value] of [
@@ -300,30 +307,30 @@ async function checkMintlifyConfig() {
   ]) {
     if (typeof value !== 'string' || !value.startsWith('/')) continue
     if (!(await fileInfo(path.join(DOCS_ROOT, value.slice(1))))) {
-      problems.push(`docs/docs.json: ${field} asset is missing: ${value}`)
+      problems.push(`${DOCS_LABEL}/docs.json: ${field} asset is missing: ${value}`)
     }
   }
 
   const pages = []
   collectPages(config.navigation?.groups, pages)
   if (pages.length === 0) {
-    problems.push('docs/docs.json: navigation has no pages')
+    problems.push(`${DOCS_LABEL}/docs.json: navigation has no pages`)
     return
   }
 
   const seen = new Set()
   for (const page of pages) {
     if (page.startsWith('http://') || page.startsWith('https://')) {
-      problems.push(`docs/docs.json: navigation page must be local: ${page}`)
+      problems.push(`${DOCS_LABEL}/docs.json: navigation page must be local: ${page}`)
       continue
     }
     if (seen.has(page)) {
-      problems.push(`docs/docs.json: duplicate navigation entry ${page}`)
+      problems.push(`${DOCS_LABEL}/docs.json: duplicate navigation entry ${page}`)
     }
     seen.add(page)
     const resolved = await resolveTarget(path.join(DOCS_ROOT, page))
     if (!resolved) {
-      problems.push(`docs/docs.json: navigation page does not exist: ${page}`)
+      problems.push(`${DOCS_LABEL}/docs.json: navigation page does not exist: ${page}`)
       continue
     }
     const source = await readFile(resolved, 'utf8')
@@ -334,10 +341,51 @@ async function checkMintlifyConfig() {
     }
   }
 
+  const redirectSources = new Set()
+  for (const redirect of Array.isArray(config.redirects) ? config.redirects : []) {
+    const source = redirect?.source
+    const destination = redirect?.destination
+    if (typeof source !== 'string' || !source.startsWith('/')) {
+      problems.push(`${DOCS_LABEL}/docs.json: redirect source must be a local path`)
+      continue
+    }
+    if (redirectSources.has(source)) {
+      problems.push(`${DOCS_LABEL}/docs.json: duplicate redirect source ${source}`)
+    }
+    redirectSources.add(source)
+    if (typeof destination !== 'string' || destination.length === 0) {
+      problems.push(`${DOCS_LABEL}/docs.json: redirect ${source} has no destination`)
+      continue
+    }
+    if (destination.startsWith('/')) {
+      const { pathname, dynamic } = redirectDestination(destination)
+      if (!dynamic && !(await resolveTarget(path.join(DOCS_ROOT, pathname.slice(1))))) {
+        problems.push(
+          `${DOCS_LABEL}/docs.json: redirect ${source} points to missing page ${destination}`,
+        )
+      }
+      continue
+    }
+    if (destination.startsWith(GITHUB_BLOB)) {
+      const target = path.join(ROOT, destination.slice(GITHUB_BLOB.length).split('#')[0])
+      if (!(await fileInfo(target))) {
+        problems.push(
+          `${DOCS_LABEL}/docs.json: redirect ${source} points to missing repository file ${destination}`,
+        )
+      }
+      continue
+    }
+    if (!/^https?:\/\//.test(destination)) {
+      problems.push(
+        `${DOCS_LABEL}/docs.json: redirect ${source} has unsupported destination ${destination}`,
+      )
+    }
+  }
+
   for (const name of ['llms.txt', 'llms-full.txt']) {
     if (await fileInfo(path.join(DOCS_ROOT, name))) {
       problems.push(
-        `docs/${name}: do not commit a manual AI index; Mintlify generates it`,
+        `${DOCS_LABEL}/${name}: do not commit a manual AI index; Mintlify generates it`,
       )
     }
   }
@@ -356,7 +404,7 @@ async function checkPackageDocs(navigation) {
     )
     generated = Array.isArray(manifest.files) ? manifest.files : []
   } catch (error) {
-    problems.push(`docs/packages/${GENERATED_MANIFEST}: ${error.message}`)
+    problems.push(`${DOCS_LABEL}/packages/${GENERATED_MANIFEST}: ${error.message}`)
   }
 
   for (const entry of DOCUMENTED_PACKAGES) {
@@ -404,7 +452,7 @@ async function checkPackageDocs(navigation) {
       }
       const page = file.replace(/\.md$/, '')
       if (navigation && !navigation.seen.has(page)) {
-        problems.push(`docs/docs.json: generated page is not in navigation: ${page}`)
+        problems.push(`${DOCS_LABEL}/docs.json: generated page is not in navigation: ${page}`)
       }
     }
   }

@@ -117,4 +117,4 @@ the top findings for dashboards and MCP summaries.
 | `insufficient-evidence` | The sample cannot support a conclusion. |
 
 `possible` and `observed` never mean "confirmed root cause". See the repository
-the repository `docs/limitations.md` for the full boundary.
+`apps/docs/limitations.md` for the full boundary.

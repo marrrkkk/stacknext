@@ -5,13 +5,13 @@ is no commercial SLA.
 
 ## Read these first
 
-- [Installation](docs/installation.md)
-- [Getting started](docs/getting-started.md)
-- [Compatibility](docs/compatibility.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [Privacy and redaction](docs/privacy.md)
-- [Limitations](docs/limitations.md)
-- [Documentation index](docs/README.md)
+- [Installation](apps/docs/installation.md)
+- [Getting started](apps/docs/getting-started.md)
+- [Compatibility](apps/docs/compatibility.md)
+- [Troubleshooting](apps/docs/troubleshooting.md)
+- [Privacy and redaction](apps/docs/privacy.md)
+- [Limitations](apps/docs/limitations.md)
+- [Documentation index](apps/docs/index.md)
 
 Run `npx stacknext doctor --json` before asking for help. It checks the runtime
 state, collector, instrumentation, config and versions.
@@ -53,8 +53,8 @@ private vulnerability reporting.
 
 ## Supported versions
 
-Security fixes target the latest 0.6.x release. Older versions and unpublished
-source snapshots are not supported. See the [compatibility matrix](docs/compatibility.md)
+Security fixes target the latest 0.10.x release. Older versions and unpublished
+source snapshots are not supported. See the [compatibility matrix](apps/docs/compatibility.md)
 for runtime support.
 
 ## What maintainers cannot help with
@@ -68,4 +68,4 @@ for runtime support.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Release work is maintainer-only; see
-[docs/releasing.md](docs/releasing.md).
+[docs/deployment/release-process.md](docs/deployment/release-process.md).
