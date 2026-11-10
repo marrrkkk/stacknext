@@ -48,6 +48,14 @@ export interface ChangelogRelease {
 
 export const CHANGELOG_RELEASES = [
   {
+    "id": "v0-11-1",
+    "version": "0.11.1",
+    "date": "2026-11-10",
+    "dateLabel": "November 10, 2026",
+    "intro": [],
+    "groups": []
+  },
+  {
     "id": "v0-11-0",
     "version": "0.11.0",
     "date": "2026-11-10",
