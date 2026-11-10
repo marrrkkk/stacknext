@@ -18,7 +18,9 @@ import {
   packPackages,
   printResults,
   readPackage,
+  registryHasVersion,
   validatePackages,
+  waitForRegistryVersion,
   writeManifest,
 } from './lib/release.mjs'
 
@@ -62,9 +64,9 @@ if (!/^[A-Za-z][0-9A-Za-z._-]*$/.test(tag)) {
   throw new Error(`Invalid npm dist-tag "${tag}"`)
 }
 // npm registry replicas can serve stale 404s for several minutes after a
-// successful publish. Five minutes covers the observed propagation window
+// successful publish. Ten minutes covers the observed propagation window
 // without hiding a genuinely missing package.
-const registryWaitMs = Number(process.env.STACKNEXT_REGISTRY_WAIT_MS ?? 300_000)
+const registryWaitMs = Number(process.env.STACKNEXT_REGISTRY_WAIT_MS ?? 600_000)
 if (!Number.isFinite(registryWaitMs) || registryWaitMs < 0) {
   throw new Error('STACKNEXT_REGISTRY_WAIT_MS must be a non-negative number')
 }
@@ -121,39 +123,6 @@ if (problems.length > 0) {
   process.exit(1)
 }
 
-async function registryHasVersion(name, releaseVersion) {
-  const packagePath = name.replace('/', '%2f')
-  const response = await fetch(
-    `https://registry.npmjs.org/${packagePath}/${releaseVersion}`,
-    { signal: AbortSignal.timeout(15_000) },
-  )
-  if (response.status === 200) return true
-  if (response.status === 404) return false
-  throw new Error(
-    `Registry check for ${name}@${releaseVersion} returned HTTP ${response.status}`,
-  )
-}
-
-/**
- * Registry replicas can lag a successful npm publish. Wait for the exact
- * version to become visible instead of failing the workflow immediately.
- */
-async function waitForRegistryVersion(name, releaseVersion) {
-  const deadline = Date.now() + registryWaitMs
-  let lastError
-  for (;;) {
-    try {
-      if (await registryHasVersion(name, releaseVersion)) return true
-    } catch (error) {
-      lastError = error
-    }
-    if (Date.now() >= deadline) break
-    await new Promise((resolve) => setTimeout(resolve, 5_000))
-  }
-  if (lastError) throw lastError
-  return false
-}
-
 const existing = []
 for (const entry of PUBLIC_PACKAGES) {
   if (await registryHasVersion(entry.name, version)) existing.push(entry.name)
@@ -190,7 +159,11 @@ for (const result of results) {
 
 if (!dryRun) {
   for (const entry of PUBLIC_PACKAGES) {
-    if (!(await waitForRegistryVersion(entry.name, version))) {
+    const visible = await waitForRegistryVersion(
+      () => registryHasVersion(entry.name, version),
+      { waitMs: registryWaitMs },
+    )
+    if (!visible) {
       throw new Error(
         `Registry does not show ${entry.name}@${version} after waiting ${registryWaitMs}ms. Re-run with --resume after fixing the failure.`,
       )

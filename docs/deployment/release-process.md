@@ -379,10 +379,11 @@ environment, then:
   validation, e2e and both benchmarks;
 - packs and validates the archives;
 - publishes in dependency order with npm trusted publishing and provenance;
-- verifies that every version exists in the registry, retrying for up to five
-  minutes per package because npm replicas can serve stale 404s for several
-  minutes after a successful publish (`STACKNEXT_REGISTRY_WAIT_MS` overrides the
-  wait).
+- verifies that every version exists in the registry, retrying for up to ten
+  minutes per package because npm replicas and the CDN can serve stale 404s for
+  several minutes after a successful publish. Each check bypasses cached
+  responses and compares the version endpoint with the package document
+  (`STACKNEXT_REGISTRY_WAIT_MS` overrides the wait).
 
 After every package is verified, the finalize job creates the annotated
 `vX.Y.Z` tag and the GitHub release from the matching changelog section. The tag

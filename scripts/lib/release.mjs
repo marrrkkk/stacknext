@@ -281,3 +281,78 @@ export function printResults(results) {
     )
   }
 }
+
+/**
+ * Registry URLs include a nonce because the npm CDN can cache a 404 for a
+ * package version that was just published. A unique query string keeps each
+ * poll out of the cached response.
+ */
+export function registryVersionUrl(name, version, nonce = Date.now()) {
+  return `https://registry.npmjs.org/${name.replace('/', '%2f')}/${version}?t=${nonce}`
+}
+
+export function registryDocumentUrl(name, nonce = Date.now()) {
+  return `https://registry.npmjs.org/${name.replace('/', '%2f')}?t=${nonce}`
+}
+
+export function registryDocumentHasVersion(document, version) {
+  return Boolean(document && typeof document === 'object' && document.versions?.[version])
+}
+
+/**
+ * Checks both the lightweight version endpoint and the package document.
+ * npm can serve a stale 404 from either route after a successful publish, so a
+ * missing version is only reported when both views agree.
+ */
+export async function registryHasVersion(name, releaseVersion, options = {}) {
+  const fetchImpl = options.fetch ?? fetch
+  const timeoutMs = options.timeoutMs ?? 15_000
+  const nonce = options.nonce ?? Date.now()
+  const request = (url) =>
+    fetchImpl(url, {
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: { 'cache-control': 'no-cache' },
+    })
+
+  const versionResponse = await request(registryVersionUrl(name, releaseVersion, nonce))
+  if (versionResponse.status === 200) return true
+  if (versionResponse.status !== 404) {
+    throw new Error(
+      `Registry check for ${name}@${releaseVersion} returned HTTP ${versionResponse.status}`,
+    )
+  }
+
+  const documentResponse = await request(registryDocumentUrl(name, nonce))
+  if (documentResponse.status === 404) return false
+  if (documentResponse.status !== 200) {
+    throw new Error(
+      `Registry document check for ${name} returned HTTP ${documentResponse.status}`,
+    )
+  }
+  return registryDocumentHasVersion(await documentResponse.json(), releaseVersion)
+}
+
+/**
+ * Polls a registry check until it succeeds or the deadline passes. The check is
+ * injected so the retry behavior can be tested without network access.
+ */
+export async function waitForRegistryVersion(check, options = {}) {
+  const waitMs = options.waitMs ?? 300_000
+  const intervalMs = options.intervalMs ?? 5_000
+  const now = options.now ?? Date.now
+  const sleep =
+    options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
+  const deadline = now() + waitMs
+  let lastError
+  for (;;) {
+    try {
+      if (await check()) return true
+    } catch (error) {
+      lastError = error
+    }
+    if (now() >= deadline) break
+    await sleep(intervalMs)
+  }
+  if (lastError) throw lastError
+  return false
+}
