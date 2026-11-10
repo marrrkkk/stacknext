@@ -26,9 +26,11 @@
     "release:prepare": "node scripts/prepare-release.mjs",
     "release:notes": "node scripts/release-notes.mjs",
     "release:publish": "node scripts/publish-release.mjs",
-    "check:docs": "node scripts/sync-docs.mjs --check && node scripts/check-docs.mjs",
+    "changelog:sync": "node scripts/sync-changelog.mjs",
+    "changelog:check": "node scripts/sync-changelog.mjs --check",
+    "check:docs": "node scripts/sync-docs.mjs --check && node scripts/check-docs.mjs && node scripts/sync-changelog.mjs --check",
     "docs:sync": "node scripts/sync-docs.mjs",
-    "docs:check": "node scripts/sync-docs.mjs --check && node scripts/check-docs.mjs",
+    "docs:check": "node scripts/sync-docs.mjs --check && node scripts/check-docs.mjs && node scripts/sync-changelog.mjs --check",
     "docs:dev": "cd docs && npx --yes mint@4.2.1165 dev"
   },
   "devDependencies": {

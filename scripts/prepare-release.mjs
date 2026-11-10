@@ -37,6 +37,7 @@ if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
 const JSON_FILES = [
   'package.json',
   'apps/example/package.json',
+  'apps/www/package.json',
   ...PUBLIC_PACKAGES.map((entry) => `${entry.dir}/package.json`),
 ]
 

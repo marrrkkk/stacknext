@@ -13,6 +13,7 @@ apps/example-next-app/data/
 apps/example-next-app/next-env.d.ts
 apps/example/data/
 apps/example/next-env.d.ts
+apps/www/next-env.d.ts
 docs/screenshots/*.tmp.png
 docs/src/
 playwright-report/

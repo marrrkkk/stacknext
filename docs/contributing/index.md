@@ -26,7 +26,7 @@ The build is topological and required before e2e and benchmark runs.
 | `pnpm typecheck` | Per-package `tsc --noEmit` against source paths |
 | `pnpm test` | Vitest unit and integration tests |
 | `pnpm build` | Topological package build |
-| `pnpm check:docs` | Generated docs are current and links resolve |
+| `pnpm check:docs` | Generated docs and website changelog are current, and links resolve |
 | `pnpm test:packages` | Package archives contain required docs and assets |
 | `pnpm test:e2e` | Real CLI, collector, example app, dashboard, MCP and regression flow |
 

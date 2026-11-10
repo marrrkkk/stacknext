@@ -1,0 +1,373 @@
+/*
+ * Global CSS for the StackNext website.
+ *
+ * Tailwind utilities do the component styling. This file only holds the global
+ * reset, design tokens, keyframes, and the few stateful selectors that utilities
+ * cannot express (details-content transitions and diagram hover interactions).
+ */
+
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@source '../app/**/*.{ts,tsx}';
+@source '../components/**/*.{ts,tsx}';
+
+@theme {
+  --color-bg: #000;
+  --color-surface: #090a0b;
+  --color-card: #0b0b0b;
+  --color-card-2: #101010;
+  --color-ink: #ededed;
+  --color-ink-2: #9f9f9f;
+  --color-ink-3: #767676;
+  --color-ink-4: #3d3d3d;
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-line-2: rgb(255 255 255 / 0.14);
+  --color-live: #4ade80;
+
+  --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, 'SFMono-Regular', Menlo, Consolas,
+    'Liberation Mono', monospace;
+  --font-pixel: var(--font-geist-pixel), var(--font-geist-mono), ui-monospace, monospace;
+
+  --spacing-pad: clamp(20px, 3.2vw, 48px);
+  --spacing-frame: min(1600px, calc(100% - 2 * clamp(12px, 2.4vw, 36px)));
+
+  --radius-frame: 14px;
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Exact max-width variants, matching the previous media queries one-for-one. */
+@custom-variant max-1240 {
+  @media (max-width: 1240px) {
+    @slot;
+  }
+}
+@custom-variant max-1180 {
+  @media (max-width: 1180px) {
+    @slot;
+  }
+}
+@custom-variant max-1040 {
+  @media (max-width: 1040px) {
+    @slot;
+  }
+}
+@custom-variant max-959 {
+  @media (max-width: 959px) {
+    @slot;
+  }
+}
+@custom-variant max-940 {
+  @media (max-width: 940px) {
+    @slot;
+  }
+}
+@custom-variant max-860 {
+  @media (max-width: 860px) {
+    @slot;
+  }
+}
+@custom-variant max-720 {
+  @media (max-width: 720px) {
+    @slot;
+  }
+}
+@custom-variant max-560 {
+  @media (max-width: 560px) {
+    @slot;
+  }
+}
+@custom-variant max-430 {
+  @media (max-width: 430px) {
+    @slot;
+  }
+}
+@custom-variant max-420 {
+  @media (max-width: 420px) {
+    @slot;
+  }
+}
+@custom-variant max-380 {
+  @media (max-width: 380px) {
+    @slot;
+  }
+}
+
+:root {
+  --header-h: 68px;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --header-h: 60px;
+  }
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    background: var(--color-bg);
+    color-scheme: dark;
+    scroll-behavior: smooth;
+    scroll-padding-top: calc(var(--header-h) + 16px);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body[data-menu-open='true'] {
+    overflow: hidden;
+  }
+
+  ::selection {
+    background: #ededed;
+    color: #000;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  figure,
+  blockquote,
+  dl,
+  dd {
+    margin: 0;
+  }
+
+  ul,
+  ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  img,
+  svg {
+    max-width: 100%;
+  }
+
+  code,
+  pre {
+    font-family: var(--font-mono);
+  }
+
+  :focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 4px;
+  }
+}
+
+/* --------------------------------------------------------------- keyframes */
+
+@keyframes live-pulse {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.9;
+  }
+  70%,
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes system-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes system-ride {
+  0% {
+    translate: -50% -4px;
+    opacity: 0;
+  }
+  20%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    translate: -50% 28px;
+    opacity: 0;
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes faq-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ------------------------------------------------------- reveal + details */
+
+[data-reveal] {
+  transition:
+    opacity 650ms var(--ease-soft),
+    transform 650ms var(--ease-soft);
+}
+
+[data-reveal-state='pending'] {
+  opacity: 0;
+  transform: translateY(22px);
+}
+
+[data-reveal-state='visible'] {
+  opacity: 1;
+  transform: none;
+}
+
+@supports (interpolate-size: allow-keywords) {
+  :root {
+    interpolate-size: allow-keywords;
+  }
+
+  details::details-content {
+    block-size: 0;
+    overflow: hidden;
+    transition:
+      block-size 320ms var(--ease-soft),
+      content-visibility 320ms allow-discrete;
+  }
+
+  details[open]::details-content {
+    block-size: auto;
+  }
+}
+
+/* ------------------------------------- stateful hover links in the diagrams */
+
+.system-map:has([data-part]:hover) [data-part]:not(:hover) {
+  opacity: 0.4;
+}
+
+.system-map:has([data-part='app']:hover) [data-trace='in'],
+.system-map:has([data-part='signals']:hover) [data-trace='in'],
+.system-map:has([data-part='readers']:hover) [data-trace='out'],
+.system-map:has([data-part='core']:hover) [data-trace],
+.system-map:has([data-part='sample']:hover) [data-lane] {
+  stroke: rgb(255 255 255 / 0.5);
+}
+
+.privacy-map:has([data-part='app']:hover) [data-privacy-trace],
+.privacy-map:has([data-part='collector']:hover) [data-privacy-trace] {
+  stroke: rgb(255 255 255 / 0.5);
+}
+
+.privacy-map:has([data-part='app']:hover) .system-packet,
+.privacy-map:has([data-part='collector']:hover) .system-packet {
+  fill: #151515;
+  stroke: #fff;
+}
+
+.privacy-map:has([data-part='cloud']:hover) [data-privacy-boundary] {
+  stroke: rgb(255 255 255 / 0.5);
+}
+
+.system-part[data-part='cloud']:hover [data-cloud-slash] {
+  stroke: #ededed;
+}
+
+.system-part:hover .system-glyph,
+.system-node:hover .system-glyph {
+  color: var(--brand, var(--ink));
+}
+
+.system-part:hover .system-logo {
+  fill: var(--iso-hot);
+}
+
+.system-part:hover .system-row {
+  stroke: rgb(255 255 255 / 0.5);
+}
+
+.system-node:hover li svg {
+  color: var(--brand, var(--ink));
+}
+
+.system-schematic:has(.system-node:hover) .system-node:not(:hover) {
+  opacity: 0.45;
+}
+
+/* ------------------------------------------------------- reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  [data-reveal-state='pending'] {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -197,10 +197,12 @@ Verify the publisher configuration on each package page and with
    `CLI_VERSION`, `STACKNEXT_SDK_VERSION` and the Agent Skill version.
 4. Moves the `[Unreleased]` changelog content under the new version and opens a
    fresh empty `[Unreleased]` section.
-5. Pushes `release/vX.Y.Z`, opens or refreshes the `chore: release X.Y.Z`
+5. Regenerates the versioned package documentation and the website changelog
+   data from `CHANGELOG.md`.
+6. Pushes `release/vX.Y.Z`, opens or refreshes the `chore: release X.Y.Z`
    pull request, and closes any older bot release PR that the new plan
    supersedes.
-6. Starts normal CI through the `push` and `pull_request` events with the
+7. Starts normal CI through the `push` and `pull_request` events with the
    release App token or `RELEASE_PR_TOKEN`, then queues the PR for auto-merge
    when `RELEASE_PR_AUTO_MERGE` is not `false`.
 
@@ -250,7 +252,8 @@ pnpm release:prepare --version 0.7.0 --dry-run
 
 Before merging a release PR, review the generated changelog section and add
 anything that must be called out: breaking changes, renamed packages, new
-commands, privacy changes and known limitations. Update
+commands, privacy changes and known limitations. Run `pnpm changelog:sync`
+after editing it so the website data matches. Update
 `docs/compatibility.md` with the combinations actually validated for this
 version. Regenerate screenshots if the UI changed. The version-only commit does
 not change the lockfile.
@@ -273,6 +276,9 @@ pnpm benchmark
 pnpm benchmark:diagnostics
 pnpm audit --prod
 ```
+
+`pnpm check:docs` also verifies that the generated website changelog matches
+`CHANGELOG.md`; run `pnpm changelog:sync` if it reports stale output.
 
 `pnpm test:packages` packs and inspects the real archives. It fails on version
 drift, unresolved `workspace:` ranges, missing exports/declarations, missing

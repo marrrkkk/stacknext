@@ -70,7 +70,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Repository documentation checks
+      - name: Repository documentation and website changelog checks
         run: pnpm check:docs
 
       - name: Validate Mintlify site
