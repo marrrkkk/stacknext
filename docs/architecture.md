@@ -23,6 +23,7 @@ dashboard, CLI and MCP server read from that collector.
 | `packages/mcp` | Read-only MCP server, telemetry/regression/snapshot APIs client and output schemas. |
 | `skills/stacknext-debugging` | Portable Agent Skill with tool reference and evidence-first workflows. |
 | `apps/example` | StackNext Example: Next.js App Router, Drizzle, better-sqlite3, deliberate slow/error routes, a dashboard-style UI and annotated Playwright scenarios. |
+| `apps/www` | Private marketing website: landing page plus privacy, license, limitations and generated changelog pages. Not published. |
 
 ## Data flow
 

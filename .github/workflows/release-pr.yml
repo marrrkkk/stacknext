@@ -68,6 +68,10 @@ jobs:
         if: steps.plan.outputs.release == 'true'
         run: node scripts/sync-docs.mjs
 
+      - name: Regenerate website changelog
+        if: steps.plan.outputs.release == 'true'
+        run: node scripts/sync-changelog.mjs
+
       - name: Commit, push and open the release PR
         if: steps.plan.outputs.release == 'true'
         env:

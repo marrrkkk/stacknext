@@ -30,8 +30,15 @@ frontmatter and drop the duplicate H1. Do not edit them; edit the canonical
 file and rerun the script. The script removes only files listed in its manifest,
 so hand-authored pages are never deleted.
 
-`pnpm check:docs` runs the sync in `--check` mode and then validates links,
-frontmatter and navigation. CI also validates the Mintlify site with
+`node scripts/sync-changelog.mjs` (or `pnpm changelog:sync`) generates
+`apps/www/content/changelog.generated.ts` from the root `CHANGELOG.md`. The
+website changelog imports that module; never edit it by hand. The generator
+excludes `[Unreleased]`, requires dated release headings, and rejects structure
+it cannot render faithfully, such as fenced code blocks, nested bullets and
+relative links.
+
+`pnpm check:docs` runs both sync scripts in `--check` mode and then validates
+links, frontmatter and navigation. CI also validates the Mintlify site with
 `mint validate --no-build` and `mint broken-links` from `docs/`.
 
 ## Website pages

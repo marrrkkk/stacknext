@@ -27,7 +27,7 @@ pnpm build
 - [ ] `pnpm test:e2e` (when runtime, dashboard, CLI, MCP or regression behavior changed)
 - [ ] `pnpm test:packages` (when package metadata, exports or build output changed)
 - [ ] `pnpm test:consumer --next 15.5.28 --pm npm --skip-build` and/or `--next 16.4.3`
-- [ ] `pnpm check:docs` (when Markdown changed)
+- [ ] `pnpm check:docs` (when Markdown or `CHANGELOG.md` changed)
 
 ## Compatibility
 

@@ -8,7 +8,39 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [0.10.0] - 2026-11-09
 
+Packaged documentation, a browsable documentation site and release automation
+that keeps generated docs current.
+
+### Added
+
+- Added canonical `docs/` directories to every package archive. The CLI ships
+  command, configuration, agent-setup and skill references; core ships schemas,
+  redaction, transport and snapshot docs; and the Next.js, Drizzle, Prisma,
+  Playwright and regression packages ship reference and troubleshooting
+  guides.
+- Documented the dashboard, diagnostics and MCP packages, completing reference
+  coverage for both public and internal packages.
+- Added a Mintlify documentation site with overview, getting-started, guide,
+  security, AI-agent, contributing and reference sections, plus local
+  `pnpm docs:dev` preview.
+- Added `pnpm docs:sync` and `pnpm docs:check` tooling to generate the CLI
+  package index and Mintlify package pages, and to validate generated docs,
+  links and navigation in CI.
+
+### Fixed
+
+- Release PRs now regenerate versioned package documentation before committing,
+  so generated copies match the release.
+- Release verification now waits up to five minutes per package for npm
+  registry propagation, configurable with `STACKNEXT_REGISTRY_WAIT_MS`, to
+  tolerate replicas that serve stale 404s.
+- Release PRs are opened with a GitHub App token or `RELEASE_PR_TOKEN` and
+  queued for auto-merge after required checks, so generated pull requests run
+  normal CI.
+
 ## [0.9.0] - 2026-11-09
+
+Opt-in agent instructions for projects that use coding agents.
 
 ### Added
 
@@ -20,7 +52,26 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [0.8.0] - 2026-11-08
 
+A rebuilt example app that shares the dashboard's interface language and walks
+through every supported evidence path.
+
+### Changed
+
+- Replaced `apps/example-next-app` with `apps/example`, a Next.js 16 App Router
+  task tracker built on Drizzle and better-sqlite3, with an overview, project
+  list and detail pages, reset controls and the dashboard's design tokens,
+  shell, cards, tables and chips.
+- Added `/scenarios`, which maps each demo route to the telemetry it produces
+  and can generate traffic with one click, plus `/actions-demo` for successful,
+  failing, redirect, not-found and concurrent Server Actions.
+- Kept the slow, error, N+1, slow-DB, repeated-fetch and custom-work routes,
+  expanded the annotated Playwright suite to cover traffic generation and task
+  mutations, and documented warm-up, capture and baseline commands.
+
 ## [0.7.0] - 2026-11-07
+
+Saved snapshots, diagnostics rule set v2, a bundled Agent Skill and a
+redesigned dashboard.
 
 ### Added
 
@@ -164,6 +215,8 @@ All notable changes to StackNext are documented here. The format follows
   expose them.
 
 ## [0.6.1] - 2026-11-03
+
+A packaging fix for the first public release.
 
 ### Fixed
 

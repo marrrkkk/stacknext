@@ -576,7 +576,8 @@ packages/cli        stacknext binary + collector HTTP server
 packages/dashboard  React/Vite dashboard served by the collector
 packages/mcp        read-only stdio MCP server
 skills/             portable Agent Skills for coding agents
-apps/example           StackNext Example demo
+apps/example        StackNext Example demo
+apps/www            StackNext website (private)
 ```
 
 More detail: [architecture](docs/architecture.md).
@@ -593,7 +594,9 @@ pnpm build
 pnpm test:e2e      # starts the built example app and checks the real stack
 pnpm test:packages # packs and validates all ten public archives
 pnpm test:consumer # installs archives in an external Next.js fixture
-pnpm check:docs    # generated docs, links, navigation and documented commands
+pnpm check:docs    # generated docs, website changelog, links and documented commands
+pnpm changelog:sync # regenerate website changelog data from CHANGELOG.md
+pnpm changelog:check # fail when the generated website changelog is stale
 pnpm benchmark     # synthetic ingest + read API benchmark
 pnpm benchmark:diagnostics # synthetic findings + diagnostics read benchmark
 pnpm benchmark:verbose # real-app standard vs verbose tracing comparison

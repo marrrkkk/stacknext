@@ -97,6 +97,7 @@ pnpm test:e2e
 pnpm test:packages
 pnpm test:consumer --next 16.4.3 --pm npm --skip-build
 pnpm check:docs
+pnpm changelog:check
 pnpm benchmark
 pnpm benchmark:diagnostics
 pnpm benchmark:verbose
@@ -154,6 +155,9 @@ machine, say which one and why in the pull request.
 - Use the documented brand and identifiers only: `StackNext`, `stacknext`,
   `@stacknext/*`, `STACKNEXT_*`, `stacknext.config.json` and `.stacknext`.
 - Run `pnpm check:docs` before submitting.
+- After editing `CHANGELOG.md`, run `pnpm changelog:sync` so the website
+  changelog data matches. Never edit `apps/www/content/changelog.generated.ts`
+  by hand.
 - Regenerate screenshots if the dashboard changed. Do not commit screenshots
   that show another product, a token, a customer route or unredacted data.
 
