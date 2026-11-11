@@ -23,8 +23,15 @@
  * the near-black light-mode primary (#111111). That leaves dark text on the
  * dark background. In dark mode the token has to be the dark-mode accent.
  */
+:root {
+  --sn-line: #dcdce2;
+  --sn-line-strong: #b6b6c1;
+}
+
 html.dark {
   --primary-light: 247 248 248;
+  --sn-line: #2b2b32;
+  --sn-line-strong: #43434e;
 }
 
 /*
@@ -36,17 +43,13 @@ html.dark {
   width: 100%;
   height: auto;
   margin: 1rem 0 1.25rem;
-  border: 1px solid #e4e4e9;
+  border: 1px solid var(--sn-line);
   border-radius: 0.75rem;
   background: #ffffff;
 }
 
 .sn-shot-dark {
   display: none;
-}
-
-html.dark .sn-shot {
-  border-color: #2b2b32;
 }
 
 html.dark .sn-shot-light {
@@ -65,8 +68,6 @@ html.dark .sn-shot-dark {
 .sn-flow {
   --sn-ink: #101013;
   --sn-muted: #62626d;
-  --sn-line: #dcdce2;
-  --sn-line-strong: #b6b6c1;
   --sn-card: #ffffff;
   --sn-chip: #f6f6f7;
   --sn-wire: #b6b6c1;
@@ -80,8 +81,6 @@ html.dark .sn-shot-dark {
 html.dark .sn-flow {
   --sn-ink: #f7f8f8;
   --sn-muted: #9d9da8;
-  --sn-line: #2b2b32;
-  --sn-line-strong: #43434e;
   --sn-card: #0d0d10;
   --sn-chip: #17171c;
   --sn-wire: #4c4c58;
@@ -173,14 +172,9 @@ html.dark .sn-flow {
   list-style: none;
 }
 
-.sn-flow .sn-chips > li::marker {
-  content: "";
-}
-
 /* Mintlify draws prose bullets as ::before dots, so list-style alone is not enough. */
 .sn-flow .sn-chips > li::before {
   content: none;
-  display: none;
 }
 
 .sn-flow .sn-chips-plain {
@@ -350,19 +344,25 @@ html.dark .sn-flow .sn-tile-next {
 }
 
 .sn-flow .sn-readers {
+  --sn-cols: 3;
+  --sn-gap: 0.6rem;
+
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: repeat(var(--sn-cols), minmax(0, 1fr));
+  gap: var(--sn-gap);
   padding-top: 1.5rem;
 }
 
+/* Spans the outer column centres so the bus meets the stems above each node. */
 .sn-flow .sn-readers::before {
+  --sn-inset: calc((100% - (var(--sn-cols) - 1) * var(--sn-gap)) / (var(--sn-cols) * 2));
+
   content: "";
   position: absolute;
   top: 0;
-  left: 16.667%;
-  right: 16.667%;
+  left: var(--sn-inset);
+  right: var(--sn-inset);
   height: 1px;
   background: var(--sn-wire);
 }
@@ -396,13 +396,14 @@ html.dark .sn-flow .sn-tile-next {
   gap: 0.4rem;
 }
 
-.sn-flow .sn-reader-head .sn-title,
-.sn-flow .sn-reader-head .sn-sub {
+.sn-flow .sn-reader-head .sn-title {
   min-width: 0;
 }
 
 @media (max-width: 40rem) {
   .sn-flow .sn-readers {
+    --sn-cols: 1;
+
     grid-template-columns: 1fr;
     padding-top: 0;
   }
