@@ -1,0 +1,28 @@
+/*
+ * StackNext documentation theme overrides.
+ *
+ * Mintlify auto-loads every .css file in this content directory on every page,
+ * so these rules do not need to be imported from docs.json or the MDX files.
+ */
+
+/*
+ * Active entries in the sidebar and in the "On this page" list are rendered
+ * with a two-pass text-shadow to fake a heavier weight. At 14px it smears the
+ * glyph edges so the label reads as a bad font with a chopped-looking baseline.
+ * Use a real weight instead.
+ */
+[data-active-nav-item="true"] > a,
+[data-layout-item="toc-item-link"][data-active="true"] {
+  font-weight: 500;
+  text-shadow: none;
+}
+
+/*
+ * In dark mode Mintlify paints active items (sidebar, "On this page", the
+ * breadcrumb eyebrow) with `primary-light`, but docs.json maps that token to
+ * the near-black light-mode primary (#111111). That leaves dark text on the
+ * dark background. In dark mode the token has to be the dark-mode accent.
+ */
+html.dark {
+  --primary-light: 247 248 248;
+}
