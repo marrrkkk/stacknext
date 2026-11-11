@@ -6,6 +6,8 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-11-11
+
 ### Changed
 
 - Reduced dashboard live-refresh load: SSE events are coalesced to at most one

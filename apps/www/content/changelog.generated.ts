@@ -48,6 +48,160 @@ export interface ChangelogRelease {
 
 export const CHANGELOG_RELEASES = [
   {
+    "id": "v0-12-1",
+    "version": "0.12.1",
+    "date": "2026-11-11",
+    "dateLabel": "November 11, 2026",
+    "intro": [],
+    "groups": [
+      {
+        "title": "Changed",
+        "items": [
+          [
+            {
+              "type": "text",
+              "value": "Reduced dashboard live-refresh load: SSE events are coalesced to at most one React update per second, refresh keys are scoped to the resource a page reads, hidden tabs stop live flushes and interval reads, and in-flight requests use a single trailing refresh instead of abort/restart churn. Runs, baselines, comparisons, settings and snapshot views no longer reload on telemetry ticks."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Reduced dashboard request amplification. Overview reuses coverage and bounded error groups from "
+            },
+            {
+              "type": "code",
+              "value": "/api/summary"
+            },
+            {
+              "type": "text",
+              "value": " and memoizes chart derivations; database and error detail pages scan on longer intervals. The summary response gains optional "
+            },
+            {
+              "type": "code",
+              "value": "recentErrorGroups"
+            },
+            {
+              "type": "text",
+              "value": " capped at five groups, while older collectors still work through a fallback request."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Split dashboard routes with "
+            },
+            {
+              "type": "code",
+              "value": "React.lazy"
+            },
+            {
+              "type": "text",
+              "value": ", isolated the React vendor chunk and added "
+            },
+            {
+              "type": "code",
+              "value": "content-visibility"
+            },
+            {
+              "type": "text",
+              "value": " for long trace timelines. The initial JavaScript is now 120.0 KiB gzip across two chunks and the largest route chunk is 7.8 KiB."
+            }
+          ]
+        ]
+      },
+      {
+        "title": "Added",
+        "items": [
+          [
+            {
+              "type": "text",
+              "value": "Added "
+            },
+            {
+              "type": "code",
+              "value": "pnpm benchmark:dashboard"
+            },
+            {
+              "type": "text",
+              "value": ", a Playwright benchmark for live-refresh request counts, long tasks, heap/DOM counters, hidden-tab behavior and bundle budgets. It is report-only unless "
+            },
+            {
+              "type": "code",
+              "value": "--enforce"
+            },
+            {
+              "type": "text",
+              "value": " is passed, which enforces total initial JavaScript, largest initial chunk and largest route chunk sizes."
+            }
+          ]
+        ]
+      },
+      {
+        "title": "Fixed",
+        "items": [
+          [
+            {
+              "type": "text",
+              "value": "Release store read caches immediately when telemetry changes or is removed."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Refresh database and error correlations when spans arrive, allow manual refresh to recover from stalled requests, and preserve reconnecting status through delayed telemetry flushes."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Bounded the collector snapshot cache by both entry count and 32 MiB of estimated retained snapshot memory, with LRU eviction and uncached delivery for oversized snapshots."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Reused revision-keyed trace indexes across the configured and internal slow-request thresholds, so alternating reads at the same revision do not rebuild the same index."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Capped "
+            },
+            {
+              "type": "code",
+              "value": "/api/summary"
+            },
+            {
+              "type": "text",
+              "value": " recent error groups at five groups rather than five error rows."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Restored Overview's 15-second interval polling when live updates are not paused; the pause flag had inverted the condition."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Release PRs now ignore HTML comment markers in "
+            },
+            {
+              "type": "code",
+              "value": "CHANGELOG.md"
+            },
+            {
+              "type": "text",
+              "value": " when generating the website changelog, so bot-maintained sections no longer block a release."
+            }
+          ]
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-12-0",
     "version": "0.12.0",
     "date": "2026-11-11",
