@@ -15,7 +15,7 @@ They must work on Node.js 22, 24 and 26.
 | `scripts/benchmark-diagnostics.mjs` | `pnpm benchmark:diagnostics` | Synthetic findings and diagnostics read benchmark. |
 | `scripts/benchmark-verbose.mjs` | `pnpm benchmark:verbose` | Real example-app standard versus verbose-tracing comparison. |
 | `scripts/check-docs.mjs` | `pnpm check:docs` | Validates public docs, engineering docs, package docs, links, navigation, redirects and generated output. |
-| `scripts/sync-docs.mjs` | `pnpm docs:sync` | Regenerates the CLI package index and Mintlify package copies. `--check` verifies staleness. |
+| `scripts/sync-docs.mjs` | `pnpm docs:sync` | Regenerates the installed CLI package-docs index. `--check` verifies staleness. |
 | `scripts/sync-changelog.mjs` | `pnpm changelog:sync` | Generates `apps/www/content/changelog.generated.ts` from `CHANGELOG.md`. `--check` verifies staleness. |
 | `scripts/sync-cli-skill.mjs` | `pnpm --filter @stacknext/cli prepack` | Copies the canonical Agent Skill into the CLI archive. `--clean` removes the copy. |
 

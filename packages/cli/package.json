@@ -24,7 +24,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "prepack": "node ../../scripts/sync-cli-skill.mjs && node ../../scripts/sync-docs.mjs --skip-mintlify",
+    "prepack": "node ../../scripts/sync-cli-skill.mjs && node ../../scripts/sync-docs.mjs",
     "postpack": "node ../../scripts/sync-cli-skill.mjs --clean",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
