@@ -1,6 +1,7 @@
 ---
 title: CI integration
 description: Run capture, comparison and evidence artifacts in a normal CI job.
+keywords: ["stacknext ci","playwright ci capture","github actions","regression gate","ci artifacts"]
 ---
 
 StackNext regression checks fit into a normal CI job without a hosted StackNext
@@ -9,8 +10,10 @@ Playwright browser runs there, and run, baseline and comparison files stay in
 the workspace. The example uses GitHub Actions, but the same steps work in any
 runner that can run Node.js, Playwright and the app.
 
+<Info>
 The default is report-only. A job fails only when `stacknext compare` is given a
 matching `--fail-on` option.
+</Info>
 
 ## What the job needs
 

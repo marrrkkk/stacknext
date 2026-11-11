@@ -1,6 +1,7 @@
 ---
 title: Troubleshooting
 description: Diagnose missing telemetry, connection, port, MCP and regression problems.
+keywords: ["missing telemetry","port conflict","mcp connection","doctor command","collector unreachable"]
 ---
 
 Start with:
@@ -14,6 +15,13 @@ npx stacknext doctor --json
 config, package versions and app process. It does not prove that a particular
 feature was exercised; use `stacknext coverage` and the dashboard sample window
 for that.
+
+<Tip>
+When the dashboard is empty, check the connection state before changing
+instrumentation: `doctor` reports whether the app is connected, and
+[instrumentation coverage](/instrumentation-coverage) shows what the sample
+actually observed.
+</Tip>
 
 ## Installation and initialization
 

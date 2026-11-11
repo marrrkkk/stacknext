@@ -264,9 +264,15 @@
     "prompt": "Search the StackNext documentation"
   },
   "seo": {
+    "indexing": "navigable",
     "metatags": {
-      "og:title": "StackNext documentation",
-      "og:description": "Local-first runtime debugging, diagnostics and regression evidence for Next.js."
+      "canonical": "https://stack-next.mintlify.site"
+    },
+    "organization": {
+      "name": "StackNext",
+      "url": "https://stack-next.mintlify.site",
+      "logo": "https://stack-next.mintlify.site/images/logo-black.svg",
+      "sameAs": ["https://github.com/marrrkkk/stacknext"]
     }
   },
   "markdown": {

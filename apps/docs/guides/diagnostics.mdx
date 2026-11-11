@@ -1,6 +1,7 @@
 ---
 title: Diagnostics
-description: Understand the six deterministic rules, finding statuses, evidence and limits.
+description: The six deterministic Next.js rules, finding statuses, evidence and limits behind every StackNext diagnostic.
+keywords: ["n+1 query detection","slow request diagnostics","deterministic findings","runtime heuristics","diagnostic evidence"]
 ---
 
 StackNext rebuilds a deterministic diagnostic report from the current sample.
@@ -24,6 +25,26 @@ These are conservative heuristics. They do not prove an ORM bug, a causal
 bottleneck, a retry policy problem or a shared error cause. Read the evidence,
 verification steps and limitations on each finding.
 
+<Warning>
+A finding is evidence, never a confirmed root cause. Verify it in the trace
+before you change code.
+</Warning>
+
+<img
+  src="/screenshots/diagnostics.png"
+  alt="Diagnostics findings view listing error and warning findings with route, rule, status and evidence"
+  loading="lazy"
+  decoding="async"
+  className="sn-shot sn-shot-light"
+/>
+<img
+  src="/screenshots/diagnostics-dark.png"
+  alt="Diagnostics findings view listing error and warning findings with route, rule, status and evidence"
+  loading="lazy"
+  decoding="async"
+  className="sn-shot sn-shot-dark"
+/>
+
 ## Read a finding
 
 A finding contains:
@@ -43,8 +64,10 @@ Statuses mean:
 - `observed` — the evidence was measured directly.
 - `insufficient-evidence` — the sample cannot support a conclusion.
 
+<Info>
 Severity is separate from status. A high-severity finding still needs
-verification. A capped report (`maxFindings`) is not a complete inventory.
+verification, and a capped report (`maxFindings`) is not a complete inventory.
+</Info>
 
 ## CLI
 

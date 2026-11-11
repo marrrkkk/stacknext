@@ -1,6 +1,7 @@
 ---
 title: Installation
 description: Install StackNext in a Next.js App Router project, initialize it, verify the collector and remove it safely.
+keywords: ["install stacknext","stacknext init","instrumentation.ts","uninstall stacknext","next.js dev dependency"]
 ---
 
 StackNext is installed into the Next.js application you want to inspect. It does
@@ -118,6 +119,12 @@ If `onRequestError` already exists, call `stackNextOnRequestError(error,
 request, context)` inside it. StackNext yields to an existing OpenTelemetry
 tracer provider instead of replacing it.
 
+<Warning>
+Never replace a registration that already starts monitoring. Add
+`registerStackNext()` inside the existing `register()` so StackNext yields to
+the current OpenTelemetry provider instead of starting a second one.
+</Warning>
+
 The generated hook checks `NEXT_RUNTIME === 'nodejs'` and imports StackNext
 dynamically. Edge compilation must not load the Node.js transport.
 
@@ -137,6 +144,11 @@ pnpm exec stacknext dev
 `0600`, and runs your app's own `dev` script with the collector URL and token in
 its environment. The dashboard URL is printed at startup and is usually
 `http://127.0.0.1:4400`. Use `--open` to open it in the default browser.
+
+<Info>
+`.stacknext/run.json` holds a short-lived bearer token and must stay private.
+Never commit it, paste it into an issue or copy it into another app.
+</Info>
 
 Make a request to your app. The dashboard reflects a bounded in-memory sample;
 it does not show historical data from a previous run.

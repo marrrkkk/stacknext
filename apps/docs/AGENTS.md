@@ -25,6 +25,9 @@ not duplicate either here.
   `markdown.instructions`. Every local navigation entry must resolve, have
   `title` and `description` frontmatter, and appear only once. Navigation paths
   stay extensionless.
+- The public host is pinned three times in `docs.json`:
+  `seo.metatags.canonical`, `seo.organization.url` and `seo.organization.logo`.
+  Update all three together when the docs domain changes.
 - Keep the navigation small. Prefer a section on an existing page over a new
   page for a small topic, and do not add a page that only links elsewhere.
 - Hand-authored pages are `.mdx`. Link between them with extensionless relative

@@ -482,8 +482,19 @@ async function checkPublicSiteUrls(navigation) {
         (pathname === '' && fragment === '') ||
         pathname === 'llms.txt' ||
         pathname === 'llms-full.txt' ||
-        pathname.endsWith('.md')
+        pathname.endsWith('.md') ||
+        // Mintlify generates favicons, so there is no repository file to check.
+        pathname.startsWith('favicons/')
       ) {
+        continue
+      }
+      // Static assets have no navigation entry, but the file must exist.
+      if (pathname.startsWith('images/') || pathname.startsWith('screenshots/')) {
+        try {
+          await readFile(path.join(DOCS_ROOT, pathname))
+        } catch {
+          problems.push(`${relative(file)}: public asset does not exist: ${match[0]}`)
+        }
         continue
       }
       if (known.has(pathname)) {

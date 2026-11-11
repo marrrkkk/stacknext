@@ -1,6 +1,7 @@
 ---
 title: Playwright integration
 description: Set up the optional fixture, scenario annotations and verified correlation.
+keywords: ["playwright fixture","w3c trace context","traceparent header","scenario annotation","server trace correlation"]
 ---
 
 `@stacknext/playwright` is an optional fixture package that connects Playwright
@@ -160,9 +161,11 @@ The collector then:
 5. Marks the sample `incomplete` if any submitted trace is missing or fails the
    parent check.
 
+<Warning>
 A matching trace id alone is not accepted. There is no time-window guess, no
 "nearest request" fallback and no synthetic sample. A trace with no server span
 parented to the injected span is incomplete, not verified.
+</Warning>
 
 A document request made by the test is always submitted, even when its trace is
 missing, so missing document telemetry makes the sample incomplete. Optional
