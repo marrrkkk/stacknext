@@ -38,6 +38,7 @@ const GROUP_HEADING = /^### (.+?)\s*$/
 const BULLET = /^- (.*)$/
 const NESTED_BULLET = /^\s+[-*]\s+/
 const FENCE = /^\s*(`{3,}|~{3,})/
+const HTML_COMMENT = /^\s*<!--.*-->\s*$/
 const LINK = /^\[([^\]\n]+)\]\(([^)\s]+)\)/
 const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 
@@ -208,6 +209,10 @@ function parseReleaseSection({ version, date, lines }) {
   let group = null
 
   for (const line of lines) {
+    // HTML comments are not rendered, so keep them out of the parsed content
+    // and out of the group structure (for example bot-maintained markers).
+    if (HTML_COMMENT.test(line)) continue
+
     if (FENCE.test(line)) {
       throw new Error(
         `CHANGELOG.md release ${version} contains a fenced code block, which the website changelog does not support. Use inline code instead.`,

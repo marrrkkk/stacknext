@@ -143,6 +143,35 @@ describe('website changelog parsing', () => {
     expect(renderChangelogModule(releases)).toBe(module)
   })
 
+  it('ignores HTML comments inside a release', () => {
+    const source = [
+      '## [1.0.0] - 2026-01-01',
+      '',
+      '### Added',
+      '',
+      '- A feature.',
+      '',
+      '<!-- coderabbit-ai-generated:v1 -->',
+      '',
+      '<!-- coderabbit-ai-generated-section:v1:abc123 -->',
+      '',
+      '### Fixed',
+      '',
+      '- A fix.',
+      '',
+      '<!-- /coderabbit-ai-generated:v1 -->',
+    ].join('\n')
+
+    const [release] = parseChangelogReleases(source)
+    expect(release.intro).toEqual([])
+    expect(release.groups.map((group) => group.title)).toEqual([
+      'Added',
+      'Fixed',
+    ])
+    expect(release.groups.map((group) => group.items.length)).toEqual([1, 1])
+    expect(JSON.stringify(release)).not.toContain('coderabbit')
+  })
+
   it('ignores headings inside fenced blocks outside a release', () => {
     const source = [
       '# Changelog',

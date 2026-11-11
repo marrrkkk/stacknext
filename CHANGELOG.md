@@ -53,6 +53,8 @@ All notable changes to StackNext are documented here. The format follows
   error rows.
 - Restored Overview's 15-second interval polling when live updates are not
   paused; the pause flag had inverted the condition.
+- Release PRs now ignore HTML comment markers in `CHANGELOG.md` when generating
+  the website changelog, so bot-maintained sections no longer block a release.
 
 ## [0.12.0] - 2026-11-11
 

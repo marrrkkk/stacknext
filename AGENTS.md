@@ -195,6 +195,33 @@ the exact verification commands and results; call out checks that could not
 run, compatibility or privacy implications, and follow-up work. Never commit
 `dist`, `.next`, `.stacknext`, `release`, logs, local databases or secrets.
 
+## Versioning and changelog
+
+StackNext follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All public packages, `CLI_VERSION`, `STACKNEXT_SDK_VERSION`, the diagnostics and
+regression engine constants and the Agent Skill metadata share one version; never
+bump a single package or constant on its own.
+
+- Bump **patch** for compatible `fix`, `perf` and `revert` changes. Bump
+  **minor** for `feat` changes, and for breaking changes while the major version
+  is `0`. Bump **major** from `1.0.0` for removed or renamed APIs, changed wire
+  or storage formats, changed comparison semantics, dropped runtime support or a
+  privacy-boundary change. `docs`, `chore`, `test`, `ci`, `build` and
+  `refactor` do not release on their own.
+- Record every user-visible change in the `## [Unreleased]` section of
+  [`CHANGELOG.md`](CHANGELOG.md) with Keep a Changelog groups (`### Added`,
+  `### Changed`, `### Fixed`, `### Removed`, `### Security`). The website parser
+  accepts paragraphs, one level of bullets with indented wrapped lines, inline
+  code, bold text and absolute `https://` links. Do not add nested lists,
+  fenced code blocks or relative links.
+- The release PR moves `[Unreleased]` under the new version, updates every
+  manifest and constant, and regenerates
+  `apps/www/content/changelog.generated.ts`. Never edit that generated module by
+  hand; edit `CHANGELOG.md` and run `pnpm changelog:sync`.
+- Use `Release-As: x.y.z` only when the commit-derived version is wrong.
+  Published versions are immutable: ship a patch and deprecate the broken
+  version instead of unpublishing it.
+
 ## Privacy and security
 
 Never capture or commit bodies, headers, cookies, query values, SQL bind
