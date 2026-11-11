@@ -1,6 +1,6 @@
 {
   "name": "@stacknext/dashboard",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Static React dashboard served by the StackNext local collector",
   "license": "MIT",
   "type": "module",
