@@ -6,6 +6,8 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-11
+
 ### Added
 
 - Added App Router SEO plumbing to the website: `robots.txt`, a static

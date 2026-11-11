@@ -48,6 +48,64 @@ export interface ChangelogRelease {
 
 export const CHANGELOG_RELEASES = [
   {
+    "id": "v0-12-0",
+    "version": "0.12.0",
+    "date": "2026-11-11",
+    "dateLabel": "November 11, 2026",
+    "intro": [],
+    "groups": [
+      {
+        "title": "Added",
+        "items": [
+          [
+            {
+              "type": "text",
+              "value": "Added App Router SEO plumbing to the website: "
+            },
+            {
+              "type": "code",
+              "value": "robots.txt"
+            },
+            {
+              "type": "text",
+              "value": ", a static "
+            },
+            {
+              "type": "code",
+              "value": "sitemap.xml"
+            },
+            {
+              "type": "text",
+              "value": ", canonical and social metadata, and JSON-LD for the organization, website, free software application, landing-page FAQ and page breadcrumbs. Canonical and sitemap URLs stay omitted unless "
+            },
+            {
+              "type": "code",
+              "value": "NEXT_PUBLIC_SITE_URL"
+            },
+            {
+              "type": "text",
+              "value": " is set, so a local build never invents a domain."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Added generated 1200×630 Open Graph and Twitter cards for the landing page and every content route, built with "
+            },
+            {
+              "type": "code",
+              "value": "next/og"
+            },
+            {
+              "type": "text",
+              "value": " from a shared layout."
+            }
+          ]
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-11-1",
     "version": "0.11.1",
     "date": "2026-11-10",
