@@ -164,10 +164,14 @@ describe('local collector', () => {
     const summary = (await summaryResponse.json()) as {
       summary: { totalRequests: number; failedRequests: number }
       coverage: { sample: { requests: number }; items: unknown[] }
+      recentErrorGroups?: Array<{ fingerprint: string; count: number }>
     }
     expect(summary.summary).toMatchObject({ totalRequests: 1, failedRequests: 1 })
     expect(summary.coverage.sample.requests).toBe(1)
     expect(summary.coverage.items.length).toBeGreaterThan(0)
+    expect(summary.recentErrorGroups).toHaveLength(1)
+    expect(summary.recentErrorGroups?.[0]).toMatchObject({ count: 1 })
+    expect(JSON.stringify(summary)).not.toContain('hunter2')
 
     const dbResponse = await fetch(`${collector.url}/api/database`, {
       headers: { authorization: `Bearer ${TOKEN}` },

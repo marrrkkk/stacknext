@@ -261,6 +261,29 @@ describe('TelemetryStore', () => {
     expect(result.groups[0]).toMatchObject({ count: 2, latestErrorId: 'e2' })
   })
 
+  it('caps recent error groups independently of the error page size', () => {
+    const store = new TelemetryStore({ now: () => 5_000 })
+    store.ingest(
+      envelope({
+        spans: [],
+        databaseQueries: [],
+        errors: Array.from({ length: 8 }, (_, index) =>
+          errorEvent({
+            id: `error-${index}`,
+            message: `boom ${index}`,
+            timestamp: 1_000 + index,
+          }),
+        ),
+      }),
+      5_000,
+    )
+    expect(store.listErrors({}).groups).toHaveLength(8)
+    const groups = store.getErrorGroups(5)
+    expect(groups).toHaveLength(5)
+    expect(groups[0]?.latestErrorId).toBe('error-7')
+    expect(store.getErrorGroups(0)).toEqual([])
+  })
+
   it('produces summary statistics from real data only', () => {
     const empty = new TelemetryStore().summary()
     expect(empty).toMatchObject({
@@ -279,6 +302,104 @@ describe('TelemetryStore', () => {
     expect(summary.avgDurationMs).toBe(120)
     expect(summary.slowestRequests[0]?.traceId).toBe(TRACE_ID)
     expect(summary.recentErrors).toHaveLength(1)
+  })
+
+  it('reuses revision-keyed read caches and invalidates them on change', () => {
+    let now = 5_000
+    const store = new TelemetryStore({ retentionMs: 1_000, now: () => now })
+    store.ingest(envelope(), 5_000)
+
+    const summary = store.summary(100)
+    expect(store.summary(100)).toBe(summary)
+    const coverage = store.getCoverageEvidence()
+    expect(store.getCoverageEvidence()).toBe(coverage)
+    expect(coverage.sample.requestCount).toBe(1)
+
+    // A different slow-request threshold is a distinct cache entry, not a
+    // stale reuse of the previous result.
+    const fastSummary = store.summary(500)
+    expect(fastSummary).not.toBe(summary)
+    expect(summary.slowRequests).toBe(1)
+    expect(fastSummary.slowRequests).toBe(0)
+    expect(store.summary(100)).toEqual(summary)
+
+    // Ingest bumps the revision and forces a rebuild.
+    store.ingest(
+      envelope({
+        spans: [
+          rootSpan({
+            traceId: 'ffffffffffffffffffffffffffffffff',
+            spanId: 'aaaaaaaaaaaaaaaa',
+            startTime: 5_001,
+            endTime: 5_021,
+            durationMs: 20,
+          }),
+        ],
+        errors: [],
+        databaseQueries: [],
+      }),
+      5_000,
+    )
+    const updated = store.summary(100)
+    expect(updated).not.toBe(summary)
+    expect(updated.totalRequests).toBe(2)
+    expect(store.getCoverageEvidence()).not.toBe(coverage)
+
+    // Retention pruning also bumps the revision and drops cached aggregates.
+    now = 7_000
+    expect(store.summary(100).totalRequests).toBe(0)
+    expect(store.getCoverageEvidence().sample.spanCount).toBe(0)
+  })
+
+  it.each(['ingest', 'prune', 'clear', 'restore'] as const)(
+    'releases cached telemetry immediately on %s without another read',
+    (mutation) => {
+      const store = new TelemetryStore({ retentionMs: 1_000, now: () => 5_000 })
+      store.ingest(envelope(), 5_000)
+      store.summary()
+      store.getCoverageEvidence()
+      const caches = store as unknown as {
+        indexCache: { bySlowRequestMs: Map<number, unknown> }
+        summaryCache: unknown
+        coverageCache: unknown
+      }
+      expect(caches.indexCache.bySlowRequestMs.size).toBeGreaterThan(0)
+      expect(caches.summaryCache).not.toBeNull()
+      expect(caches.coverageCache).not.toBeNull()
+      if (mutation === 'ingest') store.ingest(envelope(), 5_000)
+      if (mutation === 'prune') store.prune(7_000)
+      if (mutation === 'clear') store.clear()
+      if (mutation === 'restore') {
+        store.restore({ spans: [], errors: [], databaseQueries: [] })
+      }
+      expect(caches.indexCache.bySlowRequestMs.size).toBe(0)
+      expect(caches.summaryCache).toBeNull()
+      expect(caches.coverageCache).toBeNull()
+    },
+  )
+
+  it('retains indexes for multiple slow-request thresholds in one revision', () => {
+    const store = new TelemetryStore({ now: () => 5_000 })
+    store.ingest(envelope(), 5_000)
+    const internals = store as unknown as {
+      traceIndex: (slowRequestMs: number) => unknown
+    }
+    const configured = internals.traceIndex(100)
+    const fallback = internals.traceIndex(500)
+    // The configured summary threshold and the internal 500 ms reads must not
+    // evict each other on every call.
+    expect(internals.traceIndex(100)).toBe(configured)
+    expect(internals.traceIndex(500)).toBe(fallback)
+  })
+
+  it('invalidates read caches after clear', () => {
+    const store = new TelemetryStore({ now: () => 5_000 })
+    store.ingest(envelope(), 5_000)
+    const summary = store.summary()
+    expect(summary.totalRequests).toBe(1)
+    store.clear()
+    expect(store.summary().totalRequests).toBe(0)
+    expect(store.getCoverageEvidence().sample.spanCount).toBe(0)
   })
 
   it('filters database queries and excludes parameters', () => {

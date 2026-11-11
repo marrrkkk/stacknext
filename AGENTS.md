@@ -86,9 +86,18 @@ These are review gates, not suggestions.
 - **Read-only MCP.** All tools stay `readOnlyHint: true`; the client only GETs
   loopback URLs; stdout is protocol-only. Keep tool names, arguments and
   annotations stable; response metadata is additive.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:9344069b4ea4cc0b52baff5c3952491e4ad844f627ad6abd2b12bc0f969a4610 -->
+
 - **Optional, sequential Playwright.** `@stacknext/playwright` is inert outside
-  an active capture run. Captured runs use one worker and the explicit
-  `stacknext.scenario` annotation for identity.
+  an active capture run. Captured runs use one worker. Prefer the optional
+  `stacknext.scenario` annotation for identity; without it, identity falls back
+  to Playwright’s `testId`, file, title and project.
+
+
+<!-- /coderabbit-ai-generated:v1 -->
+
 - **Support only the documented surface.** Next.js 15/16 App Router on the
   Node.js runtime. Do not patch undocumented internals or claim Edge/production
   support. Keep the span allowlist aligned with supported versions;

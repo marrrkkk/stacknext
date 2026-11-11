@@ -60,6 +60,7 @@ interface TraceBucket {
 }
 
 const HTTP_METHOD_PREFIX = /^(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|TRACE|CONNECT)\s+/
+const MAX_INDEX_CACHE_ENTRIES = 4
 
 function clampLimit(value: number | undefined, fallback: number, maximum: number): number {
   if (!Number.isFinite(value) || value === undefined) return fallback
@@ -112,6 +113,32 @@ export class TelemetryStore {
   private droppedRetention = 0
   private revision = 0
 
+  /**
+   * Read-side caches keyed by `revision`. They are never exposed for mutation
+   * and are dropped when stored telemetry changes. Internal reads use the
+   * default 500 ms threshold while summaries use the configured one, so a
+   * bounded number of slow-request variants is retained per revision.
+   */
+  private indexCache: {
+    revision: number
+    bySlowRequestMs: Map<
+      number,
+      {
+        buckets: Map<string, TraceBucket>
+        requests: Map<string, RequestSummary>
+      }
+    >
+  } = { revision: -1, bySlowRequestMs: new Map() }
+  private summaryCache: {
+    revision: number
+    slowRequestMs: number
+    value: StoreSummary
+  } | null = null
+  private coverageCache: {
+    revision: number
+    value: CoverageEvidence
+  } | null = null
+
   constructor(options: TelemetryStoreOptions = {}) {
     this.maxSpans = options.maxSpans ?? 5_000
     this.retentionMs = options.retentionMs ?? 600_000
@@ -141,8 +168,15 @@ export class TelemetryStore {
       envelope.errors.length > 0 ||
       envelope.databaseQueries.length > 0
     ) {
-      this.revision += 1
+      this.advanceRevision()
     }
+  }
+
+  private advanceRevision(): void {
+    this.revision += 1
+    this.indexCache = { revision: this.revision, bySlowRequestMs: new Map() }
+    this.summaryCache = null
+    this.coverageCache = null
   }
 
   private insertSpan(span: StackNextSpan): void {
@@ -184,7 +218,7 @@ export class TelemetryStore {
       (query) => query.receivedAt,
       cutoff,
     )
-    if (removed > 0) this.revision += 1
+    if (removed > 0) this.advanceRevision()
   }
 
   private trimExpired<T>(
@@ -377,6 +411,16 @@ export class TelemetryStore {
     buckets: Map<string, TraceBucket>
     requests: Map<string, RequestSummary>
   } {
+    if (this.indexCache.revision !== this.revision) {
+      this.indexCache = { revision: this.revision, bySlowRequestMs: new Map() }
+    }
+    const cached = this.indexCache.bySlowRequestMs.get(slowRequestMs)
+    if (cached) {
+      // Refresh insertion order so the least recently used variant is evicted.
+      this.indexCache.bySlowRequestMs.delete(slowRequestMs)
+      this.indexCache.bySlowRequestMs.set(slowRequestMs, cached)
+      return cached
+    }
     const spansByTrace = this.spansByTrace()
     const errorsByTrace = this.errorsByTrace()
     const queriesByTrace = this.queriesByTrace()
@@ -401,7 +445,14 @@ export class TelemetryStore {
       if (request) requests.set(traceId, request)
       buckets.set(traceId, { traceId, spans, errors, queries, request })
     }
-    return { buckets, requests }
+    const entry = { buckets, requests }
+    this.indexCache.bySlowRequestMs.set(slowRequestMs, entry)
+    while (this.indexCache.bySlowRequestMs.size > MAX_INDEX_CACHE_ENTRIES) {
+      const oldest = this.indexCache.bySlowRequestMs.keys().next().value
+      if (oldest === undefined) break
+      this.indexCache.bySlowRequestMs.delete(oldest)
+    }
+    return entry
   }
 
   listRequests(
@@ -700,6 +751,14 @@ export class TelemetryStore {
 
   summary(slowRequestMs = 500): StoreSummary {
     this.prune()
+    const cached = this.summaryCache
+    if (
+      cached &&
+      cached.revision === this.revision &&
+      cached.slowRequestMs === slowRequestMs
+    ) {
+      return cached.value
+    }
     const { buckets } = this.traceIndex(slowRequestMs)
     const requests = [...buckets.values()]
       .map((bucket) => bucket.request)
@@ -725,7 +784,7 @@ export class TelemetryStore {
       ...[...this.errors.values()].map((error) => error.timestamp),
       ...[...this.queries.values()].map((query) => query.timestamp),
     ]
-    return {
+    const result: StoreSummary = {
       totalRequests: requests.length,
       failedRequests: requests.filter((request) => request.failed).length,
       slowRequests: requests.filter((request) => request.slow).length,
@@ -751,11 +810,22 @@ export class TelemetryStore {
         ...this.queries.values(),
       ]),
     }
+    this.summaryCache = {
+      revision: this.revision,
+      slowRequestMs,
+      value: result,
+    }
+    return result
   }
 
+  /**
+   * Returns the newest error groups, capped at `limit` groups. `listErrors`
+   * applies its limit to error rows, not groups, so the groups are sliced here.
+   */
   getErrorGroups(limit = 200): ErrorGroup[] {
-    const result = this.listErrors({ limit })
-    return result.groups
+    const maximum = Number.isFinite(limit) ? Math.max(0, Math.trunc(limit)) : 0
+    if (maximum === 0) return []
+    return this.listErrors({ limit: 1 }).groups.slice(0, maximum)
   }
 
   /**
@@ -764,6 +834,8 @@ export class TelemetryStore {
    */
   getCoverageEvidence(): CoverageEvidence {
     this.prune()
+    const cached = this.coverageCache
+    if (cached && cached.revision === this.revision) return cached.value
     const { requests } = this.traceIndex(500)
     const spanTypes = Object.create(null) as CoverageEvidence['spanTypes']
     const categoryCounts: Record<StackNextSpanCategory, number> = {
@@ -873,7 +945,7 @@ export class TelemetryStore {
           : Math.max(queryLastSeen, query.timestamp)
     }
 
-    return {
+    const result: CoverageEvidence = {
       sample: {
         firstEventTime,
         lastEventTime,
@@ -901,6 +973,8 @@ export class TelemetryStore {
       querySources,
       querySourceLastSeen,
     }
+    this.coverageCache = { revision: this.revision, value: result }
+    return result
   }
 
   /**
@@ -972,7 +1046,7 @@ export class TelemetryStore {
     this.errorOrder.length = 0
     this.queries.clear()
     this.queryOrder.length = 0
-    if (hadData) this.revision += 1
+    if (hadData) this.advanceRevision()
   }
 
   /**
@@ -1004,7 +1078,7 @@ export class TelemetryStore {
     this.databaseQueriesReceived = data.databaseQueries.length
     this.droppedCapacity = 0
     this.droppedRetention = 0
-    this.revision += 1
+    this.advanceRevision()
   }
 }
 

@@ -61,7 +61,8 @@ export function ErrorDetailPage({
         ? api.snapshotErrors(snapshotId, { limit: 200 }, signal)
         : api.errors({ limit: 200 }, signal),
     `error-sample:${snapshotId ?? 'live'}:${errorId}`,
-    refreshKey,
+    0,
+    30_000,
   )
   const basePath = snapshotId ? `/snapshots/${snapshotId}` : ''
 

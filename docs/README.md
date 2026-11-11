@@ -20,7 +20,7 @@ deployed separately. Package API reference is canonical in
 | [Documentation architecture](development/documentation.md) | Public site, engineering docs, package docs, generated index and validation. |
 | [Public documentation architecture](development/public-docs-architecture.md) | Research, page inventory and structural decisions behind the public guide. |
 | [Testing strategy](testing/testing-strategy.md) | Unit, e2e, archive, consumer and documentation checks. |
-| [Benchmarks](testing/benchmarks.md) | Collector, diagnostics and verbose-tracing measurements and caveats. |
+| [Benchmarks](testing/benchmarks.md) | Collector, dashboard, diagnostics and verbose-tracing measurements and caveats. |
 | [Agent compatibility](testing/agent-compatibility.md) | Recorded MCP and Agent Skill client checks. |
 | [Release process](deployment/release-process.md) | Versioning, gates, archives, trusted publishing and rollback. |
 | [Scripts and tooling](tooling/scripts.md) | Repository scripts, what they touch and when to run them. |

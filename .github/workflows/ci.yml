@@ -135,7 +135,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
+        # The ubuntu-24.04 runner already provides Chromium's shared libraries.
+        # Avoid --with-deps: its apt step depends on Ubuntu mirrors and can fail
+        # before the browser download when those mirrors are unreachable.
+        run: pnpm exec playwright install chromium
 
       - name: Build
         run: pnpm build

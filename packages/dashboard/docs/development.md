@@ -38,11 +38,49 @@ cd apps/example
 pnpm exec stacknext dev --open
 ```
 
+## Performance benchmark
+
+The dashboard has a Playwright-based runtime benchmark that exercises the built
+collector and dashboard with synthetic ingest at 10 events per second:
+
+```bash
+pnpm build
+pnpm benchmark:dashboard
+pnpm benchmark:dashboard -- --enforce --verbose
+```
+
+It reports read requests per settled 10-second window for every route, long
+tasks, hidden-tab requests, heap and DOM counters after forced GC, and gzip
+sizes for the initial and route JavaScript chunks. `--verbose` also prints the
+per-endpoint request counts. `--enforce` fails on the plan budgets: at most 60
+read requests per window, no long task above 100 ms, no hidden-tab reads, less
+than 10 MiB heap growth, no more than 500 extra DOM nodes or 100 extra listeners,
+total initial JavaScript at or below 121 KiB gzip, a largest initial chunk at or
+below 120 KiB gzip and a largest route chunk at or below 40 KiB gzip.
+
+The hidden-tab check overrides `document.hidden` because headless Chromium keeps
+every page visible. Treat the numbers as machine-specific comparisons, not a CI
+promise. See the repository
+[benchmark documentation](../../../docs/testing/benchmarks.md#dashboard-benchmark)
+for the method and recorded results.
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:a25af0dc34b56730119fb669e3636707b50166cdf12dfd139e4a8372332c8a54 -->
+
 ## Data
+
+Live updates refresh database and error detail correlations when spans arrive.
+Automatic refresh ticks coalesce while a read is active; manual refresh replaces
+that read so a stalled request can be retried. Delayed telemetry updates preserve
+the current stream connection status.
 
 The dashboard has no fixtures of its own for normal development. It reads the
 live collector API. Make requests to the example app to populate requests,
 traces, errors, queries and diagnostics.
+
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 <!-- coderabbit-ai-generated:v1 -->
 

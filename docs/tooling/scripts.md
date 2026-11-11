@@ -12,6 +12,7 @@ They must work on Node.js 22, 24 and 26.
 | `scripts/validate-packages.mjs` | `pnpm test:packages` | Packs every public archive, validates contents, exports, docs, permissions, forbidden files and secrets. |
 | `scripts/consumer-smoke.mjs` | `pnpm test:consumer` | Installs the packed archives into an external Next.js app with npm or pnpm. |
 | `scripts/benchmark.mjs` | `pnpm benchmark` | Synthetic ingest and read-API benchmark. |
+| `scripts/benchmark-dashboard.mjs` | `pnpm benchmark:dashboard` | Built-dashboard live-refresh, long-task, heap, hidden-tab and bundle benchmark. |
 | `scripts/benchmark-diagnostics.mjs` | `pnpm benchmark:diagnostics` | Synthetic findings and diagnostics read benchmark. |
 | `scripts/benchmark-verbose.mjs` | `pnpm benchmark:verbose` | Real example-app standard versus verbose-tracing comparison. |
 | `scripts/check-docs.mjs` | `pnpm check:docs` | Validates public docs, engineering docs, package docs, links, navigation, redirects and generated output. |

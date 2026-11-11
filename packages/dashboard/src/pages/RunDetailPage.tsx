@@ -43,6 +43,8 @@ export function RunDetailPage({
     (signal) => api.testRun(runId, signal),
     `run:${runId}`,
     refreshKey,
+    3_000,
+    (data) => data?.status === 'running',
   )
 
   const back = {

@@ -1,6 +1,6 @@
 # Benchmarks
 
-StackNext ships three reproducible benchmarks:
+StackNext ships four reproducible benchmarks:
 
 - **Collector benchmark** — synthetic ingest throughput and read-API latency
   against the real HTTP endpoint and in-memory store. It does not require a
@@ -8,6 +8,9 @@ StackNext ships three reproducible benchmarks:
 - **Diagnostics benchmark** — synthetic telemetry that triggers four of the six
   diagnostic rules, measuring cold report generation and cached diagnostics
   reads. It also does not require a Next.js app.
+- **Dashboard benchmark** — the built dashboard in Chromium under synthetic
+  ingest, measuring live-refresh reads, long tasks, heap/DOM counters, hidden-tab
+  behavior and JavaScript bundle size.
 - **Verbose tracing overhead** — a real example-app comparison of standard
   Next.js spans versus `NEXT_OTEL_VERBOSE=1`.
 
@@ -21,6 +24,7 @@ All run after a build:
 pnpm build
 pnpm benchmark
 pnpm benchmark:diagnostics
+pnpm benchmark:dashboard
 pnpm benchmark:verbose
 ```
 
@@ -222,6 +226,97 @@ Cached read latency in milliseconds (p50 / p95 / max):
   version affect the numbers.
 - **No production claim.** StackNext is a local development tool. These
   measurements are not a capacity plan for a shared or production service.
+
+## Dashboard benchmark
+
+The dashboard benchmark starts the built collector on an ephemeral loopback
+port, serves `packages/dashboard/dist`, seeds 100 synthetic batches, then drives
+the real dashboard with Playwright while a separate loop posts 10 ingest events
+per second. Each route gets a 10-second settled window, so initial page loads do
+not inflate the live-refresh count.
+
+```bash
+pnpm build
+pnpm benchmark:dashboard
+
+# Optional: fail on the plan budgets and print per-endpoint request counts.
+pnpm benchmark:dashboard -- --enforce --verbose
+```
+
+### Method
+
+- Chromium runs headless at 1440×900. The collector uses the normal session
+  cookie flow for the dashboard and bearer token for ingest.
+- The measured routes are `/`, `/traces`, `/database`, `/errors`,
+  `/diagnostics`, `/runs`, `/baselines`, `/comparisons`, `/snapshots`,
+  `/settings`, `/mcp`, plus the newest trace and error detail pages.
+- For each route the script resets its request counter after the page has
+  loaded, waits 10 seconds and counts same-origin `GET /api/*` requests other
+  than `/api/stream`. It also records API requests while the tab is hidden.
+- Long tasks come from a `PerformanceObserver` installed before application
+  code. Heap, DOM node and event-listener counts come from the Chrome DevTools
+  Protocol after `HeapProfiler.collectGarbage`.
+- After two full route cycles the script compares heap and counters on the same
+  route. The hidden-tab check overrides `document.hidden` and dispatches
+  `visibilitychange`, because headless Chromium keeps every page visible.
+- JavaScript sizes are gzip sizes of the files in `packages/dashboard/dist`
+  referenced by `index.html` (initial) and of every other route chunk.
+  `--enforce` caps total initial JavaScript at 121 KiB gzip and the largest
+  initial chunk at 120 KiB gzip.
+- The collector uses a 20,000-span cap so detail routes stay readable for the
+  full run. The browser receives already-redacted synthetic telemetry.
+
+### Results
+
+Measured 2026-11-11 on the environment above, with Node.js 24.21.0, no other
+build or test workload running, and `LIVE_FLUSH_MS = 1000`:
+
+| Route | Read requests / 10 s | Long tasks > 100 ms |
+| --- | ---: | ---: |
+| `/` | 22 | 0 |
+| `/traces` | 12 | 0 |
+| `/database` | 12 | 0 |
+| `/errors` | 12 | 0 |
+| `/diagnostics` | 12 | 0 |
+| `/runs`, `/baselines`, `/comparisons`, `/snapshots`, `/settings`, `/mcp` | 2 each | 0 |
+| trace detail | 11 | 0 |
+| error detail | 12 | 0 |
+
+The two reads on otherwise idle pages are the shell's health and latest-error
+checks. Overview's 22 reads are the summary and recent-request list across ten
+coalesced live flushes, plus the same two shell checks. `/api/summary` carries
+coverage and bounded recent error groups, so Overview does not request either
+separately. The one longest live task was a 51 ms trace-list render on
+`/traces`; no route exceeded the 100 ms budget.
+
+| Metric | Result |
+| --- | ---: |
+| Hidden tab read requests / 10 s | 0 |
+| Heap after forced GC | ~4 MiB, flat between route cycles |
+| DOM documents / nodes / listeners | stable on the same route after forced GC |
+| Initial JavaScript (two chunks) | 120.0 KiB gzip |
+| Largest initial chunk | 67.2 KiB gzip (`react` vendor) |
+| Largest route chunk | 7.8 KiB gzip (`OverviewPage`) |
+| Browser page errors | 0 |
+
+### Dashboard caveats
+
+- **Headless browser.** Chromium is headless and the hidden-tab check uses a
+  visibility override, not OS-level background throttling. It verifies the
+  dashboard's own visibility handling, not Chromium's timer throttling.
+- **Synthetic workload.** Ten batches per second is a stress level; a typical
+  development app produces far fewer events. The script does not measure React
+  commit time or rendering cost per component.
+- **One run per metric.** Heap and listener counts vary with route, lazy chunks
+  and browser internals. Compare two runs on the same machine instead of
+  treating a single counter as a leak proof.
+- **Bundle sizes are build-local.** The collector serves assets without gzip;
+  these numbers describe parse and transfer cost on loopback, not a network
+  deployment.
+- **Not a CI gate by default.** The script is report-only unless `--enforce` is
+  passed, and it requires Playwright Chromium.
+
+
 
 ## Verbose tracing overhead
 

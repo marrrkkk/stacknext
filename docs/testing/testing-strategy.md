@@ -105,6 +105,7 @@ its performance caveat.
 | Package metadata, exports or build | `pnpm build`, `pnpm test:packages`, `pnpm test:consumer` |
 | Docs, navigation or changelog | `pnpm check:docs`, Mintlify validate/broken-links |
 | Performance-sensitive runtime code | `pnpm benchmark`, `pnpm benchmark:diagnostics`, `pnpm benchmark:verbose` |
+| Dashboard refresh, rendering or bundle behavior | `pnpm benchmark:dashboard`, `pnpm test:e2e` |
 
 ## Related
 
