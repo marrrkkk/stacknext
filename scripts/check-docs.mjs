@@ -482,7 +482,11 @@ async function checkPublicSiteUrls(navigation) {
         (pathname === '' && fragment === '') ||
         pathname === 'llms.txt' ||
         pathname === 'llms-full.txt' ||
-        pathname.endsWith('.md')
+        pathname.endsWith('.md') ||
+        // Static assets are served as-is and never appear in the navigation.
+        pathname.startsWith('images/') ||
+        pathname.startsWith('favicons/') ||
+        pathname.startsWith('screenshots/')
       ) {
         continue
       }
