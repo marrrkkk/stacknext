@@ -1,6 +1,7 @@
 ---
 title: How StackNext works
 description: The collector, sample, dashboard, diagnostics, snapshots and regression records that make up StackNext.
+keywords: ["how stacknext works","next.js telemetry collector","local data flow","in-memory span store","next.js instrumentation"]
 ---
 
 A Next.js dev server already emits OpenTelemetry spans, but the evidence is
@@ -28,10 +29,10 @@ in-memory sample and gives you four ways to read it:
       <li className="sn-chip">
         <span className="sn-tile sn-tile-next">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="9.8" y="2.6" width="4.4" height="4.4" rx="1.2" />
-            <rect x="3.2" y="17" width="4.4" height="4.4" rx="1.2" />
-            <rect x="16.4" y="17" width="4.4" height="4.4" rx="1.2" />
-            <path d="M12 7v3M12 10H5.4v7M12 10h6.6v7" />
+            <path
+              className="sn-brand"
+              d="M18.665 21.978C16.758 23.255 14.465 24 12 24 5.377 24 0 18.623 0 12S5.377 0 12 0s12 5.377 12 12c0 3.583-1.574 6.801-4.067 9.001L9.219 7.2H7.2v9.596h1.615V9.251l9.85 12.727Zm-3.332-8.533 1.6 2.061V7.2h-1.6v6.245Z"
+            />
           </svg>
         </span>
         Next.js
@@ -39,9 +40,10 @@ in-memory sample and gives you four ways to read it:
       <li className="sn-chip">
         <span className="sn-tile sn-tile-drizzle">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 6.2c0-1.7 3.1-3 7-3s7 1.3 7 3" />
-            <path d="M5 6.2v12.4c0 1.7 3.1 3 7 3s7-1.3 7-3V6.2" />
-            <path d="M5 10.6c0 1.7 3.1 3 7 3s7-1.3 7-3M5 15c0 1.7 3.1 3 7 3s7-1.3 7-3" />
+            <path
+              className="sn-brand"
+              d="M5.353 11.823a1.036 1.036 0 0 0-.395-1.422 1.063 1.063 0 0 0-1.437.399L.138 16.702a1.035 1.035 0 0 0 .395 1.422 1.063 1.063 0 0 0 1.437-.398l3.383-5.903Zm11.216 0a1.036 1.036 0 0 0-.394-1.422 1.064 1.064 0 0 0-1.438.399l-3.382 5.902a1.036 1.036 0 0 0 .394 1.422c.506.283 1.15.104 1.438-.398l3.382-5.903Zm7.293-4.525a1.036 1.036 0 0 0-.395-1.422 1.062 1.062 0 0 0-1.437.399l-3.383 5.902a1.036 1.036 0 0 0 .395 1.422 1.063 1.063 0 0 0 1.437-.399l3.383-5.902Zm-11.219 0a1.035 1.035 0 0 0-.394-1.422 1.064 1.064 0 0 0-1.438.398l-3.382 5.903a1.036 1.036 0 0 0 .394 1.422c.506.282 1.15.104 1.438-.399l3.382-5.902Z"
+            />
           </svg>
         </span>
         Drizzle
@@ -49,8 +51,10 @@ in-memory sample and gives you four ways to read it:
       <li className="sn-chip">
         <span className="sn-tile sn-tile-prisma">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M13.4 2.5 21.2 18a1.5 1.5 0 0 1-1.3 2.2H4.1A1.5 1.5 0 0 1 2.8 18L10.6 2.5a1.6 1.6 0 0 1 2.8 0Z" />
-            <path d="m9.7 7.2 6.9 13" />
+            <path
+              className="sn-brand"
+              d="M21.8068 18.2848L13.5528.7565c-.207-.4382-.639-.7273-1.1286-.7541-.5023-.0293-.9523.213-1.2062.6253L2.266 15.1271c-.2773.4518-.2718 1.0091.0158 1.4555l4.3759 6.7786c.2608.4046.7127.6388 1.1823.6388.1332 0 .267-.0188.3987-.0577l12.7019-3.7568c.3891-.1151.7072-.3904.8737-.7553s.1633-.7828-.0075-1.1454zm-1.8481.7519L9.1814 22.2242c-.3292.0975-.6448-.1873-.5756-.5194l3.8501-18.4386c.072-.3448.5486-.3996.699-.0803l7.1288 15.138c.1344.2856-.019.6224-.325.7128z"
+            />
           </svg>
         </span>
         Prisma
