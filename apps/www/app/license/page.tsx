@@ -56,6 +56,8 @@ export default function LicensePage(): React.ReactElement {
       lede="StackNext is free and open source. You can use it, modify it and ship it in commercial or private products under the MIT License. Keep the copyright and permission notice, and the software comes without warranty."
       updated="November 10, 2026"
       sections={SECTIONS}
+      breadcrumb="License"
+      path="/license"
     >
       <section id="permissions">
         <h2>What you can do</h2>

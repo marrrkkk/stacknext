@@ -31,6 +31,8 @@ export default function PrivacyPage(): React.ReactElement {
       lede="StackNext is a local-first debugging tool. This page explains what the collector receives, what is redacted or dropped, where records are stored, and why nothing is uploaded."
       updated="November 10, 2026"
       sections={SECTIONS}
+      breadcrumb="Privacy"
+      path="/privacy"
     >
       <section id="overview">
         <h2>The short version</h2>

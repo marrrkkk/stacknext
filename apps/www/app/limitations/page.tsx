@@ -34,6 +34,8 @@ export default function LimitationsPage(): React.ReactElement {
       lede="StackNext is a local development tool, not a production APM. These are intentional boundaries, not claims of completeness. Read them before treating a sample, finding or comparison as proof."
       updated="November 10, 2026"
       sections={SECTIONS}
+      breadcrumb="Limitations"
+      path="/limitations"
     >
       <section id="overview">
         <h2>Start here</h2>

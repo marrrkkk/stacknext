@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { breadcrumbJsonLd } from '@/content/structured-data'
+import { JsonLd } from './json-ld'
 import { Eyebrow } from './primitives'
 import { SiteFooter } from './site-footer'
 import { SiteHeader } from './site-header'
@@ -15,6 +17,8 @@ export function ContentPage({
   lede,
   updated,
   sections,
+  breadcrumb,
+  path,
   children,
 }: {
   eyebrow: string
@@ -22,6 +26,8 @@ export function ContentPage({
   lede: string
   updated: string
   sections: readonly ContentSection[]
+  breadcrumb: string
+  path: string
   children: ReactNode
 }): React.ReactElement {
   return (
@@ -34,6 +40,33 @@ export function ContentPage({
         <div className={frameClass}>
           <article className="px-pad pt-[clamp(120px,15vh,180px)] pb-[clamp(80px,9vw,120px)] max-560:pt-[118px]">
             <header className="max-w-[900px]">
+              <nav
+                className="mb-6 font-mono text-[11px] tracking-[0.12em] uppercase text-ink-3"
+                aria-label="Breadcrumb"
+              >
+                <ol className="flex flex-wrap items-center gap-2">
+                  <li>
+                    <a
+                      className="rounded-[3px] transition-colors duration-[160ms] ease-soft hover:text-ink"
+                      href="/"
+                    >
+                      Home
+                    </a>
+                  </li>
+                  <li aria-hidden="true" className="text-ink-4">
+                    /
+                  </li>
+                  <li aria-current="page" className="text-ink-2">
+                    {breadcrumb}
+                  </li>
+                </ol>
+              </nav>
+              <JsonLd
+                data={breadcrumbJsonLd([
+                  { name: 'Home', path: '/' },
+                  { name: breadcrumb, path },
+                ])}
+              />
               <Eyebrow>{eyebrow}</Eyebrow>
               <h1 className="mt-[18px] text-balance text-[clamp(2.7rem,6.2vw,5.2rem)] font-[450] leading-[1.02] tracking-[-0.055em] max-560:text-[clamp(2.4rem,11vw,3.4rem)]">
                 {title}

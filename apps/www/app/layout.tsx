@@ -2,16 +2,16 @@ import type { Metadata, Viewport } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { GeistPixel } from 'geist/font/pixel/variable'
-import { HOME_TITLE, SITE_DESCRIPTION, SITE_NAME } from '@/content/metadata'
+import { HOME_TITLE, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/content/metadata'
+import { siteJsonLd } from '@/content/structured-data'
+import { JsonLd } from '@/components/json-ld'
 import './globals.css'
 
-// Set NEXT_PUBLIC_SITE_URL to the deployed origin to resolve absolute canonical
-// and social image URLs. Without it, pages omit those tags rather than pointing
-// at an invented domain.
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
-
 export const metadata: Metadata = {
-  ...(siteUrl ? { metadataBase: new URL(siteUrl) } : {}),
+  // Set NEXT_PUBLIC_SITE_URL to the deployed origin to resolve absolute
+  // canonical and social image URLs. Without it, pages omit those tags rather
+  // than pointing at an invented domain.
+  ...(SITE_URL ? { metadataBase: new URL(SITE_URL) } : {}),
   title: {
     default: HOME_TITLE,
     template: `%s · ${SITE_NAME}`,
@@ -20,15 +20,19 @@ export const metadata: Metadata = {
   applicationName: SITE_NAME,
   keywords: [
     'Next.js',
+    'Next.js debugging',
+    'Next.js observability',
     'App Router',
     'OpenTelemetry',
     'Drizzle',
     'Prisma',
     'Playwright',
+    'N+1 queries',
     'MCP',
     'local-first',
-    'debugging',
+    'developer tools',
   ],
+  category: 'Developer tools',
   authors: [{ name: 'StackNext contributors' }],
   creator: 'StackNext contributors',
   publisher: 'StackNext contributors',
@@ -42,7 +46,17 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: '/brand/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
-  robots: { index: true, follow: true },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
 }
 
 export const viewport: Viewport = {
@@ -55,7 +69,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }): React.ReactElement {
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${GeistPixel.variable}`}>
-      <body>{children}</body>
+      <body>
+        <JsonLd data={siteJsonLd()} />
+        {children}
+      </body>
     </html>
   )
 }

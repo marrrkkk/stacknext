@@ -5,16 +5,16 @@ export const SITE_NAME = 'StackNext'
 export const HOME_TITLE = 'StackNext: local debugging for Next.js'
 
 export const SITE_DESCRIPTION =
-  'Open-source debugging center for Next.js App Router apps. Follow requests through OpenTelemetry spans, database queries, errors and diagnostics on your machine.'
+  'Open-source Next.js debugging: trace requests through OpenTelemetry spans, Drizzle and Prisma queries, errors and diagnostics, all on your machine.'
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
-
-const SOCIAL_IMAGE = {
-  url: '/og.png',
-  width: 1200,
-  height: 630,
-  alt: 'StackNext overview dashboard for Next.js',
-}
+/**
+ * Optional deployed origin. Without it, canonical URLs, sitemap entries and
+ * absolute social-image tags are omitted rather than pointing at an invented
+ * domain. The trailing slash is stripped so paths concatenate predictably.
+ */
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
+  ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '')
+  : null
 
 export function pageMetadata({
   title,
@@ -30,22 +30,40 @@ export function pageMetadata({
   const resolvedSocialTitle =
     socialTitle ?? (typeof title === 'string' ? `${title} · ${SITE_NAME}` : SITE_NAME)
 
+  // Absolute paths keep the canonical and sitemap spellings identical on
+  // every route.
+  const absolutePath = SITE_URL ? `${SITE_URL}${path}` : null
+
+  // Gated on the same origin: without it, no social image tags are emitted
+  // rather than resolving them against a default or invented host.
+  const socialImagePath = path === '/' ? '/og/home' : `/og${path}`
+  const socialImage = SITE_URL
+    ? {
+        url: `${SITE_URL}${socialImagePath}`,
+        width: 1200,
+        height: 630,
+        alt: resolvedSocialTitle,
+      }
+    : null
+
   return {
     title,
     description,
-    ...(siteUrl ? { alternates: { canonical: path } } : {}),
+    ...(absolutePath ? { alternates: { canonical: absolutePath } } : {}),
     openGraph: {
       title: resolvedSocialTitle,
       description,
       type: 'website',
       siteName: SITE_NAME,
-      ...(siteUrl ? { url: path, images: [SOCIAL_IMAGE] } : {}),
+      locale: 'en_US',
+      ...(absolutePath ? { url: absolutePath } : {}),
+      ...(socialImage ? { images: [socialImage] } : {}),
     },
     twitter: {
       card: 'summary_large_image',
       title: resolvedSocialTitle,
       description,
-      ...(siteUrl ? { images: ['/og.png'] } : {}),
+      ...(socialImage ? { images: [socialImage] } : {}),
     },
   }
 }
