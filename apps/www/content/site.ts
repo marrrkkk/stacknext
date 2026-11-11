@@ -1,24 +1,17 @@
 export const LINKS = {
   github: 'https://github.com/marrrkkk/stacknext',
-  docs: 'https://github.com/marrrkkk/stacknext/tree/main/apps/docs',
-  quickstart:
-    'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/getting-started/quickstart.md',
-  installation:
-    'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/getting-started/quickstart.md',
-  cli: 'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/cli/commands.md',
-  diagnostics:
-    'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/guides/diagnostics.md',
-  regression:
-    'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/regression-testing.md',
+  docs: 'https://stack-next.mintlify.site',
+  quickstart: 'https://stack-next.mintlify.site/getting-started/quickstart',
+  installation: 'https://stack-next.mintlify.site/installation',
+  cli: 'https://stack-next.mintlify.site/cli/commands',
+  diagnostics: 'https://stack-next.mintlify.site/guides/diagnostics',
+  regression: 'https://stack-next.mintlify.site/regression-testing',
   privacy: '/privacy',
-  privacyDocs:
-    'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/privacy.md',
-  mcp: 'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/mcp.md',
-  snapshots:
-    'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/guides/snapshots.md',
+  privacyDocs: 'https://stack-next.mintlify.site/privacy',
+  mcp: 'https://stack-next.mintlify.site/mcp',
+  snapshots: 'https://stack-next.mintlify.site/guides/snapshots',
   limitations: '/limitations',
-  limitationsSource:
-    'https://github.com/marrrkkk/stacknext/blob/main/apps/docs/limitations.md',
+  limitationsSource: 'https://stack-next.mintlify.site/limitations',
   npm: 'https://www.npmjs.com/package/@stacknext/cli',
   license: '/license',
   licenseFile: 'https://github.com/marrrkkk/stacknext/blob/main/LICENSE',

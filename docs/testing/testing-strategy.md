@@ -59,7 +59,7 @@ checks the installed-consumer path. Do not publish or push from these checks.
 pnpm check:docs
 ```
 
-This verifies generated package copies are current, navigation targets and
+This verifies the generated CLI package index is current, navigation targets and
 redirects resolve, frontmatter exists, package `files` include `docs`, links
 work, required package documentation is present and the website changelog is
 current. See [documentation architecture](../development/documentation.md).

@@ -154,9 +154,10 @@ machine, say which one and why in the pull request.
   navigation entry when user-visible behavior changes.
 - Contributor and engineering docs live in `docs/`. Update the relevant page
   when the build, test, release or architecture process changes.
-- Package reference is canonical in `packages/<package>/docs/`. The Mintlify
-  copies and the CLI package index are generated; edit the canonical file and
-  run `pnpm docs:sync`.
+- Package reference is canonical in `packages/<package>/docs/` and ships in the
+  npm archive. The CLI package index is generated; edit the canonical file and
+  run `pnpm docs:sync`. The public Mintlify guide is hand-authored and does not
+  copy package docs.
 - Keep examples copy-pasteable and free of fake production URLs or credentials.
 - Use the documented brand and identifiers only: `StackNext`, `stacknext`,
   `@stacknext/*`, `STACKNEXT_*`, `stacknext.config.json` and `.stacknext`.
