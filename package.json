@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "test:e2e": "node scripts/e2e.mjs",
     "benchmark": "node scripts/benchmark.mjs",
+    "benchmark:dashboard": "node scripts/benchmark-dashboard.mjs",
     "benchmark:diagnostics": "node scripts/benchmark-diagnostics.mjs",
     "benchmark:verbose": "node scripts/benchmark-verbose.mjs",
     "example:dev": "pnpm --filter @stacknext/example dev",

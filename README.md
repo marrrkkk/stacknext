@@ -600,6 +600,7 @@ pnpm check:docs    # generated docs, website changelog, links and documented com
 pnpm changelog:sync # regenerate website changelog data from CHANGELOG.md
 pnpm changelog:check # fail when the generated website changelog is stale
 pnpm benchmark     # synthetic ingest + read API benchmark
+pnpm benchmark:dashboard # built dashboard live-refresh, memory and bundle benchmark
 pnpm benchmark:diagnostics # synthetic findings + diagnostics read benchmark
 pnpm benchmark:verbose # real-app standard vs verbose tracing comparison
 ```
@@ -615,7 +616,7 @@ candidate → compare, the collector regression APIs, CLI records, snapshot
 save/list/read/export/delete, MCP regression and snapshot tools, secret
 redaction and dashboard deep links. The benchmark and e2e scripts both print
 their method and results; benchmark numbers are machine-specific. See
-[benchmark documentation](docs/testing/benchmarks.md) for the measured collector, diagnostics
+[benchmark documentation](docs/testing/benchmarks.md) for the measured collector, dashboard, diagnostics
 and verbose-tracing results and methodology.
 
 GitHub Actions runs lint, typecheck, unit tests and build across Node.js 22, 24

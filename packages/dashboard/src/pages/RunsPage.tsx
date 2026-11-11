@@ -44,6 +44,8 @@ export function RunsPage({
     (signal) => api.testRuns({ limit: LIMIT, offset }, signal),
     `runs:${offset}`,
     refreshKey,
+    3_000,
+    (data) => data?.items.some((run) => run.status === 'running') ?? false,
   )
 
   const runs = useMemo(() => state.data?.items ?? [], [state.data])

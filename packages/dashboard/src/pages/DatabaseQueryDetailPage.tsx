@@ -73,18 +73,17 @@ function findingTone(severity: 'info' | 'warning' | 'error'): Tone {
 
 export function DatabaseQueryDetailPage({
   shapeId,
-  refreshKey,
   onNavigate,
 }: {
   shapeId: string
-  refreshKey: number
   onNavigate: (path: string) => void
 }): React.ReactElement {
   const [route, setRoute] = useUrlParam('route', '')
   const state = useAsync(
     (signal) => api.databaseShape(shapeId, signal),
     `database-shape:${shapeId}`,
-    refreshKey,
+    0,
+    10_000,
   )
 
   const loadedKey = state.data ? `${shapeId}:${state.data.items.length}` : 'idle'
@@ -105,8 +104,13 @@ export function DatabaseQueryDetailPage({
       return { diagnostics, comparisons }
     },
     `database-shape-extras:${loadedKey}`,
-    refreshKey,
+    0,
+    15_000,
   )
+  const reloadAll = (): void => {
+    state.reload()
+    extras.reload()
+  }
 
   const items = useMemo(() => state.data?.items ?? [], [state.data?.items])
   const shapeSql = items[0]?.sql ?? ''
@@ -224,7 +228,7 @@ export function DatabaseQueryDetailPage({
               >
                 Back to database
               </button>
-              <RefreshButton onClick={state.reload} loading={state.loading} />
+              <RefreshButton onClick={reloadAll} loading={state.loading} />
             </div>
           }
         >
@@ -302,7 +306,7 @@ export function DatabaseQueryDetailPage({
         actions={
           <>
             <CopyButton value={shapeId} label="Copy shape id" primary />
-            <RefreshButton onClick={state.reload} loading={state.loading} />
+            <RefreshButton onClick={reloadAll} loading={state.loading} />
           </>
         }
       />

@@ -281,6 +281,63 @@ describe('TelemetryStore', () => {
     expect(summary.recentErrors).toHaveLength(1)
   })
 
+  it('reuses revision-keyed read caches and invalidates them on change', () => {
+    let now = 5_000
+    const store = new TelemetryStore({ retentionMs: 1_000, now: () => now })
+    store.ingest(envelope(), 5_000)
+
+    const summary = store.summary(100)
+    expect(store.summary(100)).toBe(summary)
+    const coverage = store.getCoverageEvidence()
+    expect(store.getCoverageEvidence()).toBe(coverage)
+    expect(coverage.sample.requestCount).toBe(1)
+
+    // A different slow-request threshold is a distinct cache entry, not a
+    // stale reuse of the previous result.
+    const fastSummary = store.summary(500)
+    expect(fastSummary).not.toBe(summary)
+    expect(summary.slowRequests).toBe(1)
+    expect(fastSummary.slowRequests).toBe(0)
+    expect(store.summary(100)).toEqual(summary)
+
+    // Ingest bumps the revision and forces a rebuild.
+    store.ingest(
+      envelope({
+        spans: [
+          rootSpan({
+            traceId: 'ffffffffffffffffffffffffffffffff',
+            spanId: 'aaaaaaaaaaaaaaaa',
+            startTime: 5_001,
+            endTime: 5_021,
+            durationMs: 20,
+          }),
+        ],
+        errors: [],
+        databaseQueries: [],
+      }),
+      5_000,
+    )
+    const updated = store.summary(100)
+    expect(updated).not.toBe(summary)
+    expect(updated.totalRequests).toBe(2)
+    expect(store.getCoverageEvidence()).not.toBe(coverage)
+
+    // Retention pruning also bumps the revision and drops cached aggregates.
+    now = 7_000
+    expect(store.summary(100).totalRequests).toBe(0)
+    expect(store.getCoverageEvidence().sample.spanCount).toBe(0)
+  })
+
+  it('invalidates read caches after clear', () => {
+    const store = new TelemetryStore({ now: () => 5_000 })
+    store.ingest(envelope(), 5_000)
+    const summary = store.summary()
+    expect(summary.totalRequests).toBe(1)
+    store.clear()
+    expect(store.summary().totalRequests).toBe(0)
+    expect(store.getCoverageEvidence().sample.spanCount).toBe(0)
+  })
+
   it('filters database queries and excludes parameters', () => {
     const store = new TelemetryStore({ now: () => 5_000 })
     store.ingest(

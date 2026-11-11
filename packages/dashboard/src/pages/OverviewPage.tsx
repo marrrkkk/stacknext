@@ -22,6 +22,7 @@ import {
   InfoHint,
   KpiTile,
   ListRow,
+  Loading,
   MethodBadge,
   PageHeader,
   SegmentBar,
@@ -45,13 +46,13 @@ interface OverviewData {
   overview: OverviewResponse | null
   requests: PageResult<RequestSummary> | null
   coverage: CoverageReport | null
+  coverageError: string | null
   errorGroups: ErrorGroup[] | null
   errorTotal: number | null
+  errorError: string | null
   errors: {
     overview: string | null
     requests: string | null
-    coverage: string | null
-    errors: string | null
   }
 }
 
@@ -386,23 +387,42 @@ export function OverviewPage({
 }): React.ReactElement {
   const state = useAsync<OverviewData>(
     async (signal) => {
-      const [overview, requests, coverage, errorList] = await Promise.allSettled([
+      const [overview, requests] = await Promise.allSettled([
         api.overview(signal),
         api.requests({ limit: 24, sort: 'recent' }, signal),
-        api.coverage(signal),
-        api.errors({ limit: 5 }, signal),
       ])
+      const overviewValue = fulfilledValue(overview)
+      // `/api/summary` already carries coverage and bounded error groups on
+      // current collectors. Only ask for them separately when talking to an
+      // older collector.
+      let coverage = overviewValue?.coverage ?? null
+      let coverageError: string | null = null
+      if (!coverage) {
+        const fallback = await Promise.allSettled([api.coverage(signal)])
+        coverage = fulfilledValue(fallback[0])
+        coverageError = rejectionMessage(fallback[0])
+      }
+      let errorGroups = overviewValue?.recentErrorGroups ?? null
+      let errorTotal = overviewValue?.summary.errorCount ?? null
+      let errorError: string | null = null
+      if (!errorGroups) {
+        const fallback = await Promise.allSettled([api.errors({ limit: 5 }, signal)])
+        const errorList = fulfilledValue(fallback[0])
+        errorGroups = errorList?.groups ?? null
+        errorTotal = errorList?.total ?? errorTotal
+        errorError = rejectionMessage(fallback[0])
+      }
       return {
-        overview: fulfilledValue(overview),
+        overview: overviewValue,
         requests: fulfilledValue(requests),
-        coverage: fulfilledValue(coverage),
-        errorGroups: fulfilledValue(errorList)?.groups ?? null,
-        errorTotal: fulfilledValue(errorList)?.total ?? null,
+        coverage,
+        coverageError,
+        errorGroups,
+        errorTotal,
+        errorError,
         errors: {
           overview: rejectionMessage(overview),
           requests: rejectionMessage(requests),
-          coverage: rejectionMessage(coverage),
-          errors: rejectionMessage(errorList),
         },
       }
     },
@@ -476,12 +496,16 @@ export function OverviewPage({
     return counts
   }, [coverageItems])
 
-  const coverageSegments: Segment[] = COVERAGE_SEGMENTS.map(({ status, tone }) => ({
-    key: status,
-    label: status,
-    count: coverageCounts[status],
-    tone,
-  }))
+  const coverageSegments: Segment[] = useMemo(
+    () =>
+      COVERAGE_SEGMENTS.map(({ status, tone }) => ({
+        key: status,
+        label: status,
+        count: coverageCounts[status],
+        tone,
+      })),
+    [coverageCounts],
+  )
 
   const activeCoverageFilter =
     coverageFilter !== null && coverageCounts[coverageFilter] > 0
@@ -504,9 +528,9 @@ export function OverviewPage({
     return [visibleCoverage.slice(0, split), visibleCoverage.slice(split)]
   }, [visibleCoverage, wideCoverage])
 
-  const maxCoverageVolume = Math.max(
-    1,
-    ...coverageItems.map((item) => item.evidence.count),
+  const maxCoverageVolume = useMemo(
+    () => Math.max(1, ...coverageItems.map((item) => item.evidence.count)),
+    [coverageItems],
   )
   const unsupportedCount = coverageCounts.unsupported
 
@@ -589,29 +613,46 @@ export function OverviewPage({
       .slice(0, 5)
   }, [recentRequests])
 
-  const slowestAboveThreshold = slowestGroups.filter(
-    (group) => thresholdMs !== null && group.maxDuration > thresholdMs,
-  ).length
-  const maxSlowest = Math.max(1, ...slowestGroups.map((group) => group.maxDuration))
-  const recentForSpark = [...recentRequests]
-    .sort((a, b) => a.timestamp - b.timestamp)
-    .slice(-24)
-  const requestSpark = recentForSpark.map((request) => request.durationMs ?? 0)
-  const errorSpark = recentForSpark.map((request) => (request.failed ? 1 : 0))
-  const slowSpark = recentForSpark.map((request) => (request.slow ? 1 : 0))
-  const sparkLabels = recentForSpark.map(
-    (request) =>
-      `${request.method ?? 'Request'} ${pathFor(request)} — ${formatDuration(request.durationMs)}`,
-  )
-  const errorSparkLabels = recentForSpark.map(
-    (request) =>
-      `${request.method ?? 'Request'} ${pathFor(request)} — ${request.failed ? 'error' : 'ok'}`,
-  )
-  const slowSparkLabels = recentForSpark.map(
-    (request) =>
-      `${request.method ?? 'Request'} ${pathFor(request)} — ${request.slow ? 'slow' : (thresholdMs === null ? 'not flagged slow' : `under ${formatDuration(thresholdMs)}`)}`,
-  )
-  const latency = latencyStats(recentRequests, thresholdMs)
+  const {
+    slowestAboveThreshold,
+    maxSlowest,
+    requestSpark,
+    errorSpark,
+    slowSpark,
+    sparkLabels,
+    errorSparkLabels,
+    slowSparkLabels,
+    latency,
+  } = useMemo(() => {
+    const recentForSpark = [...recentRequests]
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .slice(-24)
+    return {
+      slowestAboveThreshold: slowestGroups.filter(
+        (group) => thresholdMs !== null && group.maxDuration > thresholdMs,
+      ).length,
+      maxSlowest: Math.max(
+        1,
+        ...slowestGroups.map((group) => group.maxDuration),
+      ),
+      requestSpark: recentForSpark.map((request) => request.durationMs ?? 0),
+      errorSpark: recentForSpark.map((request) => (request.failed ? 1 : 0)),
+      slowSpark: recentForSpark.map((request) => (request.slow ? 1 : 0)),
+      sparkLabels: recentForSpark.map(
+        (request) =>
+          `${request.method ?? 'Request'} ${pathFor(request)} — ${formatDuration(request.durationMs)}`,
+      ),
+      errorSparkLabels: recentForSpark.map(
+        (request) =>
+          `${request.method ?? 'Request'} ${pathFor(request)} — ${request.failed ? 'error' : 'ok'}`,
+      ),
+      slowSparkLabels: recentForSpark.map(
+        (request) =>
+          `${request.method ?? 'Request'} ${pathFor(request)} — ${request.slow ? 'slow' : (thresholdMs === null ? 'not flagged slow' : `under ${formatDuration(thresholdMs)}`)}`,
+      ),
+      latency: latencyStats(recentRequests, thresholdMs),
+    }
+  }, [recentRequests, slowestGroups, thresholdMs])
 
   if (state.loading && !state.data) {
     return (
@@ -1098,12 +1139,14 @@ export function OverviewPage({
               }
               className="overview__list-card"
             >
-              {data?.errors.errors ? (
+              {data?.errorError ? (
                 <ErrorState
                   compact
-                  message={data.errors.errors}
+                  message={data.errorError}
                   onRetry={state.reload}
                 />
+              ) : !data ? (
+                <Loading rows={3} label="Loading recent errors" />
               ) : errorGroups.length === 0 ? (
                 <EmptyState
                   compact
@@ -1182,10 +1225,10 @@ export function OverviewPage({
               ) : undefined
             }
           >
-            {data?.errors.coverage ? (
+            {data?.coverageError ? (
               <ErrorState
                 compact
-                message={data.errors.coverage}
+                message={data.coverageError}
                 onRetry={state.reload}
               />
             ) : coverageItems.length === 0 ? (

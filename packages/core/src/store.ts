@@ -112,6 +112,28 @@ export class TelemetryStore {
   private droppedRetention = 0
   private revision = 0
 
+  /**
+   * Read-side caches keyed by `revision`. They hold at most one entry, are
+   * never exposed for mutation and are rebuilt only when stored telemetry
+   * changes. `slowRequestMs` is part of the key because it changes which
+   * requests are marked slow.
+   */
+  private indexCache: {
+    revision: number
+    slowRequestMs: number
+    buckets: Map<string, TraceBucket>
+    requests: Map<string, RequestSummary>
+  } | null = null
+  private summaryCache: {
+    revision: number
+    slowRequestMs: number
+    value: StoreSummary
+  } | null = null
+  private coverageCache: {
+    revision: number
+    value: CoverageEvidence
+  } | null = null
+
   constructor(options: TelemetryStoreOptions = {}) {
     this.maxSpans = options.maxSpans ?? 5_000
     this.retentionMs = options.retentionMs ?? 600_000
@@ -377,6 +399,14 @@ export class TelemetryStore {
     buckets: Map<string, TraceBucket>
     requests: Map<string, RequestSummary>
   } {
+    const cached = this.indexCache
+    if (
+      cached &&
+      cached.revision === this.revision &&
+      cached.slowRequestMs === slowRequestMs
+    ) {
+      return cached
+    }
     const spansByTrace = this.spansByTrace()
     const errorsByTrace = this.errorsByTrace()
     const queriesByTrace = this.queriesByTrace()
@@ -401,7 +431,8 @@ export class TelemetryStore {
       if (request) requests.set(traceId, request)
       buckets.set(traceId, { traceId, spans, errors, queries, request })
     }
-    return { buckets, requests }
+    this.indexCache = { revision: this.revision, slowRequestMs, buckets, requests }
+    return this.indexCache
   }
 
   listRequests(
@@ -700,6 +731,14 @@ export class TelemetryStore {
 
   summary(slowRequestMs = 500): StoreSummary {
     this.prune()
+    const cached = this.summaryCache
+    if (
+      cached &&
+      cached.revision === this.revision &&
+      cached.slowRequestMs === slowRequestMs
+    ) {
+      return cached.value
+    }
     const { buckets } = this.traceIndex(slowRequestMs)
     const requests = [...buckets.values()]
       .map((bucket) => bucket.request)
@@ -725,7 +764,7 @@ export class TelemetryStore {
       ...[...this.errors.values()].map((error) => error.timestamp),
       ...[...this.queries.values()].map((query) => query.timestamp),
     ]
-    return {
+    const result: StoreSummary = {
       totalRequests: requests.length,
       failedRequests: requests.filter((request) => request.failed).length,
       slowRequests: requests.filter((request) => request.slow).length,
@@ -751,6 +790,12 @@ export class TelemetryStore {
         ...this.queries.values(),
       ]),
     }
+    this.summaryCache = {
+      revision: this.revision,
+      slowRequestMs,
+      value: result,
+    }
+    return result
   }
 
   getErrorGroups(limit = 200): ErrorGroup[] {
@@ -764,6 +809,8 @@ export class TelemetryStore {
    */
   getCoverageEvidence(): CoverageEvidence {
     this.prune()
+    const cached = this.coverageCache
+    if (cached && cached.revision === this.revision) return cached.value
     const { requests } = this.traceIndex(500)
     const spanTypes = Object.create(null) as CoverageEvidence['spanTypes']
     const categoryCounts: Record<StackNextSpanCategory, number> = {
@@ -873,7 +920,7 @@ export class TelemetryStore {
           : Math.max(queryLastSeen, query.timestamp)
     }
 
-    return {
+    const result: CoverageEvidence = {
       sample: {
         firstEventTime,
         lastEventTime,
@@ -901,6 +948,8 @@ export class TelemetryStore {
       querySources,
       querySourceLastSeen,
     }
+    this.coverageCache = { revision: this.revision, value: result }
+    return result
   }
 
   /**

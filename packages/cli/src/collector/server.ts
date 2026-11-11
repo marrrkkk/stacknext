@@ -99,6 +99,7 @@ const MAX_SESSIONS = 100
 const AUTO_ERROR_COOLDOWN_MS = 60_000
 const MAX_SNAPSHOT_BODY_BYTES = 64 * 1024
 const MAX_SNAPSHOT_CACHE_ENTRIES = 3
+const MAX_SNAPSHOT_CACHE_BYTES = 32 * 1024 * 1024
 
 interface SnapshotCacheEntry {
   ctimeMs: number
@@ -119,6 +120,11 @@ export interface StartCollectorOptions {
   log?: (message: string) => void
   autoPort?: boolean
   sseHeartbeatMs?: number
+  /**
+   * Byte budget for retained snapshot views, measured by snapshot file size.
+   * Defaults to 32 MiB; snapshots larger than the budget are served uncached.
+   */
+  snapshotCacheBytes?: number
   /** Project whose saved runs, baselines and comparisons are served read-only. */
   projectDir?: string
   /** Overrides environment/config inference, mainly for tests and `stacknext dev`. */
@@ -131,6 +137,8 @@ export interface CollectorHandle {
   token: string
   store: TelemetryStore
   health: () => HealthResponse
+  /** Parsed snapshot views currently cached, for tests and diagnostics. */
+  snapshotCacheStats: () => { entries: number; bytes: number }
   /** Saves the current sample before shutdown when snapshots.autoOnExit is on. */
   saveSnapshotOnExit: () => Promise<SnapshotSummary | null>
   close: () => Promise<void>
@@ -526,11 +534,12 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     return output.sort((a, b) => b.lastSeen - a.lastSeen)
   }
 
-  const getHealth = (): HealthResponse => {
-    const now = Date.now()
+  const getHealth = (
+    now = Date.now(),
+    connectionList: ConnectionInfo[] = getConnections(now),
+  ): HealthResponse => {
     const summary = store.summary(options.config.slowRequestMs)
     const storeStats = store.getStats()
-    const connectionList = getConnections(now)
     const diagnostics = connectionList
       .map((connection) => connection.diagnostics)
       .filter((entry): entry is StackNextExporterDiagnostics => entry !== undefined)
@@ -582,27 +591,34 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     }
   }
 
-  const getCoverage = (): CoverageReport => {
-    const now = Date.now()
+  const getCoverage = (
+    now = Date.now(),
+    connectionList: ConnectionInfo[] = getConnections(now),
+  ): CoverageReport => {
     return computeCoverage({
       projectName: options.projectName,
       collectorVersion: options.version ?? VERSION,
       now,
       config: options.config,
-      connections: getConnections(now),
+      connections: connectionList,
       verbose: verboseStatus,
       evidence: store.getCoverageEvidence(),
     })
   }
 
-  const getDiagnosticState = (): {
-    report: DiagnosticReport
-    snapshot: DiagnosticSnapshot
-  } => {
-    const now = Date.now()
-    const snapshot = store.getDiagnosticSnapshot(options.config.slowRequestMs)
-    const connectionList = getConnections(now)
-    if (!diagnosticCache || diagnosticCache.revision !== snapshot.revision) {
+  /**
+   * Returns the diagnostics report, rebuilding it only when the store revision
+   * changes. Connection state is cheap to read and is overlaid on every call,
+   * so a cached report still reflects the current runtime.
+   */
+  const getDiagnosticReport = (
+    now = Date.now(),
+    connectionList: ConnectionInfo[] = getConnections(now),
+  ): DiagnosticReport => {
+    store.prune()
+    const revision = store.storeRevision
+    if (!diagnosticCache || diagnosticCache.revision !== revision) {
+      const snapshot = store.getDiagnosticSnapshot(options.config.slowRequestMs)
       diagnosticCache = {
         revision: snapshot.revision,
         report: generateDiagnosticReport(snapshot, {
@@ -618,22 +634,53 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     }
     const cached = diagnosticCache.report
     return {
-      snapshot,
-      report: {
-        ...cached,
-        generatedAt: now,
-        sample: {
-          ...cached.sample,
-          connected: connectionList.some((connection) => connection.connected),
-          connectedInstances: connectionList.filter((connection) => connection.connected).length,
-        },
+      ...cached,
+      generatedAt: now,
+      sample: {
+        ...cached.sample,
+        connected: connectionList.some((connection) => connection.connected),
+        connectedInstances: connectionList.filter((connection) => connection.connected).length,
       },
     }
   }
 
-  const getDiagnosticReport = (): DiagnosticReport => getDiagnosticState().report
+  /** Diagnostic detail reads need the snapshot behind the cached report. */
+  const getDiagnosticState = (): {
+    report: DiagnosticReport
+    snapshot: DiagnosticSnapshot
+  } => {
+    const now = Date.now()
+    const connectionList = getConnections(now)
+    const report = getDiagnosticReport(now, connectionList)
+    const snapshot = store.getDiagnosticSnapshot(options.config.slowRequestMs)
+    return { report, snapshot }
+  }
 
   const snapshotCache = new Map<string, SnapshotCacheEntry>()
+  const snapshotCacheBudget = Math.max(
+    0,
+    options.snapshotCacheBytes ?? MAX_SNAPSHOT_CACHE_BYTES,
+  )
+  let snapshotCacheBytesUsed = 0
+
+  const dropCachedSnapshot = (id: string): void => {
+    const existing = snapshotCache.get(id)
+    if (!existing) return
+    snapshotCache.delete(id)
+    snapshotCacheBytesUsed = Math.max(0, snapshotCacheBytesUsed - existing.bytes)
+  }
+
+  const trimSnapshotCache = (): void => {
+    while (
+      snapshotCache.size > 0 &&
+      (snapshotCache.size > MAX_SNAPSHOT_CACHE_ENTRIES ||
+        snapshotCacheBytesUsed > snapshotCacheBudget)
+    ) {
+      const oldest = snapshotCache.keys().next().value
+      if (oldest === undefined) break
+      dropCachedSnapshot(oldest)
+    }
+  }
   let autoSaveQueue: Promise<void> = Promise.resolve()
   let lastAutoErrorSnapshotAt = 0
 
@@ -730,11 +777,11 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
       payload,
       store: createSnapshotView(payload),
     }
-    snapshotCache.set(id, entry)
-    while (snapshotCache.size > MAX_SNAPSHOT_CACHE_ENTRIES) {
-      const oldest = snapshotCache.keys().next().value
-      if (oldest === undefined) break
-      snapshotCache.delete(oldest)
+    dropCachedSnapshot(id)
+    if (entry.bytes <= snapshotCacheBudget) {
+      snapshotCache.set(id, entry)
+      snapshotCacheBytesUsed += entry.bytes
+      trimSnapshotCache()
     }
     return entry
   }
@@ -811,7 +858,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
       }
       try {
         const removed = await removeSnapshot(projectDir, id)
-        snapshotCache.delete(id)
+        dropCachedSnapshot(id)
         if (!removed) {
           sendError(response, 404, 'Snapshot not found')
           return
@@ -1444,11 +1491,16 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
       return
     }
     if (pathname === '/api/summary') {
+      const now = Date.now()
+      const connectionList = getConnections(now)
       const payload: OverviewResponse = {
-        health: getHealth(),
+        health: getHealth(now, connectionList),
         summary: store.summary(options.config.slowRequestMs),
-        coverage: getCoverage(),
-        diagnosticOverview: buildDiagnosticOverview(getDiagnosticReport()),
+        coverage: getCoverage(now, connectionList),
+        diagnosticOverview: buildDiagnosticOverview(
+          getDiagnosticReport(now, connectionList),
+        ),
+        recentErrorGroups: store.getErrorGroups(5),
       }
       sendJson(response, 200, payload)
       return
@@ -1910,6 +1962,8 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     store.clear()
     sessions.clear()
     connections.clear()
+    snapshotCache.clear()
+    snapshotCacheBytesUsed = 0
   }
 
   return {
@@ -1918,6 +1972,10 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     token: options.token,
     store,
     health: getHealth,
+    snapshotCacheStats: () => ({
+      entries: snapshotCache.size,
+      bytes: snapshotCacheBytesUsed,
+    }),
     saveSnapshotOnExit,
     close,
   }

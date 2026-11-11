@@ -38,6 +38,32 @@ cd apps/example
 pnpm exec stacknext dev --open
 ```
 
+## Performance benchmark
+
+The dashboard has a Playwright-based runtime benchmark that exercises the built
+collector and dashboard with synthetic ingest at 10 events per second:
+
+```bash
+pnpm build
+pnpm benchmark:dashboard
+pnpm benchmark:dashboard -- --enforce --verbose
+```
+
+It reports read requests per settled 10-second window for every route, long
+tasks, hidden-tab requests, heap and DOM counters after forced GC, and gzip
+sizes for the initial and route JavaScript chunks. `--verbose` also prints the
+per-endpoint request counts. `--enforce` fails on the plan budgets: at most 60
+read requests per window, no long task above 100 ms, no hidden-tab reads, less
+than 10 MiB heap growth, no more than 500 extra DOM nodes or 100 extra listeners,
+a largest initial chunk at or below 120 KiB gzip and a largest route chunk at or
+below 40 KiB gzip.
+
+The hidden-tab check overrides `document.hidden` because headless Chromium keeps
+every page visible. Treat the numbers as machine-specific comparisons, not a CI
+promise. See the repository
+[benchmark documentation](../../../docs/testing/benchmarks.md#dashboard-benchmark)
+for the method and recorded results.
+
 ## Data
 
 The dashboard has no fixtures of its own for normal development. It reads the

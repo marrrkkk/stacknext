@@ -428,6 +428,8 @@ export interface OverviewResponse {
   coverage?: CoverageReport
   /** Additive deterministic diagnostic overview (StackNext 0.4+). */
   diagnosticOverview?: DiagnosticOverview
+  /** Additive bounded error groups for the overview (newest first). */
+  recentErrorGroups?: ErrorGroup[]
 }
 
 export interface ErrorListResponse extends PageResult<ErrorListItem> {

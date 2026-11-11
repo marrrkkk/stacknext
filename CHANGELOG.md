@@ -6,6 +6,36 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Reduced dashboard live-refresh load: SSE events are coalesced to at most one
+  React update per second, refresh keys are scoped to the resource a page reads,
+  hidden tabs stop live flushes and interval reads, and in-flight requests use a
+  single trailing refresh instead of abort/restart churn. Runs, baselines,
+  comparisons, settings and snapshot views no longer reload on telemetry ticks.
+- Reduced dashboard request amplification. Overview reuses coverage and bounded
+  error groups from `/api/summary` and memoizes chart derivations; database and
+  error detail pages scan on longer intervals. The summary response gains
+  optional `recentErrorGroups`, while older collectors still work through a
+  fallback request.
+- Split dashboard routes with `React.lazy`, isolated the React vendor chunk and
+  added `content-visibility` for long trace timelines. The initial JavaScript is
+  now 120.0 KiB gzip across two chunks and the largest route chunk is 7.8 KiB.
+
+### Added
+
+- Added `pnpm benchmark:dashboard`, a Playwright benchmark for live-refresh
+  request counts, long tasks, heap/DOM counters, hidden-tab behavior and bundle
+  budgets. It is report-only unless `--enforce` is passed.
+
+### Fixed
+
+- Bounded the collector snapshot cache by both entry count and 32 MiB of
+  snapshot payloads, with LRU eviction and uncached delivery for oversized
+  snapshots.
+- Reused revision-keyed trace indexes, summaries and coverage in the store and
+  collector so repeated reads at the same revision do not rebuild the index.
+
 ## [0.12.0] - 2026-11-11
 
 ### Added

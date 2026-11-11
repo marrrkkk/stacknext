@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -17,26 +19,94 @@ import { Icon, type IconName } from './components/Icon'
 import { TooltipLayer } from './components/TooltipLayer'
 import { cx, Kbd, PageChromeContext, shortcutLabel, StatusDot } from './components/ui'
 import { formatDuration, formatNumber, formatRelative } from './format'
-import { OverviewPage } from './pages/OverviewPage'
-import { TraceDetailPage } from './pages/TraceDetailPage'
-import { TracesPage } from './pages/TracesPage'
-import { DatabasePage } from './pages/DatabasePage'
-import { DatabaseQueryDetailPage } from './pages/DatabaseQueryDetailPage'
-import { ErrorsPage } from './pages/ErrorsPage'
-import { ErrorDetailPage } from './pages/ErrorDetailPage'
-import { DiagnosticsPage } from './pages/DiagnosticsPage'
-import { DiagnosticDetailPage } from './pages/DiagnosticDetailPage'
-import { RunsPage } from './pages/RunsPage'
-import { RunDetailPage } from './pages/RunDetailPage'
-import { BaselinesPage } from './pages/BaselinesPage'
-import { BaselineDetailPage } from './pages/BaselineDetailPage'
-import { ComparisonsPage } from './pages/ComparisonsPage'
-import { ComparisonDetailPage } from './pages/ComparisonDetailPage'
-import { SnapshotsPage } from './pages/SnapshotsPage'
-import { SnapshotDetailPage } from './pages/SnapshotDetailPage'
-import { SettingsPage } from './pages/SettingsPage'
-import { McpPage } from './pages/McpPage'
 import { SampleStatus } from './components/SampleStatus'
+
+const OverviewPage = lazy(() =>
+  import('./pages/OverviewPage').then((module) => ({ default: module.OverviewPage })),
+)
+const TraceDetailPage = lazy(() =>
+  import('./pages/TraceDetailPage').then((module) => ({ default: module.TraceDetailPage })),
+)
+const TracesPage = lazy(() =>
+  import('./pages/TracesPage').then((module) => ({ default: module.TracesPage })),
+)
+const DatabasePage = lazy(() =>
+  import('./pages/DatabasePage').then((module) => ({ default: module.DatabasePage })),
+)
+const DatabaseQueryDetailPage = lazy(() =>
+  import('./pages/DatabaseQueryDetailPage').then((module) => ({
+    default: module.DatabaseQueryDetailPage,
+  })),
+)
+const ErrorsPage = lazy(() =>
+  import('./pages/ErrorsPage').then((module) => ({ default: module.ErrorsPage })),
+)
+const ErrorDetailPage = lazy(() =>
+  import('./pages/ErrorDetailPage').then((module) => ({ default: module.ErrorDetailPage })),
+)
+const DiagnosticsPage = lazy(() =>
+  import('./pages/DiagnosticsPage').then((module) => ({ default: module.DiagnosticsPage })),
+)
+const DiagnosticDetailPage = lazy(() =>
+  import('./pages/DiagnosticDetailPage').then((module) => ({
+    default: module.DiagnosticDetailPage,
+  })),
+)
+const RunsPage = lazy(() =>
+  import('./pages/RunsPage').then((module) => ({ default: module.RunsPage })),
+)
+const RunDetailPage = lazy(() =>
+  import('./pages/RunDetailPage').then((module) => ({ default: module.RunDetailPage })),
+)
+const BaselinesPage = lazy(() =>
+  import('./pages/BaselinesPage').then((module) => ({ default: module.BaselinesPage })),
+)
+const BaselineDetailPage = lazy(() =>
+  import('./pages/BaselineDetailPage').then((module) => ({
+    default: module.BaselineDetailPage,
+  })),
+)
+const ComparisonsPage = lazy(() =>
+  import('./pages/ComparisonsPage').then((module) => ({ default: module.ComparisonsPage })),
+)
+const ComparisonDetailPage = lazy(() =>
+  import('./pages/ComparisonDetailPage').then((module) => ({
+    default: module.ComparisonDetailPage,
+  })),
+)
+const SnapshotsPage = lazy(() =>
+  import('./pages/SnapshotsPage').then((module) => ({ default: module.SnapshotsPage })),
+)
+const SnapshotDetailPage = lazy(() =>
+  import('./pages/SnapshotDetailPage').then((module) => ({
+    default: module.SnapshotDetailPage,
+  })),
+)
+const SettingsPage = lazy(() =>
+  import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
+)
+const McpPage = lazy(() =>
+  import('./pages/McpPage').then((module) => ({ default: module.McpPage })),
+)
+
+function RouteFallback(): React.ReactElement {
+  return (
+    <div className="route-fallback" aria-busy="true">
+      <span className="skeleton route-fallback__title" />
+      <span className="skeleton route-fallback__card" />
+      <span className="skeleton route-fallback__card" />
+      <span className="sr-only">Loading page</span>
+    </div>
+  )
+}
+
+interface LiveRefreshKeys {
+  telemetry: number
+  errors: number
+  queries: number
+}
+
+const ZERO_REFRESH_KEYS: LiveRefreshKeys = { telemetry: 0, errors: 0, queries: 0 }
 
 function isLiveRowTarget(target: EventTarget | null): boolean {
   return (
@@ -319,21 +389,28 @@ export function App(): React.ReactElement {
   const commandTriggerRef = useRef<HTMLButtonElement | null>(null)
   const contentRef = useRef<HTMLElement | null>(null)
   const live = useLiveTelemetry()
-  const [refreshKey, setRefreshKey] = useState(0)
+  const [refreshKeys, setRefreshKeys] = useState<LiveRefreshKeys>(ZERO_REFRESH_KEYS)
   const [pausedAtSequence, setPausedAtSequence] = useState<number | null>(null)
   const seenErrorMarker = useSyncExternalStore(
     subscribeSeenErrorMarker,
     getSeenErrorMarker,
     getSeenErrorMarker,
   )
-  const pendingLiveKey = useRef(0)
-  const appliedLiveKey = useRef(0)
-  const lastLiveSequence = useRef(live.sequence)
+  const appliedLiveKeys = useRef<LiveRefreshKeys>(ZERO_REFRESH_KEYS)
+  const liveKeysRef = useRef<LiveRefreshKeys>(ZERO_REFRESH_KEYS)
   const pointerPosition = useRef({ x: -1, y: -1 })
   const applyPendingLiveKey = useCallback(() => {
-    if (pendingLiveKey.current <= appliedLiveKey.current) return
-    appliedLiveKey.current = pendingLiveKey.current
-    setRefreshKey(pendingLiveKey.current)
+    const next = liveKeysRef.current
+    const applied = appliedLiveKeys.current
+    if (
+      next.telemetry === applied.telemetry &&
+      next.errors === applied.errors &&
+      next.queries === applied.queries
+    ) {
+      return
+    }
+    appliedLiveKeys.current = next
+    setRefreshKeys(next)
   }, [])
   const { theme, setTheme } = useTheme()
 
@@ -352,14 +429,34 @@ export function App(): React.ReactElement {
   }, [applyPendingLiveKey, live.sequence, pausedAtSequence])
 
   useEffect(() => {
-    if (live.sequence === lastLiveSequence.current) return
-    lastLiveSequence.current = live.sequence
-    pendingLiveKey.current += 1
+    liveKeysRef.current = {
+      telemetry: live.telemetryEpoch,
+      errors: live.errorEpoch,
+      queries: live.queryEpoch,
+    }
+  }, [live.telemetryEpoch, live.errorEpoch, live.queryEpoch])
+
+  useEffect(() => {
     if (pausedAtSequence !== null) return
+    const applied = appliedLiveKeys.current
+    if (
+      live.telemetryEpoch === applied.telemetry &&
+      live.errorEpoch === applied.errors &&
+      live.queryEpoch === applied.queries
+    ) {
+      return
+    }
     const { x, y } = pointerPosition.current
     const target = x >= 0 ? document.elementFromPoint(x, y) : null
-    if (!isLiveRowTarget(target)) applyPendingLiveKey()
-  }, [live.sequence, pausedAtSequence, applyPendingLiveKey])
+    if (isLiveRowTarget(target)) return
+    applyPendingLiveKey()
+  }, [
+    live.telemetryEpoch,
+    live.errorEpoch,
+    live.queryEpoch,
+    pausedAtSequence,
+    applyPendingLiveKey,
+  ])
 
   useEffect(() => {
     if (pausedAtSequence !== null) return
@@ -511,7 +608,7 @@ export function App(): React.ReactElement {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [commandOpen])
 
-  const navigate = (to: string): void => {
+  const navigate = useCallback((to: string): void => {
     const target = normalizePath(to)
     if (target === `${window.location.pathname}${window.location.search}${window.location.hash}`) return
     setSidebarOpen(false)
@@ -521,7 +618,7 @@ export function App(): React.ReactElement {
     window.history.pushState({}, '', target)
     setPath(target)
     if (isTraceList(target)) setTracesEpoch((value) => value + 1)
-  }
+  }, [applyPendingLiveKey, pausedAtSequence])
 
   const replacePath = useCallback((to: string): void => {
     const target = normalizePath(to)
@@ -795,168 +892,169 @@ export function App(): React.ReactElement {
         </header>
         <PageChromeContext.Provider value={chrome}>
           <main className="content" id="main-content" ref={contentRef} tabIndex={-1}>
-            {pathname === 'overview' && (
-              <OverviewPage
-                refreshKey={refreshKey}
-                onNavigate={navigate}
-                liveStatus={live.status}
-                paused={livePaused}
-                pendingLive={pendingLive}
-                onTogglePause={toggleLivePause}
-              />
-            )}
-            {pathname === 'traces' && (
-              <TracesPage
-                key={tracesEpoch}
-                refreshKey={refreshKey}
-                onNavigate={navigate}
-                onReplaceUrl={replacePath}
-                slowThresholdMs={pageHealth?.config.slowRequestMs ?? 250}
-              />
-            )}
-            {pathname === 'trace' && route.id && (
-              <TraceDetailPage
-                key={`trace:${route.id}`}
-                traceId={route.id}
-                refreshKey={refreshKey}
-                onNavigate={navigate}
-              />
-            )}
-            {pathname === 'redirect' && null}
-            {pathname === 'database' && (
-              <DatabasePage refreshKey={refreshKey} onNavigate={navigate} />
-            )}
-            {pathname === 'database-query' && route.id && (
-              <DatabaseQueryDetailPage
-                key={`database-shape:${route.id}`}
-                shapeId={route.id}
-                refreshKey={refreshKey}
-                onNavigate={navigate}
-              />
-            )}
-            {pathname === 'errors' && (
-              <ErrorsPage refreshKey={refreshKey} onNavigate={navigate} />
-            )}
-            {pathname === 'error' && route.id && (
-              <ErrorDetailPage
-                errorId={route.id}
-                refreshKey={refreshKey}
-                onNavigate={navigate}
-              />
-            )}
-            {pathname === 'diagnostics' && (
-              <DiagnosticsPage refreshKey={refreshKey} onNavigate={navigate} />
-            )}
-            {pathname === 'diagnostic' && route.id && (
-              <DiagnosticDetailPage
-                diagnosticId={route.id}
-                refreshKey={refreshKey}
-                onNavigate={navigate}
-              />
-            )}
-            {pathname === 'runs' && (
-              <RunsPage refreshKey={refreshKey} onNavigate={navigate} />
-            )}
-            {pathname === 'run' && route.id && (
-              <RunDetailPage
-                key={`run:${route.id}`}
-                runId={route.id}
-                refreshKey={refreshKey}
-                onNavigate={navigate}
-              />
-            )}
-            {pathname === 'baselines' && (
-              <BaselinesPage refreshKey={refreshKey} onNavigate={navigate} />
-            )}
-            {pathname === 'baseline' && route.id && (
-              <BaselineDetailPage
-                key={`baseline:${route.id}`}
-                baselineId={route.id}
-                refreshKey={refreshKey}
-                onNavigate={navigate}
-              />
-            )}
-            {pathname === 'comparisons' && (
-              <ComparisonsPage refreshKey={refreshKey} onNavigate={navigate} />
-            )}
-            {pathname === 'comparison' && route.id && (
-              <ComparisonDetailPage
-                key={`comparison:${route.id}`}
-                comparisonId={route.id}
-                refreshKey={refreshKey}
-                onNavigate={navigate}
-              />
-            )}
-            {pathname === 'snapshots' && (
-              <SnapshotsPage refreshKey={0} onNavigate={navigate} />
-            )}
-            {pathname === 'snapshot' && route.id && (
-              <SnapshotDetailPage
-                key={`snapshot:${route.id}`}
-                snapshotId={route.id}
-                refreshKey={0}
-                onNavigate={navigate}
-              />
-            )}
-            {pathname === 'snapshot-traces' && route.id && (
-              <TracesPage
-                key={`snapshot-traces:${route.id}`}
-                refreshKey={0}
-                onNavigate={navigate}
-                onReplaceUrl={replacePath}
-                slowThresholdMs={
-                  pageHealth?.config.slowRequestMs ?? 250
-                }
-                snapshotId={route.id}
-              />
-            )}
-            {pathname === 'snapshot-trace' && route.id && route.childId && (
-              <TraceDetailPage
-                key={`snapshot-trace:${route.id}:${route.childId}`}
-                traceId={route.childId}
-                refreshKey={0}
-                onNavigate={navigate}
-                snapshotId={route.id}
-              />
-            )}
-            {pathname === 'snapshot-errors' && route.id && (
-              <ErrorsPage
-                key={`snapshot-errors:${route.id}`}
-                refreshKey={0}
-                onNavigate={navigate}
-                snapshotId={route.id}
-              />
-            )}
-            {pathname === 'snapshot-error' && route.id && route.childId && (
-              <ErrorDetailPage
-                key={`snapshot-error:${route.id}:${route.childId}`}
-                errorId={route.childId}
-                refreshKey={0}
-                onNavigate={navigate}
-                snapshotId={route.id}
-              />
-            )}
-            {pathname === 'snapshot-database' && route.id && (
-              <DatabasePage
-                key={`snapshot-database:${route.id}`}
-                refreshKey={0}
-                onNavigate={navigate}
-                snapshotId={route.id}
-              />
-            )}
-            {pathname === 'settings' && (
-              <SettingsPage
-                refreshKey={refreshKey}
-                theme={theme}
-                onThemeChange={setTheme}
-                onCycleTheme={cycleTheme}
-                onNavigate={navigate}
-              />
-            )}
-            {pathname === 'mcp' && (
-              <McpPage refreshKey={refreshKey} onNavigate={navigate} />
-            )}
-            {pathname === 'not-found' && <NotFound onNavigate={navigate} />}
+            <Suspense fallback={<RouteFallback />}>
+              {pathname === 'overview' && (
+                <OverviewPage
+                  refreshKey={refreshKeys.telemetry}
+                  onNavigate={navigate}
+                  liveStatus={live.status}
+                  paused={livePaused}
+                  pendingLive={pendingLive}
+                  onTogglePause={toggleLivePause}
+                />
+              )}
+              {pathname === 'traces' && (
+                <TracesPage
+                  key={tracesEpoch}
+                  refreshKey={refreshKeys.telemetry}
+                  onNavigate={navigate}
+                  onReplaceUrl={replacePath}
+                  slowThresholdMs={pageHealth?.config.slowRequestMs ?? 250}
+                />
+              )}
+              {pathname === 'trace' && route.id && (
+                <TraceDetailPage
+                  key={`trace:${route.id}`}
+                  traceId={route.id}
+                  refreshKey={refreshKeys.telemetry}
+                  onNavigate={navigate}
+                />
+              )}
+              {pathname === 'redirect' && null}
+              {pathname === 'database' && (
+                <DatabasePage refreshKey={refreshKeys.queries} onNavigate={navigate} />
+              )}
+              {pathname === 'database-query' && route.id && (
+                <DatabaseQueryDetailPage
+                  key={`database-shape:${route.id}`}
+                  shapeId={route.id}
+                  onNavigate={navigate}
+                />
+              )}
+              {pathname === 'errors' && (
+                <ErrorsPage refreshKey={refreshKeys.errors} onNavigate={navigate} />
+              )}
+              {pathname === 'error' && route.id && (
+                <ErrorDetailPage
+                  errorId={route.id}
+                  refreshKey={refreshKeys.errors}
+                  onNavigate={navigate}
+                />
+              )}
+              {pathname === 'diagnostics' && (
+                <DiagnosticsPage refreshKey={refreshKeys.telemetry} onNavigate={navigate} />
+              )}
+              {pathname === 'diagnostic' && route.id && (
+                <DiagnosticDetailPage
+                  diagnosticId={route.id}
+                  refreshKey={refreshKeys.telemetry}
+                  onNavigate={navigate}
+                />
+              )}
+              {pathname === 'runs' && (
+                <RunsPage refreshKey={0} onNavigate={navigate} />
+              )}
+              {pathname === 'run' && route.id && (
+                <RunDetailPage
+                  key={`run:${route.id}`}
+                  runId={route.id}
+                  refreshKey={0}
+                  onNavigate={navigate}
+                />
+              )}
+              {pathname === 'baselines' && (
+                <BaselinesPage refreshKey={0} onNavigate={navigate} />
+              )}
+              {pathname === 'baseline' && route.id && (
+                <BaselineDetailPage
+                  key={`baseline:${route.id}`}
+                  baselineId={route.id}
+                  refreshKey={0}
+                  onNavigate={navigate}
+                />
+              )}
+              {pathname === 'comparisons' && (
+                <ComparisonsPage refreshKey={0} onNavigate={navigate} />
+              )}
+              {pathname === 'comparison' && route.id && (
+                <ComparisonDetailPage
+                  key={`comparison:${route.id}`}
+                  comparisonId={route.id}
+                  refreshKey={0}
+                  onNavigate={navigate}
+                />
+              )}
+              {pathname === 'snapshots' && (
+                <SnapshotsPage refreshKey={0} onNavigate={navigate} />
+              )}
+              {pathname === 'snapshot' && route.id && (
+                <SnapshotDetailPage
+                  key={`snapshot:${route.id}`}
+                  snapshotId={route.id}
+                  refreshKey={0}
+                  onNavigate={navigate}
+                />
+              )}
+              {pathname === 'snapshot-traces' && route.id && (
+                <TracesPage
+                  key={`snapshot-traces:${route.id}`}
+                  refreshKey={0}
+                  onNavigate={navigate}
+                  onReplaceUrl={replacePath}
+                  slowThresholdMs={
+                    pageHealth?.config.slowRequestMs ?? 250
+                  }
+                  snapshotId={route.id}
+                />
+              )}
+              {pathname === 'snapshot-trace' && route.id && route.childId && (
+                <TraceDetailPage
+                  key={`snapshot-trace:${route.id}:${route.childId}`}
+                  traceId={route.childId}
+                  refreshKey={0}
+                  onNavigate={navigate}
+                  snapshotId={route.id}
+                />
+              )}
+              {pathname === 'snapshot-errors' && route.id && (
+                <ErrorsPage
+                  key={`snapshot-errors:${route.id}`}
+                  refreshKey={0}
+                  onNavigate={navigate}
+                  snapshotId={route.id}
+                />
+              )}
+              {pathname === 'snapshot-error' && route.id && route.childId && (
+                <ErrorDetailPage
+                  key={`snapshot-error:${route.id}:${route.childId}`}
+                  errorId={route.childId}
+                  refreshKey={0}
+                  onNavigate={navigate}
+                  snapshotId={route.id}
+                />
+              )}
+              {pathname === 'snapshot-database' && route.id && (
+                <DatabasePage
+                  key={`snapshot-database:${route.id}`}
+                  refreshKey={0}
+                  onNavigate={navigate}
+                  snapshotId={route.id}
+                />
+              )}
+              {pathname === 'settings' && (
+                <SettingsPage
+                  refreshKey={0}
+                  theme={theme}
+                  onThemeChange={setTheme}
+                  onCycleTheme={cycleTheme}
+                  onNavigate={navigate}
+                />
+              )}
+              {pathname === 'mcp' && (
+                <McpPage refreshKey={0} onNavigate={navigate} />
+              )}
+              {pathname === 'not-found' && <NotFound onNavigate={navigate} />}
+            </Suspense>
           </main>
         </PageChromeContext.Provider>
       </div>

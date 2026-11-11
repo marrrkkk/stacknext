@@ -179,6 +179,7 @@ async function main() {
     const endpoints = [
       ['/api/health', `health`],
       ['/api/summary', 'summary'],
+      ['/api/coverage', 'coverage'],
       ['/api/requests?limit=50', 'requests'],
       ['/api/traces?limit=50', 'traces'],
       ['/api/database?limit=50', 'database'],
@@ -225,6 +226,24 @@ async function main() {
         `  ${label.padEnd(30)} ${formatMs(result.p50).padStart(7)} ${formatMs(result.p95).padStart(8)} ${formatMs(result.max).padStart(8)}`,
       )
     }
+
+    // A second summary pass without ingest exercises the revision-keyed cache.
+    const cachedSummary = []
+    for (let index = 0; index < API_SAMPLES; index += 1) {
+      const started = performance.now()
+      const response = await fetch(`${collector.url}/api/summary`, {
+        headers: readHeaders,
+      })
+      if (!response.ok) {
+        throw new Error(`/api/summary (cached) failed with HTTP ${response.status}`)
+      }
+      await response.arrayBuffer()
+      cachedSummary.push(performance.now() - started)
+    }
+    const cached = stats(cachedSummary)
+    console.log(
+      `  ${'summary (cached revision)'.padEnd(30)} ${formatMs(cached.p50).padStart(7)} ${formatMs(cached.p95).padStart(8)} ${formatMs(cached.max).padStart(8)}`,
+    )
 
     const health = await (
       await fetch(`${collector.url}/api/health`, { headers: readHeaders })

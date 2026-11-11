@@ -34,8 +34,18 @@ export function SampleStatus({
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1_000)
-    return () => window.clearInterval(timer)
+    const tick = (): void => {
+      if (!document.hidden) setNow(Date.now())
+    }
+    const timer = window.setInterval(tick, 1_000)
+    const onVisibilityChange = (): void => {
+      if (!document.hidden) setNow(Date.now())
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
   }, [])
 
   useEffect(() => {

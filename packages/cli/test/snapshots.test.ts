@@ -61,25 +61,54 @@ async function waitForSnapshot(
   throw new Error('Timed out waiting for an automatic snapshot')
 }
 
+async function startSnapshotCollector(
+  projectDir: string,
+  extra: { snapshotCacheBytes?: number; autoOnExit?: boolean } = {},
+): Promise<CollectorHandle> {
+  return startCollector({
+    port: 0,
+    autoPort: false,
+    token: TOKEN,
+    projectName: 'snapshot-api-test',
+    dashboardDir: null,
+    projectDir,
+    config: parseStackNextConfig({
+      slowRequestMs: 100,
+      snapshots: {
+        autoOnExit: extra.autoOnExit ?? false,
+        autoOnError: false,
+      },
+    }),
+    log: () => undefined,
+    ...(extra.snapshotCacheBytes === undefined
+      ? {}
+      : { snapshotCacheBytes: extra.snapshotCacheBytes }),
+  })
+}
+
+async function saveSnapshot(
+  collector: CollectorHandle,
+  label: string,
+): Promise<SnapshotListResponse['items'][number]> {
+  const response = await fetch(`${collector.url}/api/snapshots`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ label }),
+  })
+  expect(response.status).toBe(201)
+  const body = (await response.json()) as {
+    snapshot: SnapshotListResponse['items'][number]
+  }
+  return body.snapshot
+}
+
 describe('collector snapshot API', () => {
   let collector: CollectorHandle
   let projectDir: string
 
   beforeEach(async () => {
     projectDir = await createProject()
-    collector = await startCollector({
-      port: 0,
-      autoPort: false,
-      token: TOKEN,
-      projectName: 'snapshot-api-test',
-      dashboardDir: null,
-      projectDir,
-      config: parseStackNextConfig({
-        slowRequestMs: 100,
-        snapshots: { autoOnExit: false, autoOnError: false },
-      }),
-      log: () => undefined,
-    })
+    collector = await startSnapshotCollector(projectDir)
   })
 
   afterEach(async () => {
@@ -326,24 +355,67 @@ describe('collector snapshot API', () => {
     expect(response.status).toBe(409)
   })
 
+  it('bounds cached snapshot views by bytes and evicts least recently used', async () => {
+    await ingest(collector)
+    const first = await saveSnapshot(collector, 'first')
+    const second = await saveSnapshot(collector, 'second')
+    const firstBytes = (await stat(snapshotPath(projectDir, first.id))).size
+    const secondBytes = (await stat(snapshotPath(projectDir, second.id))).size
+    expect(firstBytes).toBeGreaterThan(0)
+
+    await collector.close()
+    collector = await startSnapshotCollector(projectDir, {
+      snapshotCacheBytes: Math.max(firstBytes, secondBytes),
+    })
+
+    const read = (id: string) =>
+      fetch(`${collector.url}/api/snapshots/${id}`, {
+        headers: { authorization: `Bearer ${TOKEN}` },
+      })
+
+    expect((await read(first.id)).status).toBe(200)
+    expect(collector.snapshotCacheStats()).toEqual({
+      entries: 1,
+      bytes: firstBytes,
+    })
+
+    expect((await read(second.id)).status).toBe(200)
+    expect(collector.snapshotCacheStats()).toEqual({
+      entries: 1,
+      bytes: secondBytes,
+    })
+
+    // Touching the first snapshot again evicts the second, proving LRU order.
+    expect((await read(first.id)).status).toBe(200)
+    expect(collector.snapshotCacheStats()).toEqual({
+      entries: 1,
+      bytes: firstBytes,
+    })
+  })
+
+  it('serves snapshots larger than the cache budget without retaining them', async () => {
+    await ingest(collector)
+    const saved = await saveSnapshot(collector, 'oversized')
+    const bytes = (await stat(snapshotPath(projectDir, saved.id))).size
+
+    await collector.close()
+    collector = await startSnapshotCollector(projectDir, {
+      snapshotCacheBytes: Math.max(0, bytes - 1),
+    })
+
+    const response = await fetch(`${collector.url}/api/snapshots/${saved.id}`, {
+      headers: { authorization: `Bearer ${TOKEN}` },
+    })
+    expect(response.status).toBe(200)
+    expect(collector.snapshotCacheStats()).toEqual({ entries: 0, bytes: 0 })
+  })
+
   it('saves an exit snapshot only when auto-save on exit is enabled', async () => {
     await ingest(collector)
     expect(await collector.saveSnapshotOnExit()).toBeNull()
 
     await collector.close()
-    collector = await startCollector({
-      port: 0,
-      autoPort: false,
-      token: TOKEN,
-      projectName: 'snapshot-api-test',
-      dashboardDir: null,
-      projectDir,
-      config: parseStackNextConfig({
-        slowRequestMs: 100,
-        snapshots: { autoOnExit: true, autoOnError: false },
-      }),
-      log: () => undefined,
-    })
+    collector = await startSnapshotCollector(projectDir, { autoOnExit: true })
     await ingest(collector)
     const saved = await collector.saveSnapshotOnExit()
     expect(saved?.source).toBe('exit')
