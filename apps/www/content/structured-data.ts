@@ -60,7 +60,11 @@ export function siteJsonLd(): JsonLdObject {
   }
 }
 
-/** Mirrors the visible FAQ accordion on the landing page. */
+/**
+ * Mirrors the visible FAQ accordion on the landing page. Google restricts FAQ
+ * rich results to authoritative government and health sites, so this type is
+ * kept for accurate description and AI parsers, not as a rich-result promise.
+ */
 export function faqJsonLd(): JsonLdObject {
   return {
     '@context': 'https://schema.org',

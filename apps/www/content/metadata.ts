@@ -35,7 +35,9 @@ export function pageMetadata({
   const absolutePath = SITE_URL ? `${SITE_URL}${path}` : null
 
   // Gated on the same origin: without it, no social image tags are emitted
-  // rather than resolving them against a default or invented host.
+  // rather than resolving them against a default or invented host. Card keys
+  // mirror the route path without the leading slash, so nested routes map to
+  // slash-separated keys (for example /guides/install -> /og/guides/install).
   const socialImagePath = path === '/' ? '/og/home' : `/og${path}`
   const socialImage = SITE_URL
     ? {

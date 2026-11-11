@@ -42,11 +42,12 @@ Search-engine surfaces live in code, not static files:
 - `content/structured-data.ts` owns the JSON-LD graph: `Organization`,
   `WebSite`, `SoftwareApplication`, the landing-page `FAQPage`, and
   `BreadcrumbList` for content pages. Keep it aligned with visible content.
-- `app/og/[slug]/route.tsx` generates 1200×630 cards with `next/og` from
+- `app/og/[...slug]/route.tsx` generates 1200×630 cards with `next/og` from
   `components/og-image.tsx`; the copy lives in `content/og.ts`. Add an entry
-  there for every public route. `pageMetadata()` links the matching card only
-  when `NEXT_PUBLIC_SITE_URL` is set, so a local build emits no social image
-  tags instead of resolving them against localhost.
+  there for every public route, using slash-separated keys for nested paths.
+  `pageMetadata()` links the matching card only when `NEXT_PUBLIC_SITE_URL` is
+  set, so a local build emits no social image tags instead of resolving them
+  against localhost.
 
 After deploying, submit `/sitemap.xml` in Google Search Console and Bing
 Webmaster Tools once.

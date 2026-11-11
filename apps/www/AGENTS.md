@@ -29,10 +29,11 @@ repository and is not part of the StackNext runtime.
 - `content/structured-data.ts` owns the JSON-LD. Structured data must describe
   content that is visible on the page; do not add types, ratings or offers to
   chase rich results.
-- Social cards come from `app/og/[slug]/route.tsx`, with copy in
+- Social cards come from `app/og/[...slug]/route.tsx`, with copy in
   `content/og.ts`. Add a card for every public route and keep it aligned with
-  the route's visible content and metadata. `pageMetadata()` only links the
-  image when `NEXT_PUBLIC_SITE_URL` is set.
+  the route's visible content and metadata. Nested routes use slash-separated
+  keys. `pageMetadata()` only links the image when `NEXT_PUBLIC_SITE_URL` is
+  set.
 - Keep the dark-only design system and existing brand assets consistent. Do not
   introduce a second product name or logo.
 

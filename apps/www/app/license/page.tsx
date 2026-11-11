@@ -8,6 +8,7 @@ import {
 } from '@/components/styles'
 import { pageMetadata } from '@/content/metadata'
 import { LINKS } from '@/content/site'
+import { POLICY_UPDATED, formatUpdatedDate } from '@/content/updates'
 
 export const metadata: Metadata = pageMetadata({
   title: 'License',
@@ -54,7 +55,7 @@ export default function LicensePage(): React.ReactElement {
       eyebrow="Legal / License"
       title="MIT licensed."
       lede="StackNext is free and open source. You can use it, modify it and ship it in commercial or private products under the MIT License. Keep the copyright and permission notice, and the software comes without warranty."
-      updated="November 10, 2026"
+      updated={formatUpdatedDate(POLICY_UPDATED)}
       sections={SECTIONS}
       breadcrumb="License"
       path="/license"

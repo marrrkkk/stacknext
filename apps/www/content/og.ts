@@ -8,7 +8,9 @@ export interface OgCard {
 
 /**
  * Copy for each generated social card. Add an entry here for every public
- * route; `pageMetadata()` derives the image path from the route path.
+ * route; `pageMetadata()` derives the image path from the route path. Keys are
+ * paths without the leading slash, and nested routes use slashes (for example
+ * 'guides/install').
  */
 export const OG_CARDS = {
   home: {

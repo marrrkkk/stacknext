@@ -1,10 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { CHANGELOG_RELEASES } from '@/content/changelog.generated'
 import { SITE_URL } from '@/content/metadata'
-
-// Keep these dates in step with the "Last updated" label rendered on each page.
-const HOME_UPDATED = '2026-11-11'
-const POLICY_UPDATED = '2026-11-10'
+import { HOME_UPDATED, POLICY_UPDATED } from '@/content/updates'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   // Without a configured origin there is no canonical URL to publish. Return
