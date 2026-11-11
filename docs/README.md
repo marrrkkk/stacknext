@@ -16,7 +16,7 @@ deployed separately. Package API reference is canonical in
 | [Package architecture](architecture/packages.md) | Package responsibilities, dependency direction and build topology. |
 | [Architecture boundaries](architecture/boundaries.md) | The invariants that keep StackNext local, bounded and deterministic. |
 | [Development environment](development/environment-setup.md) | Install, build, run the example app and preview the public site. |
-| [Repository conventions](development/repository-conventions.md) | Source layout, build/typecheck split, code style and change rules. |
+| [Repository conventions](development/repository-conventions.md) | Source layout, build/typecheck split, code style, commit/PR rules and compatibility surfaces. |
 | [Documentation architecture](development/documentation.md) | Public site, engineering docs, package docs, generated index and validation. |
 | [Public documentation architecture](development/public-docs-architecture.md) | Research, page inventory and structural decisions behind the public guide. |
 | [Testing strategy](testing/testing-strategy.md) | Unit, e2e, archive, consumer and documentation checks. |

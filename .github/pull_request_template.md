@@ -1,3 +1,8 @@
+<!--
+PR title: use a Conventional Commit, for example `feat(cli): add snapshot export`.
+main is squash-merged and the release planner reads this title.
+-->
+
 ## Summary
 
 Describe the user-visible problem and the change. Link the issue when one
@@ -5,6 +10,7 @@ exists.
 
 ## Type
 
+- [ ] PR title follows Conventional Commits
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Documentation
@@ -22,12 +28,12 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm check:docs
 ```
 
 - [ ] `pnpm test:e2e` (when runtime, dashboard, CLI, MCP or regression behavior changed)
 - [ ] `pnpm test:packages` (when package metadata, exports or build output changed)
 - [ ] `pnpm test:consumer --next 15.5.28 --pm npm --skip-build` and/or `--next 16.4.3`
-- [ ] `pnpm check:docs` (when Markdown or `CHANGELOG.md` changed)
 
 ## Compatibility
 
