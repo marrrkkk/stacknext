@@ -72,6 +72,8 @@ export default function ChangelogPage(): React.ReactElement {
       lede="StackNext follows Semantic Versioning. This page is generated from the repository changelog, which remains the canonical record for every fix and documentation update."
       updated={LATEST_RELEASE.dateLabel}
       sections={SECTIONS}
+      breadcrumb="Changelog"
+      path="/changelog"
     >
       <section id="releases">
         <h2>Release notes</h2>

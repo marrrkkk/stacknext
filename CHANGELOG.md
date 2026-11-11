@@ -6,6 +6,16 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Added App Router SEO plumbing to the website: `robots.txt`, a static
+  `sitemap.xml`, canonical and social metadata, and JSON-LD for the
+  organization, website, free software application, landing-page FAQ and page
+  breadcrumbs. Canonical and sitemap URLs stay omitted unless
+  `NEXT_PUBLIC_SITE_URL` is set, so a local build never invents a domain.
+- Added generated 1200×630 Open Graph and Twitter cards for the landing page
+  and every content route, built with `next/og` from a shared layout.
+
 ## [0.11.1] - 2026-11-10
 
 ## [0.11.0] - 2026-11-10
