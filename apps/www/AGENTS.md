@@ -14,7 +14,7 @@ repository and is not part of the StackNext runtime.
 - Do not add third-party analytics, remote fonts, tracking pixels or
   client-side requests to external services.
 - Product claims must match the supported surface in
-  [`apps/docs/limitations.md`](../docs/limitations.md) and the root
+  [`apps/docs/limitations.mdx`](../docs/limitations.mdx) and the root
   `AGENTS.md`. Do not imply production, Edge, Pages Router or cloud support.
 - Links to product documentation point at `apps/docs/` paths through
   `content/site.ts`. Keep those URLs stable.

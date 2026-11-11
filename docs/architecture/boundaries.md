@@ -43,7 +43,7 @@ storing. A new captured field is not done until:
 
 1. the app-side redaction and normalization paths handle it;
 2. the collector-side redaction handles it again;
-3. `apps/docs/privacy.md` and the package privacy docs describe it;
+3. `apps/docs/privacy.mdx` and the package privacy docs describe it;
 4. tests assert the secret does not appear in API, export, regression,
    comparison, snapshot or MCP output.
 
@@ -143,5 +143,5 @@ custom-span attributes do not leak `action-attribute-secret`,
 
 - [Architecture overview](overview.md)
 - [Package architecture](packages.md)
-- [Public boundaries page](../../apps/docs/architecture/boundaries.md)
+- [Public core concepts](../../apps/docs/overview/core-concepts.mdx)
 - [Privacy and security rules](../../AGENTS.md#privacy-and-security-rules)

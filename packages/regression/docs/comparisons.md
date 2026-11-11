@@ -83,4 +83,4 @@ keys, 100 finding keys and 1,000 metrics per scenario.
 - No automatic pass/fail unless the CLI `--fail-on` flag matches.
 
 The full methodology is in
-the repository `apps/docs/comparison-methodology.md`.
+the comparison methodology section of the repository `apps/docs/regression-testing.mdx`.

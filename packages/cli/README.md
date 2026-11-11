@@ -72,7 +72,7 @@ snapshots. See the installed
 
 The same files ship in this package under `docs/`, so they match the installed
 version. Public guides live on the
-[documentation site](https://github.com/marrrkkk/stacknext/tree/main/apps/docs).
+[documentation site](https://stack-next.mintlify.site).
 
 ## AI agents
 
@@ -88,7 +88,7 @@ stacknext skill install --client claude-code
 ```
 
 See [agent setup](docs/agent-setup.md) and the public
-[AI agent guide](https://github.com/marrrkkk/stacknext/blob/main/apps/docs/ai-agents/index.md).
+[AI agent guide](https://stack-next.mintlify.site/ai-agents/setup).
 
 ## Development
 
@@ -112,6 +112,6 @@ practical. See the repository
 
 Next.js Edge runtime and the Pages Router are not supported. The package is
 ESM-only. See the [project README](https://github.com/marrrkkk/stacknext#readme)
-and [compatibility matrix](https://github.com/marrrkkk/stacknext/blob/main/apps/docs/compatibility.md).
+and [compatibility matrix](https://stack-next.mintlify.site/compatibility).
 
 License: MIT.

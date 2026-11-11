@@ -1,0 +1,221 @@
+---
+title: CLI commands
+description: Complete reference for the stacknext binary, its commands, options and exit behavior.
+---
+
+Run `stacknext <command> --help` for the installed version's exact flags. All
+commands run from a Next.js application directory unless stated otherwise.
+`stacknext --version` and `stacknext --help` are also available.
+
+## Setup and run
+
+### `stacknext init`
+
+Configure a project. Writes `stacknext.config.json` and generated
+`instrumentation.ts`/`.js` only when absent; never overwrites user files.
+
+| Option | Meaning |
+| --- | --- |
+| `--install` | Install `@stacknext/next` with the detected package manager |
+| `--agents` | Add or update the managed StackNext block in `AGENTS.md` |
+| `--skip-agents` | Explicitly skip the managed block (the default) |
+
+### `stacknext dev`
+
+Start the loopback collector and dashboard, then run the app's `dev` script.
+
+| Option | Meaning |
+| --- | --- |
+| `--open` | Open the dashboard in the default browser |
+| `--quiet` | Reduce startup output |
+| `--token <token>` | Use an existing token (16+ characters) |
+
+`dev` writes `.stacknext/run.json` with mode `0600` and removes it on graceful
+shutdown. Stop it with SIGINT/SIGTERM, not `SIGKILL`. Extra arguments are
+forwarded to the app's dev command.
+
+### `stacknext status`
+
+Print the runtime, collector connection and current counts.
+
+| Option | Meaning |
+| --- | --- |
+| `--json` | Machine-readable output |
+
+### `stacknext doctor`
+
+Check Node.js, Next.js, the App Router, config, instrumentation, adapters,
+dashboard build, runtime file permissions and collector health.
+
+| Option | Meaning |
+| --- | --- |
+| `--json` | Machine-readable result with `checks`, `failures`, `warnings` |
+
+Exit code is `1` when a check fails.
+
+### `stacknext uninstall`
+
+Print a removal plan unless `--yes` is passed. See
+[remove StackNext](/installation#remove-stacknext).
+
+| Option | Meaning |
+| --- | --- |
+| `--yes` | Apply the plan |
+| `--keep-config` | Preserve `stacknext.config.json` |
+| `--remove-data` | Remove `.stacknext` saved data (refused while running) |
+| `--json` | Machine-readable report |
+
+## Inspect the sample
+
+### `stacknext coverage`
+
+Show what the current retention window observed. Evidence, not a score.
+
+| Option | Meaning |
+| --- | --- |
+| `--json` | Machine-readable `CoverageReport` |
+
+### `stacknext diagnose`
+
+List deterministic findings or show one finding.
+
+| Option | Meaning |
+| --- | --- |
+| `--id <finding-id>` | Show one finding and its related trace |
+| `--trace-id <trace-id>` | Findings that reference a trace |
+| `--category <category>` | `database`, `http`, `performance`, `errors`, `runtime` |
+| `--severity <severity>` | `info`, `warning`, `error` |
+| `--status <status>` | `observed`, `possible`, `insufficient-evidence` |
+| `--rule <rule-id>` | One of the six rule ids |
+| `--route <route>` | Route substring |
+| `--since <time>` / `--until <time>` | ISO timestamp or epoch milliseconds |
+| `--limit <n>` / `--offset <n>` | Pagination |
+| `-q, --q <text>` | Search text |
+| `--json` | Machine-readable output |
+
+### `stacknext export`
+
+| Option | Meaning |
+| --- | --- |
+| `-o, --output <file>` | Output path |
+| `--stdout` | Write JSON to stdout |
+| `--force` | Overwrite an existing output file |
+
+Exports use mode `0600` and are redacted, but remain a full local trace dump.
+
+## Regression
+
+### `stacknext capture`
+
+Run a test command and save correlated telemetry as a run.
+
+```bash
+stacknext capture --name baseline -- pnpm exec playwright test --workers=1
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--name <name>` | Run name |
+| `--project <name>` | Project name override |
+| `--attach` | Require an existing `stacknext dev` collector |
+| `--url <url>` | Attach to a specific loopback collector |
+| `--token <token>` | Token for `--url` |
+| `--json` | Machine-readable result |
+| `--quiet` | Reduce output |
+
+A successful child with incomplete telemetry exits `3`. See
+[regression testing](/regression-testing).
+
+### `stacknext runs`
+
+| Command | Options | Purpose |
+| --- | --- | --- |
+| `runs list` | `--limit`, `--offset`, `--json` | List live and saved runs |
+| `runs show <run-id>` | `--json` | Show one run and its samples |
+
+### `stacknext baseline`
+
+| Command | Options | Purpose |
+| --- | --- | --- |
+| `baseline save <run-id>` | `--name <name>`, `--notes <text>`, `--overwrite`, `--json` | Save a completed run |
+| `baseline list` | `--limit`, `--offset`, `--json` | List baselines |
+| `baseline show <baseline-id>` | `--json` | Show one baseline |
+| `baseline remove <baseline-id>` | `--yes`, `--json` | Permanently remove one baseline |
+
+`--name` is required. Only a completed run can become a baseline. A normal save
+never replaces an existing baseline; `--overwrite` is an explicit storage-layer
+collision override, not a replace-by-name flow.
+
+### `stacknext compare`
+
+```bash
+stacknext compare <baseline-id> <candidate-run-id>
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--json` | Machine-readable result |
+| `--ignore-environment` | Compare despite environment differences (warning retained) |
+| `--min-samples <n>` | Minimum verified samples per side (default 3) |
+| `--duration-regression-pct <n>` | Default 20 |
+| `--duration-regression-ms <n>` | Default 25 |
+| `--duration-improvement-pct <n>` | Default 20 |
+| `--duration-improvement-ms <n>` | Default 25 |
+| `--count-regression-min <n>` | Default 1 |
+| `--fail-on <status>` | Exit 1 for `regression`, `inconclusive` or `any` |
+| `--no-save` | Do not persist the comparison |
+
+Comparisons are report-only by default. `inconclusive` is not a pass.
+
+## Snapshots
+
+| Command | Options | Purpose |
+| --- | --- | --- |
+| `snapshot save` | `--label`, `--json` | Freeze the current sample |
+| `snapshot list` | `--limit`, `--offset`, `--json` | List snapshots |
+| `snapshot show <id>` | `--json` | Show a summary or full payload |
+| `snapshot export <id>` | `-o, --output`, `--stdout`, `--force` | Export redacted JSON |
+| `snapshot import <file>` | `--label`, `--json` | Import and re-redact |
+| `snapshot delete <id>` | `--yes`, `--json` | Delete one snapshot |
+
+`snapshots` is an alias for `snapshot`. See [snapshots](/guides/snapshots).
+
+## Agents
+
+### `stacknext mcp`
+
+Start the read-only stdio MCP server.
+
+| Option | Meaning |
+| --- | --- |
+| `--collector <url>` | Collector URL (defaults to runtime state) |
+| `--token <token>` | Bearer token (defaults to runtime state) |
+
+### `stacknext skill`
+
+| Command | Options | Purpose |
+| --- | --- | --- |
+| `skill path` | `--json` | Print the bundled skill directory and version |
+| `skill install` | `--client opencode\|codex\|claude-code`, `--dir`, `--force`, `--json` | Copy the skill into a project |
+
+See [agent setup](/ai-agents/setup).
+
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Command succeeded |
+| `1` | Command failed, `doctor` found a failing check, or `--fail-on` matched |
+| `3` | `capture`'s child succeeded but the saved run is not `completed` |
+| `130` | `capture` or `dev` received SIGINT |
+| `143` | `capture` or `dev` received SIGTERM |
+
+`capture` preserves the child command's exit code. Invalid ids and invalid
+configuration fail before storage is read or network calls are made.
+
+## Related
+
+- [Configuration](/reference/configuration)
+- [Regression testing](/regression-testing)
+- [Snapshots](/guides/snapshots)
+- [MCP server](/mcp)

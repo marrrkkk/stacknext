@@ -51,7 +51,7 @@ Start `stacknext dev` before the MCP client. With pnpm, use
 - [Security](docs/security.md)
 
 The `docs/` directory ships in the npm archive. Public setup guides live on the
-[documentation site](https://github.com/marrrkkk/stacknext/tree/main/apps/docs).
+[documentation site](https://stack-next.mintlify.site).
 
 ## AI agents
 

@@ -1,0 +1,84 @@
+---
+title: Packages and public APIs
+description: The StackNext packages you install directly, their public entry points and where version-matched reference lives.
+---
+
+StackNext publishes all packages at the same version. Most are installed
+automatically as dependencies of the CLI; only the integration packages are
+installed directly.
+
+## Install directly
+
+| Package | Purpose | Public entry points |
+| --- | --- | --- |
+| `@stacknext/cli` | `stacknext` binary, loopback collector and dashboard host | CLI commands |
+| `@stacknext/next` | Next.js instrumentation and OpenTelemetry exporter | `registerStackNext`, `onRequestError`, `withStackNextSpan`, `withStackNextSpanSync`, `withStackNextAction` |
+| `@stacknext/drizzle` | Drizzle query logger | `createStackNextDrizzleLogger` |
+| `@stacknext/prisma` | Prisma query event adapter | `instrumentPrismaClient` |
+| `@stacknext/playwright` | Playwright fixtures for regression capture | `stackNextFixtures` |
+
+Peer dependencies:
+
+- `@stacknext/next` requires `next >=15 <17`.
+- `@stacknext/drizzle` has an optional `drizzle-orm` peer.
+- `@stacknext/prisma` has an optional `@prisma/client` peer.
+- `@stacknext/playwright` has an optional `@playwright/test >=1.40 <2` peer.
+
+All packages are ESM-only. CommonJS `require()` is not supported.
+
+## Installed with the CLI
+
+These packages are implementation details of the CLI. Applications should not
+install them directly, although their documentation ships in the archive for
+maintainers and advanced debugging:
+
+| Package | Role |
+| --- | --- |
+| `@stacknext/core` | Wire schemas, redaction, configuration, transport, store and snapshots |
+| `@stacknext/diagnostics` | Deterministic rules, fingerprinting and finding evidence |
+| `@stacknext/regression` | Capture, baseline and comparison records |
+| `@stacknext/mcp` | Read-only Model Context Protocol server |
+| `@stacknext/dashboard` | Static React dashboard served by the collector |
+
+## Version-matched reference
+
+The canonical API reference is the Markdown shipped inside each package:
+
+```text
+node_modules/@stacknext/cli/docs/index.md
+node_modules/@stacknext/cli/docs/packages.md
+node_modules/@stacknext/next/docs/index.md
+node_modules/@stacknext/drizzle/docs/index.md
+node_modules/@stacknext/prisma/docs/index.md
+node_modules/@stacknext/playwright/docs/index.md
+```
+
+`@stacknext/cli/docs/packages.md` lists every documented package, its version,
+visibility, role and the relative path to its docs. Optional packages can be
+absent; check the path before reading. In a pnpm workspace, a package may be
+hoisted or resolved from the CLI dependency tree rather than the app-root
+`node_modules`.
+
+Confirm the installed version with the adjacent `package.json`:
+
+```bash
+node -p "require('@stacknext/next/package.json').version"
+```
+
+Prefer the local files over this website when writing code against an installed
+API. See [local documentation](/ai-agents/local-docs).
+
+## Public documentation
+
+- [Next.js integration](/integrations/nextjs)
+- [Database integrations](/integrations/database)
+- [Playwright integration](/playwright-integration)
+- [CLI commands](/cli/commands)
+- [Configuration](/reference/configuration)
+- [MCP tools](/reference/mcp-tools)
+
+## Related
+
+- [Installation](/installation)
+- [Compatibility](/compatibility)
+- [Local documentation](/ai-agents/local-docs)

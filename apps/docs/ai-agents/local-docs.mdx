@@ -1,0 +1,113 @@
+---
+title: Local documentation
+description: Find version-matched Markdown documentation in installed packages and use the site's AI-readable endpoints.
+---
+
+StackNext releases that bundle package documentation include a `docs/`
+directory in each documented package's npm archive. These docs sit next to the
+installed implementation and describe the same version. Earlier releases may
+not include bundled docs.
+
+## Entry point
+
+Start with the CLI package's own `docs/` directory. Its generated entry points
+are `docs/index.md` and `docs/packages.md`. In a workspace the CLI may be
+installed at the workspace root rather than in the app's `node_modules`.
+
+```text
+<cli-package>/docs/index.md
+<cli-package>/docs/packages.md
+```
+
+`packages.md` lists every documented package, its version, whether it is public
+or internal, its role and the relative path to its docs. The paths are written
+as code because optional packages may be absent.
+
+## Read only what is installed
+
+```text
+node_modules/@stacknext/next/docs/index.md        # required for instrumentation
+node_modules/@stacknext/drizzle/docs/index.md     # only if Drizzle is installed
+node_modules/@stacknext/prisma/docs/index.md      # only if Prisma is installed
+node_modules/@stacknext/playwright/docs/index.md  # only for captured tests
+```
+
+These are direct-install paths. If a package is hoisted, resolve it from the app
+directory as described under [Monorepos](#monorepos).
+
+`@stacknext/core` is installed transitively. In a pnpm workspace it may not
+appear at the app-root `node_modules` path; use its relative path in
+`packages.md` instead of assuming the root layout.
+
+Before reading a path, check that it exists. Do not tell an agent to read a
+package that the project does not use.
+
+## Confirm the version
+
+The package's `package.json` is the source of truth:
+
+```bash
+node -p "require('@stacknext/next/package.json').version"
+```
+
+Compare that value with the version in the docs table when the project may not
+be on the latest release. StackNext does not maintain a separate versioned-docs
+service; the local archive is the primary version safeguard. If a release has
+no bundled docs, use the `packages/<package>/docs/` directory at its matching
+`v<version>` tag in the
+[StackNext source repository](https://github.com/marrrkkk/stacknext/tags).
+
+## Prefer local docs over this site
+
+Use the local files when:
+
+- writing code against `@stacknext/next`, an adapter or the CLI;
+- the project's StackNext version may differ from the website;
+- an API, default, validation range or error behavior matters.
+
+Use this site when:
+
+- learning a cross-package workflow;
+- no StackNext package is installed yet;
+- looking for conceptual explanations, privacy rules or setup guidance.
+
+## AI-readable documentation
+
+StackNext does not commit a hand-written `llms.txt` or `llms-full.txt`.
+Mintlify generates both from the published navigation and page content, so they
+always match the site you are reading.
+
+| URL | Contents |
+| --- | --- |
+| `/llms.txt` | A compact index of the documentation with links and short descriptions |
+| `/llms-full.txt` | The full text of the documentation in one file |
+| `<page>.md` | A Markdown version of an individual page, for example `/guides/diagnostics.md` |
+| Any page with `Accept: text/markdown` | The same Markdown representation through content negotiation |
+
+Recommended flow:
+
+1. Start with `/llms.txt` when you need to discover public pages.
+2. Fetch the specific page as `.md` instead of scraping rendered HTML.
+3. For package APIs, prefer the installed files under
+   `node_modules/@stacknext/<package>/docs/`.
+4. Use `/llms-full.txt` only when a broad, one-shot corpus is cheaper than
+   targeted reads.
+5. Treat diagnostics and regression results as evidence.
+
+`docs.json` contains `markdown.instructions`, which Mintlify includes with the
+generated Markdown so an agent knows the audience split: conceptual guides live
+on this site, package reference ships in the packages, and local installed docs
+take precedence for API details.
+
+## Monorepos
+
+In a pnpm workspace, a package may be hoisted to the workspace root's
+`node_modules` or remain under the app's `node_modules`. Resolve from the app
+directory that contains `.stacknext` and the `stacknext` dependency. Do not
+assume a single global path.
+
+## Related
+
+- [Packages and public APIs](/reference/packages)
+- [Agent setup](/ai-agents/setup)
+- [AI agent support](/ai-agents)

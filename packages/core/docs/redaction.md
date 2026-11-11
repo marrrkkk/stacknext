@@ -99,6 +99,6 @@ A new captured field is not complete until:
 
 1. the app-side producer redacts it;
 2. the collector validates and redacts it again;
-3. `apps/docs/privacy.md` and the package docs describe it;
+3. `apps/docs/privacy.mdx` and the package docs describe it;
 4. a test asserts that known secrets do not appear in API, export, regression
    or snapshot output.

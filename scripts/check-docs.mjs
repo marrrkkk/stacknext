@@ -3,11 +3,13 @@
  * Validates documentation without external services:
  * - apps/docs/docs.json navigation entries resolve and every page has
  *   frontmatter;
- * - redirects resolve to local pages or documented GitHub engineering docs;
- * - generated package docs are present in the navigation and clearly marked;
+ * - redirects resolve to local pages or documented GitHub engineering docs,
+ *   including heading anchors on local destinations;
  * - package docs exist, have frontmatter and are included in `files`;
  * - relative and website-root Markdown links resolve, including extensionless
  *   Mintlify links, across the public site and the engineering knowledge base;
+ * - absolute links to the public Mintlify site resolve to a navigation page or
+ *   a configured redirect, including heading anchors;
  * - documented pnpm scripts exist in the root manifest;
  * - no manual llms.txt/llms-full.txt is committed;
  * - no legacy brand remains in text sources.
@@ -19,8 +21,6 @@ import ts from 'typescript'
 import {
   DOCUMENTED_PACKAGES,
   DOCS_DIR,
-  GENERATED_MANIFEST,
-  GENERATED_MARKER,
   redirectDestination,
 } from './lib/docs.mjs'
 
@@ -47,6 +47,7 @@ const TEXT_EXTENSIONS = new Set([
   '.js',
   '.json',
   '.md',
+  '.mdx',
   '.mjs',
   '.svg',
   '.ts',
@@ -114,7 +115,7 @@ async function walk(dir) {
     }
     if (!entry.isFile()) continue
     const extension = path.extname(entry.name).toLowerCase()
-    if (extension === '.md') markdownFiles.push(full)
+    if (extension === '.md' || extension === '.mdx') markdownFiles.push(full)
     if (TEXT_EXTENSIONS.has(extension)) textFiles.push(full)
   }
 }
@@ -171,6 +172,22 @@ async function headings(file) {
     anchors.add(count === 0 ? base : `${base}-${count}`)
   }
   return anchors
+}
+
+async function checkAnchor(file, rawAnchor, context) {
+  if (!rawAnchor) return
+  if (!['.md', '.mdx'].includes(path.extname(file).toLowerCase())) return
+  let anchor
+  try {
+    anchor = decodeURIComponent(rawAnchor)
+  } catch {
+    problems.push(`${context}: invalid URL encoding in anchor #${rawAnchor}`)
+    return
+  }
+  const anchors = await headings(file)
+  if (anchors && !anchors.has(anchor)) {
+    problems.push(`${context}: missing heading anchor #${rawAnchor}`)
+  }
 }
 
 function linkTarget(raw) {
@@ -255,7 +272,7 @@ async function checkMarkdown(file) {
       problems.push(`${relative(file)}: missing link target ${target}`)
       continue
     }
-    if (rawAnchor && path.extname(resolved).toLowerCase() === '.md') {
+    if (rawAnchor && ['.md', '.mdx'].includes(path.extname(resolved).toLowerCase())) {
       const anchors = await headings(resolved)
       if (anchors && !anchors.has(decodeURIComponent(rawAnchor))) {
         problems.push(`${relative(file)}: missing heading anchor ${target}`)
@@ -358,11 +375,20 @@ async function checkMintlifyConfig() {
       continue
     }
     if (destination.startsWith('/')) {
-      const { pathname, dynamic } = redirectDestination(destination)
-      if (!dynamic && !(await resolveTarget(path.join(DOCS_ROOT, pathname.slice(1))))) {
-        problems.push(
-          `${DOCS_LABEL}/docs.json: redirect ${source} points to missing page ${destination}`,
-        )
+      const { pathname, fragment, dynamic } = redirectDestination(destination)
+      if (!dynamic) {
+        const resolved = await resolveTarget(path.join(DOCS_ROOT, pathname.slice(1)))
+        if (!resolved) {
+          problems.push(
+            `${DOCS_LABEL}/docs.json: redirect ${source} points to missing page ${destination}`,
+          )
+        } else {
+          await checkAnchor(
+            resolved,
+            fragment,
+            `${DOCS_LABEL}/docs.json: redirect ${source} (${destination})`,
+          )
+        }
       }
       continue
     }
@@ -390,23 +416,10 @@ async function checkMintlifyConfig() {
     }
   }
 
-  return { pages, seen }
+  return { pages, seen, config }
 }
 
-async function checkPackageDocs(navigation) {
-  let generated = []
-  try {
-    const manifest = JSON.parse(
-      await readFile(
-        path.join(DOCS_ROOT, 'packages', GENERATED_MANIFEST),
-        'utf8',
-      ),
-    )
-    generated = Array.isArray(manifest.files) ? manifest.files : []
-  } catch (error) {
-    problems.push(`${DOCS_LABEL}/packages/${GENERATED_MANIFEST}: ${error.message}`)
-  }
-
+async function checkPackageDocs() {
   for (const entry of DOCUMENTED_PACKAGES) {
     const manifestPath = path.join(ROOT, entry.dir, 'package.json')
     let manifest
@@ -439,21 +452,54 @@ async function checkPackageDocs(navigation) {
         problems.push(`${relative(file)}: missing frontmatter description`)
       }
     }
+  }
+}
 
-    for (const file of generated.filter((item) => item.startsWith(`packages/${entry.slug}/`))) {
-      const generatedPath = path.join(DOCS_ROOT, file)
-      if (!(await fileInfo(generatedPath))) {
-        problems.push(`${file}: generated file is missing`)
+async function checkPublicSiteUrls(navigation) {
+  const known = new Set([''])
+  const targets = new Map()
+  const root = await resolveTarget(DOCS_ROOT)
+  if (root) targets.set('', root)
+  for (const page of navigation.pages) {
+    known.add(page)
+    const resolved = await resolveTarget(path.join(DOCS_ROOT, page))
+    if (resolved) targets.set(page, resolved)
+  }
+  for (const redirect of Array.isArray(navigation.config.redirects) ? navigation.config.redirects : []) {
+    const source = typeof redirect?.source === 'string' ? redirect.source : ''
+    if (source.startsWith('/') && !source.includes('*') && !/(^|\/):[^/]+/.test(source)) {
+      known.add(source.slice(1))
+    }
+  }
+  const pattern =
+    /https:\/\/stack-next\.mintlify\.site(?:\/([^\s)`"'<>?#]*))?(?:#([^\s)`"'<>?]*))?/g
+  for (const file of textFiles) {
+    const source = await readFile(file, 'utf8')
+    for (const match of source.matchAll(pattern)) {
+      const pathname = (match[1] ?? '').replace(/\/$/, '')
+      const fragment = match[2] ?? ''
+      if (
+        (pathname === '' && fragment === '') ||
+        pathname === 'llms.txt' ||
+        pathname === 'llms-full.txt' ||
+        pathname.endsWith('.md')
+      ) {
         continue
       }
-      const source = await readFile(generatedPath, 'utf8')
-      if (!source.includes(GENERATED_MARKER)) {
-        problems.push(`${file}: generated file is missing its banner`)
+      if (known.has(pathname)) {
+        // Redirect sources are valid, but their destination anchor is checked
+        // in checkMintlifyConfig. Only direct pages have a local target here.
+        const resolved = targets.get(pathname)
+        if (resolved) {
+          await checkAnchor(
+            resolved,
+            fragment,
+            `${relative(file)}: public documentation URL ${match[0]}`,
+          )
+        }
+        continue
       }
-      const page = file.replace(/\.md$/, '')
-      if (navigation && !navigation.seen.has(page)) {
-        problems.push(`${DOCS_LABEL}/docs.json: generated page is not in navigation: ${page}`)
-      }
+      problems.push(`${relative(file)}: public documentation URL does not resolve: ${match[0]}`)
     }
   }
 }
@@ -527,8 +573,9 @@ async function main() {
   for (const file of markdownFiles.sort()) await checkMarkdown(file)
 
   const navigation = await checkMintlifyConfig()
-  await checkPackageDocs(navigation)
+  await checkPackageDocs()
   await checkAgentPackageDocs()
+  if (navigation) await checkPublicSiteUrls(navigation)
 
   const rootManifest = JSON.parse(await readFile(path.join(ROOT, 'package.json'), 'utf8'))
   const scripts = new Set(Object.keys(rootManifest.scripts ?? {}))

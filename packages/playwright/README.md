@@ -55,7 +55,7 @@ directly does not capture or compare anything.
 - [Troubleshooting](docs/troubleshooting.md)
 
 The `docs/` directory ships in the npm archive. Public guides live on the
-[documentation site](https://github.com/marrrkkk/stacknext/tree/main/apps/docs).
+[documentation site](https://stack-next.mintlify.site).
 
 ## AI agents
 

@@ -5,13 +5,13 @@ is no commercial SLA.
 
 ## Read these first
 
-- [Installation](apps/docs/installation.md)
-- [Getting started](apps/docs/getting-started.md)
-- [Compatibility](apps/docs/compatibility.md)
-- [Troubleshooting](apps/docs/troubleshooting.md)
-- [Privacy and redaction](apps/docs/privacy.md)
-- [Limitations](apps/docs/limitations.md)
-- [Documentation index](apps/docs/index.md)
+- [Installation](apps/docs/installation.mdx)
+- [Quickstart](apps/docs/getting-started/quickstart.mdx)
+- [Compatibility](apps/docs/compatibility.mdx)
+- [Troubleshooting](apps/docs/troubleshooting.mdx)
+- [Privacy and redaction](apps/docs/privacy.mdx)
+- [Limitations](apps/docs/limitations.mdx)
+- [Documentation index](apps/docs/index.mdx)
 
 Run `npx stacknext doctor --json` before asking for help. It checks the runtime
 state, collector, instrumentation, config and versions.
@@ -54,7 +54,7 @@ private vulnerability reporting.
 ## Supported versions
 
 Security fixes target the latest 0.10.x release. Older versions and unpublished
-source snapshots are not supported. See the [compatibility matrix](apps/docs/compatibility.md)
+source snapshots are not supported. See the [compatibility matrix](apps/docs/compatibility.mdx)
 for runtime support.
 
 ## What maintainers cannot help with

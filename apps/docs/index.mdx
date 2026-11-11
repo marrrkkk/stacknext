@@ -1,0 +1,55 @@
+---
+title: Introduction
+description: StackNext is a local-first debugging center for Next.js App Router apps, with deterministic diagnostics and Playwright regression evidence.
+---
+
+# StackNext documentation
+
+StackNext shows you what your Next.js app actually did at runtime. It collects
+OpenTelemetry spans, Drizzle and Prisma query events and request errors from your
+development server, keeps them in a bounded local sample, and exposes that
+evidence in a dashboard, a CLI and a read-only MCP server.
+
+It also derives deterministic diagnostic findings from the same sample, freezes
+redacted snapshots, and compares Playwright-linked captures against saved
+baselines. Everything runs on your machine: there is no account, hosted backend,
+AI API client or outbound telemetry.
+
+## Start here
+
+| I want to | Read |
+| --- | --- |
+| Install StackNext in my app | [Installation](/installation) |
+| See a first request in the dashboard | [Quickstart](/getting-started/quickstart) |
+| Configure ports, retention and diagnostics | [Configuration](/reference/configuration) |
+| Investigate an error or slow request | [Runtime evidence](/guides/runtime-evidence) |
+| Understand the diagnostic findings | [Diagnostics](/guides/diagnostics) |
+| Save or share a frozen sample | [Snapshots](/guides/snapshots) |
+| Compare a Playwright flow with a baseline | [Regression testing](/regression-testing) |
+| Use StackNext from an AI coding agent | [AI agents](/ai-agents) |
+| Look up a command or field | [Reference](/cli/commands) |
+
+## Install
+
+```bash
+npm install --save-dev @stacknext/cli @stacknext/next
+npx stacknext init
+npx stacknext dev
+```
+
+Open the dashboard URL printed at startup, usually
+`http://127.0.0.1:4400`, and make a request to your app. `init` never overwrites
+an existing instrumentation file; it prints the hook to add instead.
+
+## What StackNext is not
+
+StackNext is a development tool, not production APM. It supports Next.js 15 and
+16 with the App Router on the Node.js runtime only. It never captures request or
+response bodies, headers, cookies, URL query values or SQL bind parameters, and
+it does not run SQL, edit source code or call an AI provider. See
+[limitations](/limitations) and [privacy](/privacy) for the full boundary.
+
+The npm packages also ship their own version-matched documentation. When you are
+writing code against an installed API, read
+`node_modules/@stacknext/<package>/docs/` first. See
+[local documentation](/ai-agents/local-docs).
