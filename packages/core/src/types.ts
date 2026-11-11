@@ -6,7 +6,7 @@ import type {
 } from './diagnostics.js'
 
 export const STACKNEXT_SCHEMA_VERSION = 1
-export const STACKNEXT_SDK_VERSION = '0.11.1'
+export const STACKNEXT_SDK_VERSION = '0.12.0'
 
 export const SPAN_KINDS = ['internal', 'server', 'client', 'producer', 'consumer'] as const
 export type StackNextSpanKind = (typeof SPAN_KINDS)[number]

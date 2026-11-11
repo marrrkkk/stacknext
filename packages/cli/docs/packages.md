@@ -17,16 +17,16 @@ directory to confirm the installed version.
 
 | Package | Version | Visibility | Role | Documentation |
 | --- | --- | --- | --- | --- |
-| `@stacknext/cli` | 0.11.1 | public | CLI, collector and dashboard host | `index.md` |
-| `@stacknext/next` | 0.11.1 | public | Next.js instrumentation | `../../next/docs/index.md` |
-| `@stacknext/core` | 0.11.1 | internal | Shared base package | `../../core/docs/index.md` |
-| `@stacknext/diagnostics` | 0.11.1 | internal | Diagnostic engine | `@stacknext/diagnostics/docs/index.md (resolve from CLI)` |
-| `@stacknext/regression` | 0.11.1 | internal | Regression data model | `../../regression/docs/index.md` |
-| `@stacknext/playwright` | 0.11.1 | public | Playwright fixture | `../../playwright/docs/index.md` |
-| `@stacknext/drizzle` | 0.11.1 | public | Database adapter | `../../drizzle/docs/index.md` |
-| `@stacknext/prisma` | 0.11.1 | public | Database adapter | `../../prisma/docs/index.md` |
-| `@stacknext/mcp` | 0.11.1 | internal | Read-only MCP server | `@stacknext/mcp/docs/index.md (resolve from CLI)` |
-| `@stacknext/dashboard` | 0.11.1 | internal | Static dashboard | `@stacknext/dashboard/docs/index.md (resolve from CLI)` |
+| `@stacknext/cli` | 0.12.0 | public | CLI, collector and dashboard host | `index.md` |
+| `@stacknext/next` | 0.12.0 | public | Next.js instrumentation | `../../next/docs/index.md` |
+| `@stacknext/core` | 0.12.0 | internal | Shared base package | `../../core/docs/index.md` |
+| `@stacknext/diagnostics` | 0.12.0 | internal | Diagnostic engine | `@stacknext/diagnostics/docs/index.md (resolve from CLI)` |
+| `@stacknext/regression` | 0.12.0 | internal | Regression data model | `../../regression/docs/index.md` |
+| `@stacknext/playwright` | 0.12.0 | public | Playwright fixture | `../../playwright/docs/index.md` |
+| `@stacknext/drizzle` | 0.12.0 | public | Database adapter | `../../drizzle/docs/index.md` |
+| `@stacknext/prisma` | 0.12.0 | public | Database adapter | `../../prisma/docs/index.md` |
+| `@stacknext/mcp` | 0.12.0 | internal | Read-only MCP server | `@stacknext/mcp/docs/index.md (resolve from CLI)` |
+| `@stacknext/dashboard` | 0.12.0 | internal | Static dashboard | `@stacknext/dashboard/docs/index.md (resolve from CLI)` |
 
 ## How to use this index
 
