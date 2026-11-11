@@ -34,9 +34,12 @@ export const db = drizzle(client, {
 })
 ```
 
+<Warning>
 Drizzle's logger does not expose duration. Queries appear with
-`durationMs: null`; do not rank or average them as if they were fast. Bind
-parameters are counted but never read or sent.
+`durationMs: null`; never rank or average them as if they were fast, and never
+compare them with Prisma durations as if both were measured. Bind parameters are
+counted but never read or sent.
+</Warning>
 
 Set `database.drizzle` to `true` in `stacknext.config.json` so `init`, `doctor`
 and coverage can describe the intended setup. The flag does not register the
@@ -84,6 +87,18 @@ pnpm exec stacknext coverage
 `not-observed` means the current sample has no query evidence, not necessarily
 that the adapter is broken. A working app with no database traffic in the
 retention window also reports no queries.
+
+<img
+  src="/screenshots/database.png"
+  alt="Database view listing redacted SQL shapes with ORM, operation, duration and trace correlation"
+  className="sn-shot sn-shot-light"
+/>
+<img
+  src="/screenshots/database-dark.png"
+  alt=""
+  aria-hidden="true"
+  className="sn-shot sn-shot-dark"
+/>
 
 ## Limits
 

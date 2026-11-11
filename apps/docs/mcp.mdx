@@ -29,8 +29,11 @@ can also supply them explicitly:
 stacknext mcp --collector http://127.0.0.1:4400 --token <token>
 ```
 
+<Note>
 stdout is reserved for MCP protocol messages; diagnostic logging is written to
-stderr. The collector must be running before the client starts the server.
+stderr. The collector must be running before the client starts the server, and
+non-loopback collector URLs are refused.
+</Note>
 
 ## Client configuration
 

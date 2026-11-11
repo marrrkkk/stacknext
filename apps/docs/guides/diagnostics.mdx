@@ -25,6 +25,25 @@ These are conservative heuristics. They do not prove an ORM bug, a causal
 bottleneck, a retry policy problem or a shared error cause. Read the evidence,
 verification steps and limitations on each finding.
 
+<Warning>
+A finding is evidence, never a confirmed root cause. `possible` means the pattern
+is consistent with a problem, `observed` means the evidence was measured
+directly, and neither one is a diagnosis you can act on without verifying it in
+the trace.
+</Warning>
+
+<img
+  src="/screenshots/diagnostics.png"
+  alt="Diagnostics findings view listing error and warning findings with route, rule, status and evidence"
+  className="sn-shot sn-shot-light"
+/>
+<img
+  src="/screenshots/diagnostics-dark.png"
+  alt=""
+  aria-hidden="true"
+  className="sn-shot sn-shot-dark"
+/>
+
 ## Read a finding
 
 A finding contains:
@@ -44,8 +63,10 @@ Statuses mean:
 - `observed` — the evidence was measured directly.
 - `insufficient-evidence` — the sample cannot support a conclusion.
 
+<Info>
 Severity is separate from status. A high-severity finding still needs
-verification. A capped report (`maxFindings`) is not a complete inventory.
+verification, and a capped report (`maxFindings`) is not a complete inventory.
+</Info>
 
 ## CLI
 

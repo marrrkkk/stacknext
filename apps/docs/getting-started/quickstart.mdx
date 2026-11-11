@@ -40,6 +40,12 @@ pnpm exec stacknext dev
 `.stacknext/run.json` with a short-lived bearer token. Open the printed
 dashboard URL, usually `http://127.0.0.1:4400`, and make a request to the app.
 
+<Info>
+The collector binds to loopback, so the dashboard is reachable from your machine
+and nowhere else. The in-memory sample stays empty until the app handles a
+request.
+</Info>
+
 ## 4. Verify
 
 ```bash
@@ -51,6 +57,18 @@ pnpm exec stacknext coverage
 The Overview page should show requests, and coverage should report what the
 sample observed. `not-observed` and `unknown` are valid evidence states, not
 errors.
+
+<img
+  src="/screenshots/overview.png"
+  alt="StackNext Overview after a first request: request and error counts, p95 latency, recent request latency and diagnostic findings"
+  className="sn-shot sn-shot-light"
+/>
+<img
+  src="/screenshots/overview-dark.png"
+  alt=""
+  aria-hidden="true"
+  className="sn-shot sn-shot-dark"
+/>
 
 ## 5. Inspect the sample
 

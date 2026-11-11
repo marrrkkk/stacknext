@@ -29,6 +29,18 @@ Nothing is uploaded, and no model, hosted API, screenshot, video or Playwright
 trace archive is involved. Records stay under the project's `.stacknext/`
 directory.
 
+<img
+  src="/screenshots/runs.png"
+  alt="Test runs view listing capture runs with status, scenario, sample and duration counts"
+  className="sn-shot sn-shot-light"
+/>
+<img
+  src="/screenshots/runs-dark.png"
+  alt=""
+  aria-hidden="true"
+  className="sn-shot sn-shot-dark"
+/>
+
 ## Requirements
 
 - Next.js 15 or 16 App Router on the Node.js runtime, with StackNext
@@ -222,6 +234,18 @@ The list is sorted by creation time, newest first. It reports the source run,
 scenario and sample counts, and the recorded environment. The dashboard exposes
 the same records at `/baselines` and `/baselines/:id`.
 
+<img
+  src="/screenshots/baselines.png"
+  alt="Baselines view listing immutable reference snapshots with their source runs, scenario and sample counts"
+  className="sn-shot sn-shot-light"
+/>
+<img
+  src="/screenshots/baselines-dark.png"
+  alt=""
+  aria-hidden="true"
+  className="sn-shot sn-shot-dark"
+/>
+
 ### Lifecycle and retention
 
 - **Baselines are not pruned.** There is no retention timer and no automatic
@@ -266,6 +290,18 @@ a developer's local `.stacknext` directory being present on the runner.
 A comparison consumes a saved baseline and a candidate run and produces a
 deterministic report. It never changes either input.
 
+<img
+  src="/screenshots/comparisons.png"
+  alt="Comparisons view listing report-only results with status, severity, regressed, unchanged and inconclusive counts"
+  className="sn-shot sn-shot-light"
+/>
+<img
+  src="/screenshots/comparisons-dark.png"
+  alt=""
+  aria-hidden="true"
+  className="sn-shot sn-shot-dark"
+/>
+
 ### Inputs and matching
 
 Scenarios match by stable scenario id. Traces, spans, queries and findings match
@@ -309,8 +345,10 @@ durations remain unmeasured: a duration metric with null evidence is
 | `unchanged` | No metric crossed a regression or improvement threshold and no blocking evidence |
 | `inconclusive` | Environment mismatch, insufficient samples, missing scenario, unverified correlation, failed candidate or structural change prevents a verdict |
 
+<Warning>
 Severity is reported separately as `high`, `medium`, `low` or `none` and does
 not change the status. An `inconclusive` result is not a pass.
+</Warning>
 
 ### What comparisons do not claim
 

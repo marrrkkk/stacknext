@@ -161,9 +161,11 @@ The collector then:
 5. Marks the sample `incomplete` if any submitted trace is missing or fails the
    parent check.
 
+<Warning>
 A matching trace id alone is not accepted. There is no time-window guess, no
 "nearest request" fallback and no synthetic sample. A trace with no server span
 parented to the injected span is incomplete, not verified.
+</Warning>
 
 A document request made by the test is always submitted, even when its trace is
 missing, so missing document telemetry makes the sample incomplete. Optional

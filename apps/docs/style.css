@@ -28,6 +28,36 @@ html.dark {
 }
 
 /*
+ * Product screenshots. Mintlify emits one <img> per theme, so the pair swaps
+ * with the same `dark` class the theme toggle sets on <html>.
+ */
+.sn-shot {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 1rem 0 1.25rem;
+  border: 1px solid #e4e4e9;
+  border-radius: 0.75rem;
+  background: #ffffff;
+}
+
+.sn-shot-dark {
+  display: none;
+}
+
+html.dark .sn-shot {
+  border-color: #2b2b32;
+}
+
+html.dark .sn-shot-light {
+  display: none;
+}
+
+html.dark .sn-shot-dark {
+  display: block;
+}
+
+/*
  * Data-flow figure on /overview/what-is-stacknext. Built from HTML cards rather
  * than one inline SVG because the docs pipeline only preserves svg, g, rect and
  * path elements, so SVG text and markers are dropped.

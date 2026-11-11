@@ -30,8 +30,10 @@ error, with a 60-second cooldown. Automatic behavior is configured under
 }
 ```
 
+<Info>
 Manual and imported snapshots are never auto-deleted. Automatic exit/error
 snapshots rotate beyond `autoKeep`. Oversized saves fail instead of truncating.
+</Info>
 
 ## Inspect
 
@@ -43,6 +45,18 @@ pnpm exec stacknext snapshot show <snapshot-id>
 The dashboard `/snapshots` page shows the sample window, counts, traces, errors
 and queries. If the snapshot was saved before a change, say so when reporting
 evidence.
+
+<img
+  src="/screenshots/snapshots.png"
+  alt="Snapshots view listing saved samples with source, capture window, request, span, error and query counts"
+  className="sn-shot sn-shot-light"
+/>
+<img
+  src="/screenshots/snapshots-dark.png"
+  alt=""
+  aria-hidden="true"
+  className="sn-shot sn-shot-dark"
+/>
 
 ## Export and import
 

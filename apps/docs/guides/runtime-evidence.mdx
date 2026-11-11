@@ -34,6 +34,18 @@ sample observed. In an MCP client, call `get_project_summary` first. Check
 | `/snapshots` | Frozen samples saved under `.stacknext/snapshots` |
 | `/runs`, `/baselines`, `/comparisons` | Playwright-linked regression records |
 
+<img
+  src="/screenshots/requests.png"
+  alt="HTTP requests view listing routes with status, duration, error and database query counts"
+  className="sn-shot sn-shot-light"
+/>
+<img
+  src="/screenshots/requests-dark.png"
+  alt=""
+  aria-hidden="true"
+  className="sn-shot sn-shot-dark"
+/>
+
 ## Investigate an error
 
 1. Open **Errors** or call `list_errors` with a route, name or query filter.
@@ -49,6 +61,18 @@ An error grouped by fingerprint shares a normalized signature, not necessarily
 a cause. A missing trace link means the correlation is approximate or absent;
 it is not proof that the error happened outside a request.
 
+<img
+  src="/screenshots/errors.png"
+  alt="Server errors view grouping one error by fingerprint with its route and correlated trace id"
+  className="sn-shot sn-shot-light"
+/>
+<img
+  src="/screenshots/errors-dark.png"
+  alt=""
+  aria-hidden="true"
+  className="sn-shot sn-shot-dark"
+/>
+
 ## Investigate a slow request
 
 1. Use **Requests** sorted by duration, `find_slow_requests`, or
@@ -60,7 +84,22 @@ it is not proof that the error happened outside a request.
    suppressed when the whole request is already reported.
 5. Test whether the pattern is isolated by filtering the same route or method.
 
-A parent span includes its children. Do not add parent and child durations.
+<Warning>
+A parent span includes its children. Never add parent and child durations
+ together, and treat a `null` Drizzle duration as unmeasured, not zero.
+</Warning>
+
+<img
+  src="/screenshots/request-detail.png"
+  alt="Trace detail for a slow route showing the span waterfall, the selected span and its attributes"
+  className="sn-shot sn-shot-light"
+/>
+<img
+  src="/screenshots/request-detail-dark.png"
+  alt=""
+  aria-hidden="true"
+  className="sn-shot sn-shot-dark"
+/>
 
 ## Inspect a trace
 
@@ -70,6 +109,18 @@ unrelated. Use exact span ids when describing a link.
 
 Unknown or verbose-only span types are retained and labelled rather than mapped
 to a guessed feature. See [instrumentation coverage](/instrumentation-coverage).
+
+<img
+  src="/screenshots/traces.png"
+  alt="Traces view listing captured traces with status, service, duration, error and span counts"
+  className="sn-shot sn-shot-light"
+/>
+<img
+  src="/screenshots/traces-dark.png"
+  alt=""
+  aria-hidden="true"
+  className="sn-shot sn-shot-dark"
+/>
 
 ## Use the CLI
 
