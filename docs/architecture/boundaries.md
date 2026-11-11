@@ -144,4 +144,4 @@ custom-span attributes do not leak `action-attribute-secret`,
 - [Architecture overview](overview.md)
 - [Package architecture](packages.md)
 - [Public core concepts](../../apps/docs/overview/core-concepts.mdx)
-- [Privacy and security rules](../../AGENTS.md#privacy-and-security-rules)
+- [Privacy and security rules](../../AGENTS.md#privacy-and-security)

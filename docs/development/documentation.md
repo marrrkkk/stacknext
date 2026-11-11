@@ -140,7 +140,10 @@ installed docs take precedence for API details.
 The managed `AGENTS.md` block, the Agent Skill and the MCP server are updated
 alongside the package docs. Keep the skill procedural and point it at package
 references instead of copying API tables. The root repository `AGENTS.md`
-documents contributor rules, not consumer APIs.
+documents contributor rules, not consumer APIs. It is a short router, not a
+second copy of this knowledge base: put durable process detail in `docs/` and
+link it from `AGENTS.md`. Update `AGENTS.md` only when the default workflow,
+commands, hard rules or commit/PR conventions change.
 
 `skills/stacknext-debugging` is canonical. It is copied into
 `packages/cli/skills/` at pack time by `scripts/sync-cli-skill.mjs`. Do not edit

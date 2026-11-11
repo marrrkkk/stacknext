@@ -47,6 +47,55 @@ it in [scripts and tooling](../tooling/scripts.md).
   practical), not mocks of the code under test.
 - No generated build output, logs, local databases or runtime state in commits.
 
+## Commit messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) for every
+commit and pull request title:
+
+```text
+<type>(<scope>)!: <imperative summary>
+```
+
+- Allowed types: `feat`, `fix`, `perf`, `revert`, `docs`, `test`, `chore`,
+  `ci`, `build` and `refactor`.
+- Scope is optional but preferred. Use a package or area, for example `cli`,
+  `core`, `dashboard`, `docs`, `release` or `www`.
+- Use the imperative mood, lowercase after the colon, no trailing period and a
+  subject of 72 characters or fewer.
+- Mark incompatible changes with `!` before the colon or a
+  `BREAKING CHANGE:` footer.
+- The release planner reads the first line. `feat` requests a minor bump;
+  `fix`, `perf` and `revert` request a patch; the other types do not release on
+  their own. `Release-As: x.y.z` forces an exact version. See the
+  [release process](../deployment/release-process.md#bump-rules).
+
+Examples:
+
+```text
+feat(cli): add snapshot export command
+fix(core): keep redacted query values out of exports
+docs(agents): point contributors at the testing matrix
+chore(release): 0.13.0
+```
+
+## Pull requests
+
+`main` uses squash merge, so the pull request title becomes the commit the
+release planner reads. Make the title a valid Conventional Commit even when the
+branch commits are not.
+
+- Keep the diff focused. Do not mix a refactor with a behavior change unless
+  the refactor is required for the behavior.
+- Fill [the pull request template](../../.github/pull_request_template.md) and
+  keep every section accurate.
+- List the exact commands and results. Do not write "tests pass" without naming
+  the suite. State which checks could not run and why.
+- Include tests for new behavior and regression tests for fixes.
+- Link the issue when one exists and call out breaking, privacy, compatibility
+  and release implications.
+- Do not include generated output, logs, local databases, tokens or captured
+  data.
+
 ## API and schema changes
 
 - Wire types and validation live in `packages/core/src/schema.ts`.
@@ -56,6 +105,24 @@ it in [scripts and tooling](../tooling/scripts.md).
   Add metadata rather than renaming or removing fields.
 - A captured field is not complete until both redaction layers and the privacy
   docs are updated.
+
+## Compatibility surfaces
+
+These are consumed by users, clients or saved records. Change them additively
+unless a major version is explicitly planned:
+
+- CLI command names, flags, JSON shapes and exit codes.
+- MCP tool names, argument schemas and read-only annotations. Response metadata
+  and output fields may be added.
+- Documented package entry points and TypeScript declarations.
+  `@stacknext/core` has subpath exports for transport, config-file and
+  snapshots.
+- Wire and storage formats. Bump the format or engine version when a schema
+  changes; keep old records readable or report them as invalid.
+- `stacknext.config.json` fields. Add optional fields with defaults; do not
+  reinterpret existing values.
+- Public documentation URLs. Add a redirect in `apps/docs/docs.json` when a
+  page moves.
 
 ## Package metadata
 

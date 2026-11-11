@@ -145,8 +145,8 @@ Add or update tests for:
 - Windows process cleanup when changing `stacknext dev` or `uninstall`.
 
 Before opening a pull request, run the full verification sequence from
-[AGENTS.md](AGENTS.md#verification-workflow). If a check cannot run on your
-machine, say which one and why in the pull request.
+[AGENTS.md](AGENTS.md#verification). If a check cannot run on your machine, say
+which one and why in the pull request.
 
 ## Documentation
 
@@ -170,7 +170,30 @@ machine, say which one and why in the pull request.
 - See [documentation architecture](docs/development/documentation.md) for the
   full source-of-truth and validation rules.
 
+## Commit messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) for commits
+and pull request titles:
+
+```text
+<type>(<scope>): <imperative summary>
+```
+
+`feat` adds a user-visible capability and requests a minor release; `fix`,
+`perf` and `revert` request a patch. `docs`, `test`, `chore`, `ci`, `build` and
+`refactor` do not release on their own. Mark breaking changes with `!` or a
+`BREAKING CHANGE:` footer. Keep the subject imperative, lowercase after the
+colon, without a trailing period, and at most 72 characters. Scopes are
+optional but preferred, for example `cli`, `core`, `dashboard`, `docs`,
+`release` or `www`.
+
+See [repository conventions](docs/development/repository-conventions.md#commit-messages)
+for examples and the full rules.
+
 ## Pull requests
+
+`main` uses squash merge, so the pull request title becomes the commit on
+`main` and drives release planning. Make it a valid Conventional Commit.
 
 A good pull request:
 
@@ -181,8 +204,10 @@ A good pull request:
 - documents privacy, compatibility or release implications;
 - does not include generated `dist`, `.next`, `.stacknext` or `release` output.
 
-Use the pull request template. Maintainers may ask for a narrower diff, a real
-reproduction or additional evidence before merging.
+Use [the pull request template](.github/pull_request_template.md) and fill
+every section. State which checks could not run and why. Maintainers may ask
+for a narrower diff, a real reproduction or additional evidence before
+merging.
 
 ## Versioning and releases
 

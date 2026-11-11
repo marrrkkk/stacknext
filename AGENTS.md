@@ -1,355 +1,196 @@
 # AGENTS.md
 
-Repository conventions and invariants for StackNext contributors and coding
-agents. Read [docs/architecture/overview.md](docs/architecture/overview.md) and
-[docs/architecture/boundaries.md](docs/architecture/boundaries.md) before
-changing package boundaries or captured data.
-
-## What this is
-
 StackNext is an MIT-licensed, local-first debugging center for Next.js App
-Router apps. It collects OpenTelemetry spans plus Drizzle/Prisma query events
-and Next.js errors over loopback, stores them in memory, and exposes a
-dashboard, CLI and read-only MCP server. It also derives deterministic,
-evidence-backed diagnostic findings from the same sample, freezes samples into
-redacted local snapshots, and compares Playwright-linked runtime captures
-against saved baselines stored under `.stacknext`. There is no cloud service,
-account, AI API client or outbound telemetry.
+Router apps. It collects OpenTelemetry spans, Drizzle/Prisma query events and
+Next.js errors over loopback, stores them in memory, and exposes a dashboard,
+CLI and read-only MCP server. It also derives deterministic diagnostics,
+freezes redacted snapshots and compares Playwright captures against baselines
+under `.stacknext`. There is no cloud service, account, AI API client or
+outbound telemetry.
+
+This file is the working contract for coding agents. It stays short on purpose:
+the detail lives in `docs/`. Package-specific rules live in the nearest
+`AGENTS.md` under `packages/` or `apps/`; `apps/docs/` is the public product
+guide and `docs/` is the contributor knowledge base. Read the linked page before
+changing that area.
+
+## Read first
+
+| Area | Canonical page |
+| --- | --- |
+| Architecture, data flow and where to change what | [docs/architecture/overview.md](docs/architecture/overview.md) |
+| Invariants and review boundaries | [docs/architecture/boundaries.md](docs/architecture/boundaries.md) |
+| Package graph and build topology | [docs/architecture/packages.md](docs/architecture/packages.md) |
+| Conventions, compatibility, commits and pull requests | [docs/development/repository-conventions.md](docs/development/repository-conventions.md) |
+| Test layers, selection and redaction checks | [docs/testing/testing-strategy.md](docs/testing/testing-strategy.md) |
+| Documentation surfaces and generated files | [docs/development/documentation.md](docs/development/documentation.md) |
+| Release and versioning | [docs/deployment/release-process.md](docs/deployment/release-process.md) |
+
+If a change crosses a boundary or touches captured data, stop and read the
+linked page first.
 
 ## Commands
 
-Run from the repository root:
+Run from the repository root. `pnpm build` is required before e2e and
+benchmarks.
 
 ```bash
 pnpm install
-pnpm exec playwright install chromium # required for captured Playwright scenarios
-pnpm build          # topological build; required before e2e/benchmark
-pnpm lint           # eslint over the whole repo
-pnpm typecheck      # per-package tsc --noEmit against source paths
-pnpm test           # vitest unit/integration tests
-pnpm test:e2e       # real CLI + collector + example app + dashboard + MCP + regression flow
-pnpm benchmark      # synthetic ingest and read API benchmark
-pnpm benchmark:diagnostics # synthetic findings + diagnostics read benchmark
-pnpm benchmark:verbose # real-app verbose-tracing overhead comparison
-pnpm docs:sync      # regenerate the installed CLI package-docs index
-pnpm docs:check     # generated docs + website changelog + links + navigation
-pnpm changelog:sync # regenerate website changelog data from CHANGELOG.md
-pnpm changelog:check # fail when the generated website changelog is stale
-pnpm docs:dev       # local Mintlify preview from apps/docs/
+pnpm exec playwright install chromium
+pnpm build
 ```
 
 Useful scoped commands:
 
 ```bash
 pnpm --filter @stacknext/core build
-pnpm --filter @stacknext/regression build
-pnpm --filter @stacknext/playwright build
-pnpm --filter @stacknext/cli build
 pnpm --filter @stacknext/example dev
-pnpm exec stacknext dev --open       # from an app directory after build
 pnpm exec stacknext doctor
-pnpm exec stacknext coverage [--json]
-pnpm exec stacknext diagnose [--json]
-pnpm exec stacknext snapshot save [--label <text>] [--json]
-pnpm exec stacknext snapshot list [--json]
-pnpm exec stacknext snapshot show <snapshot-id> [--json]
-pnpm exec stacknext snapshot export <snapshot-id> [-o <file> | --stdout]
-pnpm exec stacknext snapshot import <file> [--label <text>] [--json]
-pnpm exec stacknext snapshot delete <snapshot-id> --yes [--json]
-pnpm exec stacknext capture --name <name> -- pnpm exec playwright test --workers=1
-pnpm exec stacknext runs list
-pnpm exec stacknext baseline list
-pnpm exec stacknext compare <baseline-id> <candidate-run-id>
 ```
 
-The example app listens on `http://127.0.0.1:4402`; the collector/dashboard
-uses `http://127.0.0.1:4400` by default. `stacknext dev` writes
-`<app>/.stacknext/run.json` and cleans it up on exit.
+The example app runs on port 4402; the collector and dashboard use 4400.
+`stacknext dev` writes and removes `<app>/.stacknext/run.json`. See
+[README.md](README.md), [CONTRIBUTING.md](CONTRIBUTING.md) and
+[docs/tooling/scripts.md](docs/tooling/scripts.md) for the full reference.
 
-## Repository layout
+## Hard rules
 
-| Path | Responsibility |
-| --- | --- |
-| `packages/core` | Wire types, Zod schemas, redaction, normalization, config, bounded store, async transport, diagnostic wire types, snapshot storage. |
-| `packages/diagnostics` | Deterministic fingerprinting, six diagnostic rules, report filtering, overview and detail evidence. |
-| `packages/regression` | Capture/run/baseline/comparison schemas, stable scenario and trace identities, environment snapshots, deterministic comparison, private atomic storage. |
-| `packages/playwright` | Optional Playwright fixture, W3C trace-context propagation, trace probing, correlation submission. |
-| `packages/next` | `instrumentation.ts` registration, OTel provider/exporter, error hook, manual span helpers. |
-| `packages/drizzle` | Drizzle `Logger` adapter. |
-| `packages/prisma` | Prisma `$on('query')` adapter. |
-| `packages/cli` | `stacknext` binary, collector HTTP server, regression and snapshot commands, dashboard hosting. |
-| `packages/dashboard` | React/Vite static dashboard, including run/baseline/comparison and snapshot views. |
-| `packages/mcp` | Read-only stdio MCP server, output schemas, prompts, telemetry, regression and snapshot metadata. |
-| `skills/stacknext-debugging` | Portable Agent Skill with tool reference and evidence-first workflows. |
-| `apps/example` | StackNext Example demo with Drizzle/better-sqlite3, slow, error, N+1, slow-DB and repeated-fetch routes plus annotated Playwright scenarios. |
-| `apps/www` | Private marketing website: landing page plus privacy, license, limitations and generated changelog pages. Not published. |
-| `apps/docs` | Public Mintlify documentation site (hand-authored product guide). |
-| `docs` | Contributor and engineering knowledge base. Not deployed. |
-| `scripts/` | Real e2e, benchmark, docs, changelog and release tooling. |
+[Architecture boundaries](docs/architecture/boundaries.md) is the full contract.
+These are review gates, not suggestions.
 
-## Documentation map
+- **Local-only, native runtime.** Bind to `127.0.0.1`/`localhost` and reject
+  other hosts. Ingest requires the bearer token; reads accept the token or
+  session cookie. Keep Host/Origin/`Sec-Fetch-Site` checks, CSP and security
+  headers. The collector and dashboard run in the `stacknext dev` Node process;
+  no managed container runtime, `runtime.mode` or `--docker`/`--native`. No
+  remote transport, cloud service or outbound telemetry.
+- **Validated, bounded and redacted.** Zod-validate ingest envelopes, cap
+  bodies and counts, and keep store limits and drop counters. Never block a
+  request on network I/O. Redact in the app before enqueueing and again in the
+  collector. Never capture bodies, headers, cookies, URL query values or
+  fragments, SQL bind parameters, Playwright artifacts or machine/user
+  identifiers. A new captured field needs both layers, privacy docs and
+  secret-leak tests.
+- **Evidence, not guesses.** Coverage has no composite score; `not-observed`
+  and `unknown` do not prove breakage. Diagnostics are deterministic, bounded
+  and never confirmed root causes. A regression sample is verified only by the
+  injected trace id plus a server span parented to the injected span id; there
+  is no time-window fallback. Ambiguous correlation becomes `incomplete` and
+  forces `inconclusive`; comparisons are deterministic, report-only and gate
+  only through `--fail-on`. No LLM provider, source edits, SQL/EXPLAIN, index
+  advice or alerting.
+- **Immutable local storage.** Runs, baselines, comparisons and snapshots live
+  under `.stacknext` with `0700`/`0600`, atomic writes and explicit caps. Never
+  auto-delete manual records, upload them or overwrite a record without an
+  explicit request. Snapshots are frozen, redacted copies, not replays.
+- **Read-only MCP.** All tools stay `readOnlyHint: true`; the client only GETs
+  loopback URLs; stdout is protocol-only. Keep tool names, arguments and
+  annotations stable; response metadata is additive.
+- **Optional, sequential Playwright.** `@stacknext/playwright` is inert outside
+  an active capture run. Captured runs use one worker and the explicit
+  `stacknext.scenario` annotation for identity.
+- **Support only the documented surface.** Next.js 15/16 App Router on the
+  Node.js runtime. Do not patch undocumented internals or claim Edge/production
+  support. Keep the span allowlist aligned with supported versions;
+  `NEXT_OTEL_VERBOSE=1` is the only verbose switch. Preserve `instrumentation.ts`,
+  middleware, proxy and `next.config`. `registerStackNext()` yields to an
+  existing OpenTelemetry provider; manual helpers must not create a second SDK.
+- **Additive compatibility.** CLI names/flags/JSON/exit codes, MCP tools,
+  package exports, wire/storage formats, config fields and public URLs are
+  consumed surfaces. Change them additively or bump the format/engine version;
+  keep old records readable or report them invalid.
+- **Docs are distributed; generated files are read-only.** Package reference is
+  canonical in `packages/<package>/docs/`, ships in the archive and is listed in
+  `DOCUMENTED_PACKAGES`; do not copy it into `apps/docs/`. The Agent Skill is
+  canonical in `skills/stacknext-debugging` and copied into the CLI archive at
+  pack time; only claim clients tested end to end in
+  [agent compatibility](docs/testing/agent-compatibility.md). Never hand-edit
+  `packages/cli/docs/packages.md`,
+  `apps/www/content/changelog.generated.ts`, `packages/cli/skills/` or build
+  output. Edit the canonical source and run the documented sync command.
 
-Documentation is part of the package distribution, not only a website.
+## Workflow
 
-- **Public site:** `apps/docs/`. Hand-authored product guides and concepts as
-  `.mdx`, written only for developers using StackNext. `apps/docs/docs.json`
-  owns navigation, redirects and `markdown.instructions`. Every navigation entry
-  must resolve. Contributor, build and internal architecture content belongs in
-  `docs/`, never on the public site.
-- **Engineering knowledge base:** `docs/`. Contributor setup, architecture,
-  testing, benchmarks, release and decisions. It is not deployed by Mintlify and
-  must not duplicate the public site. Start at [docs/README.md](docs/README.md).
-- **Package reference:** `packages/<package>/docs/`. Plain Markdown with `title`
-  and `description` frontmatter, relative links and no Mintlify-only components.
-  It ships in the npm archive and is the canonical API reference.
-- **Generated index:** `packages/cli/docs/packages.md` is generated by
-  `scripts/sync-docs.mjs` from `DOCUMENTED_PACKAGES`. Do not edit it; edit the
-  canonical file and run `pnpm docs:sync`. The public guide does not copy
-  package docs; it links to the version-matched files instead.
-- **AI-readable docs:** Mintlify generates `/llms.txt`, `/llms-full.txt` and
-  Markdown page variants. Do not commit manual copies. Keep
-  `markdown.instructions` accurate and see
-  `apps/docs/ai-agents/local-docs.mdx`.
-- **Changelog:** `CHANGELOG.md` is canonical.
-  `apps/www/content/changelog.generated.ts` is generated by
-  `scripts/sync-changelog.mjs` and verified by `pnpm changelog:check`. Never edit
-  the generated module by hand.
-- **Consumer agent instructions:** opt-in via `stacknext init --agents`, managed
-  between the `BEGIN/END STACKNEXT AGENT RULES` markers. The root `AGENTS.md` is
-  for contributors only and is never installed into consumers.
-- **Agent Skill:** `skills/stacknext-debugging` is canonical and follows the
-  Agent Skills specification. It is copied into the `@stacknext/cli` archive at
-  pack time and points at local `node_modules/@stacknext/*/docs`.
-- **Mintlify:** a documentation development/deployment concern. It is not a
-  runtime dependency and does not affect `stacknext dev`.
+1. Read this file, relevant docs and canonical package docs, then inspect the
+   code and tests. Do not invent commands, paths, APIs or compatibility claims.
+2. Make the smallest change that preserves the boundaries and the strict
+   TypeScript ESM style (`.js` relative imports; avoid `any`); do not mix a
+   refactor with a behavior change unless it is required.
+3. Add or update tests. Prefer real transport, collector or fixtures over mocks.
+4. Update canonical docs, navigation and `CHANGELOG.md` for user-visible
+   changes; run `pnpm docs:sync`/`changelog:sync` when inputs change.
+5. Run verification, record exact commands/results, and review `git diff` for
+   generated output, secrets, unrelated changes and stale links.
+6. Report what changed, what was verified, what could not run and remaining
+   manual configuration. Never claim a check passed without running it.
 
-## Dependency direction
+## Verification
 
-`core` is the base. `diagnostics`, `next`, `drizzle`, `prisma`, `mcp` and `cli`
-may depend on `core`; `regression` depends on `core` and `diagnostics`;
-`playwright` depends on `regression` and has `@playwright/test` as a peer; `cli`,
-`dashboard` and `mcp` may depend on `regression`. `cli` also depends on
-`dashboard`, `mcp` and `diagnostics`. Never import CLI, Next.js, React,
-Playwright or adapter code from `core`.
+Default gate for every change:
 
-## Architecture invariants
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm check:docs
+```
 
-- **Supported surface only.** Next.js 15/16 App Router, Node.js runtime. Do not
-  patch undocumented Next.js internals and do not claim Edge or production
-  support.
-- **Never overwrite `instrumentation.ts`.** `stacknext init` must preserve an
-  existing file and print manual instructions. `registerStackNext()` must yield
-  to an already-registered OpenTelemetry provider instead of replacing it.
-- **Local-only network.** Bind the collector to `127.0.0.1`/`localhost` and
-  reject other hosts. Ingestion requires the bearer token; read APIs/SSE accept
-  the bearer token or the dashboard session cookie. Keep Host/Origin/
-  `Sec-Fetch-Site` checks, CSP and security headers intact.
-- **Native-only runtime.** The collector and dashboard run as a Node process
-  started by the CLI. Do not add a managed container runtime, a `runtime.mode`
-  configuration field or `--docker`/`--native` peer flags. See
-  [ADR 0001](docs/decisions/0001-native-only-runtime.md).
-- **Validate at the boundary.** Every ingest envelope is Zod-validated, body
-  size is capped, and counts are bounded before entering the store.
-- **Bounded memory.** The store is in memory with capacity/retention limits and
-  drop counters. Instrumentation must never block a request on network I/O.
-- **Two-layer redaction.** Redact in the app process before enqueueing and again
-  in the collector before storing. A new field is not done until both layers and
-  the privacy docs are updated.
-- **Coverage is evidence, not a score.** Coverage statuses come from the current
-  store sample plus collector config/connection state. Never invent a composite
-  percentage or treat `not-observed`/`unknown` as proof that a feature is broken.
-  Keep the sample window and item limitations visible in CLI, dashboard and MCP.
-- **Diagnostics are deterministic evidence.** The six rules are conservative
-  heuristics over the current store sample. Keep finding ids deterministic,
-  evidence bounded and re-sanitized, and expose the same report through CLI,
-  dashboard, export, MCP and the Agent Skill. Never present `possible` or
-  `observed` as a confirmed root cause. No LLM/AI provider, source edits, SQL or
-  EXPLAIN execution, index advice, alerting or long-term anomaly detection.
-- **Regression evidence is proven, not guessed.** A Playwright sample is
-  verified only when the collector finds the injected trace id and a server span
-  parented to the injected span id. Never fall back to a time window, nearest
-  request or synthetic sample. Ambiguous correlation becomes `incomplete` and
-  forces the affected comparison to `inconclusive`.
-- **Regression comparisons are deterministic and report-only.** Match scenarios
-  by stable scenario id and traces/spans by normalized keys, never by ids or
-  timestamps. Use medians and explicit thresholds; never claim statistical
-  significance or causality. Report `improved`, `regressed`, `unchanged` or
-  `inconclusive` with severity separately. `--fail-on` is the only CI gate.
-- **Regression storage is local and immutable.** Write runs, baselines and
-  comparisons under `.stacknext/{runs,baselines,comparisons}` with strict
-  versioned schemas, `0700`/`0600` permissions, atomic writes and a 16 MiB cap.
-  Never auto-delete, never upload, and never overwrite an existing record
-  without an explicit overwrite request. Keep invalid ids and incomplete
-  records visible rather than repairing them.
-- **Snapshots are frozen, redacted evidence.** A snapshot is a versioned copy of
-  one sample under `.stacknext/snapshots`, never a replay into the live store.
-  Save manually, on graceful exit and on the first error with a 60-second
-  cooldown; rotate only automatic snapshots beyond `snapshots.autoKeep`
-  (default 10). Manual and imported snapshots are never auto-deleted. Write
-  atomically with `0700`/`0600` permissions, refuse implicit overwrite, cap each
-  snapshot at `snapshots.maxBytes` (default 64 MiB) and fail oversized saves
-  instead of truncating. Re-normalize and re-redact imports. Snapshot reads use
-  a detached store and carry no live diagnostics or coverage.
-- **Playwright stays optional and sequential.** `@stacknext/playwright` must be
-  inert outside an active capture run and must not replace Playwright or change
-  assertions. Use one worker for captured runs until parallel correlation is
-  explicitly verified. Prefer the explicit `stacknext.scenario` annotation for
-  identity; never use time windows to link browser and server activity.
-- **Documented Next.js telemetry only.** Keep the standard span allowlist in
-  `core/framework.ts` aligned with the supported Next.js versions. Preserve
-  documented `next.*` and HTTP attributes and parent ids; retain unknown span
-  types as verbose evidence instead of guessing. `NEXT_OTEL_VERBOSE=1` is the
-  only verbose switch; do not use `NEXT_PRIVATE_*` or patch internals.
-- **Manual helpers stay optional.** `withStackNextSpan`,
-  `withStackNextSpanSync` and `withStackNextAction` use the existing OTel
-  context/provider, preserve return values and errors, sanitize attributes, and
-  must not create a second SDK. Never claim automatic Server Component or
-  Server Action tracing.
-- **Package documentation is distributed.** A public package is not complete
-  until its `docs/` directory is present in the npm archive, listed in
-  `DOCUMENTED_PACKAGES`, and validated by `pnpm check:docs` and
-  `pnpm test:packages`. The public guide may link to the published package
-  reference but must not copy it into `apps/docs`. Never edit the generated
-  `packages/cli/docs/packages.md`.
-- **Read-only MCP.** All tools stay `readOnlyHint: true`; the API client only
-  performs GETs and refuses non-loopback URLs. stdout is protocol-only. Prompts
-  and the Agent Skill shape investigations but cannot add capabilities, mutate
-  data or bypass redaction. Keep tool names and arguments stable; response
-  metadata is additive. The six regression tools read runs, baselines and
-  comparisons only, and the three snapshot tools read snapshots only; they
-  cannot capture, save, compare, import, delete or edit.
-- **Portable skill.** `skills/stacknext-debugging` follows the Agent Skills
-  specification and is the canonical source. It is copied into the
-  `@stacknext/cli` archive at pack time and installed with `stacknext skill
-  install --client opencode|codex|claude-code`. Keep `SKILL.md` concise, put
-  details in `references/`, and do not claim a client is supported without a
-  real end-to-end test recorded in
-  [docs/testing/agent-compatibility.md](docs/testing/agent-compatibility.md).
+Add the checks that match the change: `pnpm test:e2e` after build for runtime,
+CLI, collector, dashboard, MCP, regression or snapshot changes;
+`pnpm test:packages` for package metadata, exports, docs or archives;
+`pnpm test:consumer --next 16.4.3 --pm npm --skip-build` for external installs;
+Mintlify `validate`/`broken-links` from `apps/docs/` for public docs; and the
+benchmarks for performance-sensitive runtime code. The full matrix is in
+[testing strategy](docs/testing/testing-strategy.md#test-selection).
 
-## API compatibility
+Before a baseline capture, warm `/`, `/projects/1` and `/api/n-plus-one`; use
+one Playwright worker and at least three samples. Captured-data changes must
+pass [redaction verification](docs/testing/testing-strategy.md#redaction-verification)
+and keep `demo-url-secret`, `super-secret-demo-token`, `hunter2`,
+`action-attribute-secret`, `custom-attribute-secret`, `custom-url-secret` and
+`e2e-url-secret` out of every output.
 
-These surfaces are consumed by users, clients or saved records. Change them
-additively unless a major version is explicitly planned.
+Runtime verification used Node.js 24 and Next.js 16.4.3; CI covers Node.js 22,
+24 and 26. Keep `engines` at Node `>=20.9.0` unless the support policy changes.
+Stop `stacknext dev` with SIGINT/SIGTERM so it removes `.stacknext/run.json`,
+then check for orphaned `next dev` processes on ports 4400-4425.
 
-- **CLI commands and flags:** keep documented names, JSON shapes and exit codes
-  stable. Add fields rather than renaming or removing them.
-- **MCP tools:** keep the twenty tool names, argument schemas and read-only
-  annotations stable. Response metadata and output fields may be added.
-- **Package exports:** keep the documented entry points and TypeScript
-  declarations compatible. `@stacknext/core` has subpath exports for transport,
-  config-file and snapshots.
-- **Wire and storage formats:** bump the format or engine version when a schema
-  changes. Keep old records readable or report them as invalid; never silently
-  repair or overwrite them.
-- **Config:** `stacknext.config.json` is Zod-validated. Add optional fields with
-  defaults; do not silently reinterpret existing values.
-- **Public docs:** keep URLs stable. Add a redirect in `apps/docs/docs.json` when
-  a public page moves.
+## Commits and pull requests
 
-## Privacy and security rules
+Use [Conventional Commits](https://www.conventionalcommits.org/) and squash
+merge. The pull request title becomes the commit on `main`, and the release
+planner parses it, so the title must be valid even when individual branch
+commits are not.
 
-Never capture, transmit or store:
+```text
+<type>(<scope>)!: <imperative summary>
+```
 
-- request/response bodies, headers or cookies;
-- URL query values or fragments;
-- SQL bind parameters;
-- Playwright screenshots, videos or trace archives;
-- machine/user identifiers.
+- Types: `feat`, `fix`, `perf`, `revert`, `docs`, `test`, `chore`, `ci`,
+  `build`, `refactor`.
+- Scope is optional but preferred (`cli`, `core`, `dashboard`, `docs`, `release`,
+  `www`). Use the imperative mood, lowercase after the colon, no trailing
+  period and a subject of 72 characters or fewer.
+- Add `!` or a `BREAKING CHANGE:` footer for incompatible changes. Release
+  impact: `feat` → minor; `fix`/`perf`/`revert` → patch; breaking → minor before
+  1.0.0 and major after; other types do not release. `Release-As: x.y.z` forces
+  a version.
 
-URLs keep path only. Sensitive keys become `[redacted]`. Error messages and
-stacks go through text redaction. Resource attributes use an allowlist. Capture
-records, baselines, comparisons and snapshots are redacted local files under
-`.stacknext`; they must never contain a token, raw body/header/query value, SQL
-bind parameter or Playwright artifact. If a change touches captured data, update
-`apps/docs/privacy.mdx`, the config schema and the tests that assert secrets do
-not appear in API/export/regression/snapshot output.
+Examples: `feat(cli): add snapshot export command` and
+`fix(core): keep redacted query values out of exports`.
 
-Tokens live in `.stacknext/run.json` with mode `0600`. Do not log tokens, put
-them in fixtures, commit runtime state or add a remote transport.
+Open one focused pull request per change and fill
+[`.github/pull_request_template.md`](.github/pull_request_template.md). List
+the exact verification commands and results; call out checks that could not
+run, compatibility or privacy implications, and follow-up work. Never commit
+`dist`, `.next`, `.stacknext`, `release`, logs, local databases or secrets.
 
-## Build and typecheck layout
+## Privacy and security
 
-- `tsconfig.base.json` contains strict compiler options only and **no**
-  workspace `paths`.
-- Package `tsconfig.json` files map `@stacknext/*` to source for typechecking
-  before a build exists.
-- Package `tsconfig.build.json` files set `"paths": {}` and emit `src` to
-  `dist`. Build-time resolution must use built `dist` types, never source.
-- This split exists because Turbopack otherwise bundles `packages/next/src` and
-  fails on `./exporter.js` imports.
-- Never emit `.js`, `.d.ts` or `.map` files into `src/`. If they appear, delete
-  them; output belongs in `dist/`.
-- `pnpm -r build` handles topology (`core` before dependents, `dashboard`
-  before `cli` serves it). Do not reorder around it manually unless necessary.
-
-## Code style
-
-- TypeScript strict mode, ESM, `.js` extensions in relative imports.
-- Keep dependencies minimal and justified. Prefer Node built-ins and existing
-  packages.
-- Match surrounding naming and structure. Avoid `any`; validate external data
-  with Zod and use the inferred types.
-- Tests should exercise real behavior (real transport/collector where
-  practical), not mocks of the code under test.
-- No generated build output, logs, local databases or runtime state in commits.
-
-## Agent workflow
-
-1. Read this file, the relevant engineering page and the canonical package docs.
-2. Inspect the actual code and tests before proposing a change. Do not invent
-   commands, paths, APIs or compatibility claims.
-3. Make the smallest change that preserves the documented boundaries.
-4. Update canonical docs, the public navigation and the changelog when the
-   user-visible surface changes. Do not edit generated copies.
-5. Run the verification sequence below. Record exact commands and results.
-6. Review `git diff` for generated output, secrets, unrelated changes and stale
-   links.
-7. Report what changed, what was verified, what could not run, and any remaining
-   manual configuration. Do not claim a check passed without running it.
-
-## Verification workflow
-
-Before declaring a change complete:
-
-1. `pnpm lint`
-2. `pnpm typecheck`
-3. `pnpm test`
-4. `pnpm build`
-5. `pnpm test:e2e` (after build, with Playwright Chromium installed). It reuses a
-   live runtime if one exists, otherwise it starts and stops the example app
-   itself. It must cover capture → baseline → candidate → compare, the
-   collector regression APIs, CLI records, snapshot save/list/read/export/delete,
-   MCP regression and snapshot tools and dashboard deep links.
-6. Run `pnpm check:docs` (which includes `pnpm changelog:check`) and
-   `pnpm test:packages` for documentation or package changes. After editing
-   `CHANGELOG.md`, run `pnpm changelog:sync` so the website data matches. For
-   user-facing changes, exercise `stacknext dev` manually and check the
-   dashboard Overview coverage and diagnostics cards, request/trace timelines,
-   database, errors, `/diagnostics` and `/diagnostics/:id`, `/runs`, `/runs/:id`,
-   `/baselines`, `/baselines/:id`, `/comparisons`, `/comparisons/:id`,
-   `/snapshots` and its scoped views, the `/actions-demo`, `/api/custom-work`,
-   `/api/n-plus-one`, `/api/n-plus-one-fixed`, `/api/slow-db` and
-   `/api/repeated-fetch` routes, `stacknext coverage`, `stacknext diagnose`,
-   `stacknext capture`, `stacknext runs`, `stacknext baseline`,
-   `stacknext compare`, `stacknext snapshot` and the MCP
-   summary/diagnostics/regression/snapshot tools.
-7. Warm `/`, `/projects/1` and `/api/n-plus-one` before a baseline capture.
-   Cold route-module spans can appear on only one side and make a comparison
-   inconclusive. Use one Playwright worker and at least three samples.
-8. If captured data changed, verify the example error route still redacts
-   `demo-url-secret`, `super-secret-demo-token` and `hunter2`, that action and
-   custom-span attributes do not leak `action-attribute-secret`,
-   `custom-attribute-secret`, `custom-url-secret` or `e2e-url-secret`, and that
-   diagnostic evidence, regression records, comparisons and export output do not
-   contain those values either.
-9. Check explicit `NEXT_OTEL_VERBOSE=0` still overrides
-   `instrumentation.verbose: true`, and that `NEXT_OTEL_VERBOSE=1` is reported
-   with its performance caveat.
-
-Runtime verification in this repository used Node.js 24 and Next.js 16.4.3;
-CI covers Node.js 22, 24 and 26. Keep `engines` at Node `>=20.9.0` unless the
-support policy changes.
-
-When stopping a dev server, send SIGINT/SIGTERM to the `stacknext dev`
-process so it can close the collector and remove `.stacknext/run.json`. Check
-for orphaned `next dev` processes on ports 4400-4425 afterwards.
+Never capture or commit bodies, headers, cookies, query values, SQL bind
+parameters, Playwright artifacts, tokens or machine/user identifiers. Tokens
+live in `.stacknext/run.json` (`0600`). Report vulnerabilities through
+[SECURITY.md](SECURITY.md), not a public issue. Captured-data changes update
+[`apps/docs/privacy.mdx`](apps/docs/privacy.mdx), the config schema and the
+secret-leak tests.
