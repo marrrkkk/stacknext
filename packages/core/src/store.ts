@@ -60,6 +60,7 @@ interface TraceBucket {
 }
 
 const HTTP_METHOD_PREFIX = /^(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|TRACE|CONNECT)\s+/
+const MAX_INDEX_CACHE_ENTRIES = 4
 
 function clampLimit(value: number | undefined, fallback: number, maximum: number): number {
   if (!Number.isFinite(value) || value === undefined) return fallback
@@ -113,17 +114,21 @@ export class TelemetryStore {
   private revision = 0
 
   /**
-   * Read-side caches keyed by `revision`. They hold at most one entry, are
-   * never exposed for mutation and are rebuilt only when stored telemetry
-   * changes. `slowRequestMs` is part of the key because it changes which
-   * requests are marked slow.
+   * Read-side caches keyed by `revision`. They are never exposed for mutation
+   * and are dropped when stored telemetry changes. Internal reads use the
+   * default 500 ms threshold while summaries use the configured one, so a
+   * bounded number of slow-request variants is retained per revision.
    */
   private indexCache: {
     revision: number
-    slowRequestMs: number
-    buckets: Map<string, TraceBucket>
-    requests: Map<string, RequestSummary>
-  } | null = null
+    bySlowRequestMs: Map<
+      number,
+      {
+        buckets: Map<string, TraceBucket>
+        requests: Map<string, RequestSummary>
+      }
+    >
+  } = { revision: -1, bySlowRequestMs: new Map() }
   private summaryCache: {
     revision: number
     slowRequestMs: number
@@ -399,12 +404,14 @@ export class TelemetryStore {
     buckets: Map<string, TraceBucket>
     requests: Map<string, RequestSummary>
   } {
-    const cached = this.indexCache
-    if (
-      cached &&
-      cached.revision === this.revision &&
-      cached.slowRequestMs === slowRequestMs
-    ) {
+    if (this.indexCache.revision !== this.revision) {
+      this.indexCache = { revision: this.revision, bySlowRequestMs: new Map() }
+    }
+    const cached = this.indexCache.bySlowRequestMs.get(slowRequestMs)
+    if (cached) {
+      // Refresh insertion order so the least recently used variant is evicted.
+      this.indexCache.bySlowRequestMs.delete(slowRequestMs)
+      this.indexCache.bySlowRequestMs.set(slowRequestMs, cached)
       return cached
     }
     const spansByTrace = this.spansByTrace()
@@ -431,8 +438,14 @@ export class TelemetryStore {
       if (request) requests.set(traceId, request)
       buckets.set(traceId, { traceId, spans, errors, queries, request })
     }
-    this.indexCache = { revision: this.revision, slowRequestMs, buckets, requests }
-    return this.indexCache
+    const entry = { buckets, requests }
+    this.indexCache.bySlowRequestMs.set(slowRequestMs, entry)
+    while (this.indexCache.bySlowRequestMs.size > MAX_INDEX_CACHE_ENTRIES) {
+      const oldest = this.indexCache.bySlowRequestMs.keys().next().value
+      if (oldest === undefined) break
+      this.indexCache.bySlowRequestMs.delete(oldest)
+    }
+    return entry
   }
 
   listRequests(
@@ -798,9 +811,14 @@ export class TelemetryStore {
     return result
   }
 
+  /**
+   * Returns the newest error groups, capped at `limit` groups. `listErrors`
+   * applies its limit to error rows, not groups, so the groups are sliced here.
+   */
   getErrorGroups(limit = 200): ErrorGroup[] {
-    const result = this.listErrors({ limit })
-    return result.groups
+    const maximum = Number.isFinite(limit) ? Math.max(0, Math.trunc(limit)) : 0
+    if (maximum === 0) return []
+    return this.listErrors({ limit: 1 }).groups.slice(0, maximum)
   }
 
   /**

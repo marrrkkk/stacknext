@@ -100,11 +100,20 @@ const AUTO_ERROR_COOLDOWN_MS = 60_000
 const MAX_SNAPSHOT_BODY_BYTES = 64 * 1024
 const MAX_SNAPSHOT_CACHE_ENTRIES = 3
 const MAX_SNAPSHOT_CACHE_BYTES = 32 * 1024 * 1024
+/**
+ * A cached view retains the parsed payload and a detached store. Strings may
+ * be shared, so three times the serialized file size is a deliberately
+ * conservative estimate of the retained memory used for eviction.
+ */
+const SNAPSHOT_CACHE_HEAP_MULTIPLIER = 3
 
 interface SnapshotCacheEntry {
   ctimeMs: number
   mtimeMs: number
+  /** Serialized file size, reported by snapshot APIs. */
   bytes: number
+  /** Estimated retained bytes, used by the cache budget. */
+  cacheBytes: number
   payload: SnapshotPayload
   store: TelemetryStore
 }
@@ -121,8 +130,9 @@ export interface StartCollectorOptions {
   autoPort?: boolean
   sseHeartbeatMs?: number
   /**
-   * Byte budget for retained snapshot views, measured by snapshot file size.
-   * Defaults to 32 MiB; snapshots larger than the budget are served uncached.
+   * Byte budget for retained snapshot views, estimated from the parsed payload
+   * and detached store. Defaults to 32 MiB; snapshots whose estimate exceeds
+   * the budget are served uncached.
    */
   snapshotCacheBytes?: number
   /** Project whose saved runs, baselines and comparisons are served read-only. */
@@ -137,8 +147,11 @@ export interface CollectorHandle {
   token: string
   store: TelemetryStore
   health: () => HealthResponse
-  /** Parsed snapshot views currently cached, for tests and diagnostics. */
-  snapshotCacheStats: () => { entries: number; bytes: number }
+  /**
+   * Parsed snapshot views currently cached, for tests and diagnostics.
+   * Present on handles returned by `startCollector`.
+   */
+  snapshotCacheStats?: () => { entries: number; bytes: number }
   /** Saves the current sample before shutdown when snapshots.autoOnExit is on. */
   saveSnapshotOnExit: () => Promise<SnapshotSummary | null>
   close: () => Promise<void>
@@ -667,7 +680,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     const existing = snapshotCache.get(id)
     if (!existing) return
     snapshotCache.delete(id)
-    snapshotCacheBytesUsed = Math.max(0, snapshotCacheBytesUsed - existing.bytes)
+    snapshotCacheBytesUsed = Math.max(0, snapshotCacheBytesUsed - existing.cacheBytes)
   }
 
   const trimSnapshotCache = (): void => {
@@ -774,13 +787,14 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
       ctimeMs: info.ctimeMs,
       mtimeMs: info.mtimeMs,
       bytes: info.size,
+      cacheBytes: info.size * SNAPSHOT_CACHE_HEAP_MULTIPLIER,
       payload,
       store: createSnapshotView(payload),
     }
     dropCachedSnapshot(id)
-    if (entry.bytes <= snapshotCacheBudget) {
+    if (entry.cacheBytes <= snapshotCacheBudget) {
       snapshotCache.set(id, entry)
-      snapshotCacheBytesUsed += entry.bytes
+      snapshotCacheBytesUsed += entry.cacheBytes
       trimSnapshotCache()
     }
     return entry

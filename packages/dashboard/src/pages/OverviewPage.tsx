@@ -429,7 +429,7 @@ export function OverviewPage({
     'overview',
     refreshKey,
     15_000,
-    paused,
+    !paused,
   )
   const reload = state.reload
 

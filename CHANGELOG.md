@@ -16,8 +16,8 @@ All notable changes to StackNext are documented here. The format follows
 - Reduced dashboard request amplification. Overview reuses coverage and bounded
   error groups from `/api/summary` and memoizes chart derivations; database and
   error detail pages scan on longer intervals. The summary response gains
-  optional `recentErrorGroups`, while older collectors still work through a
-  fallback request.
+  optional `recentErrorGroups` capped at five groups, while older collectors
+  still work through a fallback request.
 - Split dashboard routes with `React.lazy`, isolated the React vendor chunk and
   added `content-visibility` for long trace timelines. The initial JavaScript is
   now 120.0 KiB gzip across two chunks and the largest route chunk is 7.8 KiB.
@@ -26,15 +26,21 @@ All notable changes to StackNext are documented here. The format follows
 
 - Added `pnpm benchmark:dashboard`, a Playwright benchmark for live-refresh
   request counts, long tasks, heap/DOM counters, hidden-tab behavior and bundle
-  budgets. It is report-only unless `--enforce` is passed.
+  budgets. It is report-only unless `--enforce` is passed, which enforces total
+  initial JavaScript, largest initial chunk and largest route chunk sizes.
 
 ### Fixed
 
 - Bounded the collector snapshot cache by both entry count and 32 MiB of
-  snapshot payloads, with LRU eviction and uncached delivery for oversized
-  snapshots.
-- Reused revision-keyed trace indexes, summaries and coverage in the store and
-  collector so repeated reads at the same revision do not rebuild the index.
+  estimated retained snapshot memory, with LRU eviction and uncached delivery
+  for oversized snapshots.
+- Reused revision-keyed trace indexes across the configured and internal
+  slow-request thresholds, so alternating reads at the same revision do not
+  rebuild the same index.
+- Capped `/api/summary` recent error groups at five groups rather than five
+  error rows.
+- Restored Overview's 15-second interval polling when live updates are not
+  paused; the pause flag had inverted the condition.
 
 ## [0.12.0] - 2026-11-11
 

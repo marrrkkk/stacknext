@@ -55,8 +55,8 @@ sizes for the initial and route JavaScript chunks. `--verbose` also prints the
 per-endpoint request counts. `--enforce` fails on the plan budgets: at most 60
 read requests per window, no long task above 100 ms, no hidden-tab reads, less
 than 10 MiB heap growth, no more than 500 extra DOM nodes or 100 extra listeners,
-a largest initial chunk at or below 120 KiB gzip and a largest route chunk at or
-below 40 KiB gzip.
+total initial JavaScript at or below 121 KiB gzip, a largest initial chunk at or
+below 120 KiB gzip and a largest route chunk at or below 40 KiB gzip.
 
 The hidden-tab check overrides `document.hidden` because headless Chromium keeps
 every page visible. Treat the numbers as machine-specific comparisons, not a CI

@@ -257,9 +257,12 @@ export function useLiveTelemetry(): LiveState {
       timer = window.setTimeout(flush, LIVE_FLUSH_MS)
     }
 
-    const setStatus = (status: LiveStatus): void => {
+    let streamStatus: LiveStatus = 'connecting'
+    const setStatus = (next: LiveStatus): void => {
+      if (streamStatus === next) return
+      streamStatus = next
       setState((previous) =>
-        previous.status === status ? previous : { ...previous, status },
+        previous.status === next ? previous : { ...previous, status: next },
       )
     }
 
@@ -273,6 +276,9 @@ export function useLiveTelemetry(): LiveState {
         payload = {}
       }
       const accepted = payload.accepted
+      // A delivered event proves the stream is healthy even if the browser has
+      // not fired `open` again after a reconnect.
+      setStatus('live')
       // Be conservative when talking to an older collector: an event without
       // accepted counts may contain any resource.
       const unknown = accepted === undefined
@@ -295,11 +301,8 @@ export function useLiveTelemetry(): LiveState {
     }
 
     const onError = (): void => {
-      setState((previous) =>
-        previous.status === 'connecting'
-          ? previous
-          : { ...previous, status: 'reconnecting' },
-      )
+      if (streamStatus === 'connecting') return
+      setStatus('reconnecting')
     }
 
     const onVisibilityChange = (): void => {

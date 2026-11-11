@@ -261,6 +261,8 @@ pnpm benchmark:dashboard -- --enforce --verbose
   `visibilitychange`, because headless Chromium keeps every page visible.
 - JavaScript sizes are gzip sizes of the files in `packages/dashboard/dist`
   referenced by `index.html` (initial) and of every other route chunk.
+  `--enforce` caps total initial JavaScript at 121 KiB gzip and the largest
+  initial chunk at 120 KiB gzip.
 - The collector uses a 20,000-span cap so detail routes stay readable for the
   full run. The browser receives already-redacted synthetic telemetry.
 

@@ -363,9 +363,11 @@ describe('collector snapshot API', () => {
     const secondBytes = (await stat(snapshotPath(projectDir, second.id))).size
     expect(firstBytes).toBeGreaterThan(0)
 
+    const retained = (bytes: number): number => bytes * 3
+
     await collector.close()
     collector = await startSnapshotCollector(projectDir, {
-      snapshotCacheBytes: Math.max(firstBytes, secondBytes),
+      snapshotCacheBytes: Math.max(retained(firstBytes), retained(secondBytes)),
     })
 
     const read = (id: string) =>
@@ -374,22 +376,22 @@ describe('collector snapshot API', () => {
       })
 
     expect((await read(first.id)).status).toBe(200)
-    expect(collector.snapshotCacheStats()).toEqual({
+    expect(collector.snapshotCacheStats?.()).toEqual({
       entries: 1,
-      bytes: firstBytes,
+      bytes: retained(firstBytes),
     })
 
     expect((await read(second.id)).status).toBe(200)
-    expect(collector.snapshotCacheStats()).toEqual({
+    expect(collector.snapshotCacheStats?.()).toEqual({
       entries: 1,
-      bytes: secondBytes,
+      bytes: retained(secondBytes),
     })
 
     // Touching the first snapshot again evicts the second, proving LRU order.
     expect((await read(first.id)).status).toBe(200)
-    expect(collector.snapshotCacheStats()).toEqual({
+    expect(collector.snapshotCacheStats?.()).toEqual({
       entries: 1,
-      bytes: firstBytes,
+      bytes: retained(firstBytes),
     })
   })
 
@@ -400,14 +402,14 @@ describe('collector snapshot API', () => {
 
     await collector.close()
     collector = await startSnapshotCollector(projectDir, {
-      snapshotCacheBytes: Math.max(0, bytes - 1),
+      snapshotCacheBytes: Math.max(0, bytes * 3 - 1),
     })
 
     const response = await fetch(`${collector.url}/api/snapshots/${saved.id}`, {
       headers: { authorization: `Bearer ${TOKEN}` },
     })
     expect(response.status).toBe(200)
-    expect(collector.snapshotCacheStats()).toEqual({ entries: 0, bytes: 0 })
+    expect(collector.snapshotCacheStats?.()).toEqual({ entries: 0, bytes: 0 })
   })
 
   it('saves an exit snapshot only when auto-save on exit is enabled', async () => {

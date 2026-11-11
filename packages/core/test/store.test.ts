@@ -261,6 +261,29 @@ describe('TelemetryStore', () => {
     expect(result.groups[0]).toMatchObject({ count: 2, latestErrorId: 'e2' })
   })
 
+  it('caps recent error groups independently of the error page size', () => {
+    const store = new TelemetryStore({ now: () => 5_000 })
+    store.ingest(
+      envelope({
+        spans: [],
+        databaseQueries: [],
+        errors: Array.from({ length: 8 }, (_, index) =>
+          errorEvent({
+            id: `error-${index}`,
+            message: `boom ${index}`,
+            timestamp: 1_000 + index,
+          }),
+        ),
+      }),
+      5_000,
+    )
+    expect(store.listErrors({}).groups).toHaveLength(8)
+    const groups = store.getErrorGroups(5)
+    expect(groups).toHaveLength(5)
+    expect(groups[0]?.latestErrorId).toBe('error-7')
+    expect(store.getErrorGroups(0)).toEqual([])
+  })
+
   it('produces summary statistics from real data only', () => {
     const empty = new TelemetryStore().summary()
     expect(empty).toMatchObject({
@@ -326,6 +349,20 @@ describe('TelemetryStore', () => {
     now = 7_000
     expect(store.summary(100).totalRequests).toBe(0)
     expect(store.getCoverageEvidence().sample.spanCount).toBe(0)
+  })
+
+  it('retains indexes for multiple slow-request thresholds in one revision', () => {
+    const store = new TelemetryStore({ now: () => 5_000 })
+    store.ingest(envelope(), 5_000)
+    const internals = store as unknown as {
+      traceIndex: (slowRequestMs: number) => unknown
+    }
+    const configured = internals.traceIndex(100)
+    const fallback = internals.traceIndex(500)
+    // The configured summary threshold and the internal 500 ms reads must not
+    // evict each other on every call.
+    expect(internals.traceIndex(100)).toBe(configured)
+    expect(internals.traceIndex(500)).toBe(fallback)
   })
 
   it('invalidates read caches after clear', () => {

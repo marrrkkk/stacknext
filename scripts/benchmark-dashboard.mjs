@@ -56,7 +56,8 @@ const budgets = {
   heapGrowthMb: flagValue('--max-heap-growth-mb', 10),
   domNodeGrowth: flagValue('--max-dom-node-growth', 500),
   listenerGrowth: flagValue('--max-listener-growth', 100),
-  initialJsGzipKb: flagValue('--max-initial-js-gzip-kb', 120),
+  totalInitialJsGzipKb: flagValue('--max-total-initial-js-gzip-kb', 121),
+  largestInitialJsGzipKb: flagValue('--max-initial-js-gzip-kb', 120),
   routeJsGzipKb: flagValue('--max-route-js-gzip-kb', 40),
 }
 
@@ -614,9 +615,14 @@ async function main() {
           `event listeners grew ${listenerGrowth} between route cycles > ${budgets.listenerGrowth}`,
         )
       }
-      if (bundle.largestInitial.gzipBytes > budgets.initialJsGzipKb * 1024) {
+      if (bundle.initialGzipBytes > budgets.totalInitialJsGzipKb * 1024) {
         failures.push(
-          `initial chunk ${bundle.largestInitial.file} ${formatKb(bundle.largestInitial.gzipBytes)} > ${budgets.initialJsGzipKb} KiB`,
+          `initial JS ${formatKb(bundle.initialGzipBytes)} > ${budgets.totalInitialJsGzipKb} KiB`,
+        )
+      }
+      if (bundle.largestInitial.gzipBytes > budgets.largestInitialJsGzipKb * 1024) {
+        failures.push(
+          `initial chunk ${bundle.largestInitial.file} ${formatKb(bundle.largestInitial.gzipBytes)} > ${budgets.largestInitialJsGzipKb} KiB`,
         )
       }
       if (bundle.largestRoute.gzipBytes > budgets.routeJsGzipKb * 1024) {
