@@ -351,6 +351,33 @@ describe('TelemetryStore', () => {
     expect(store.getCoverageEvidence().sample.spanCount).toBe(0)
   })
 
+  it.each(['ingest', 'prune', 'clear', 'restore'] as const)(
+    'releases cached telemetry immediately on %s without another read',
+    (mutation) => {
+      const store = new TelemetryStore({ retentionMs: 1_000, now: () => 5_000 })
+      store.ingest(envelope(), 5_000)
+      store.summary()
+      store.getCoverageEvidence()
+      const caches = store as unknown as {
+        indexCache: { bySlowRequestMs: Map<number, unknown> }
+        summaryCache: unknown
+        coverageCache: unknown
+      }
+      expect(caches.indexCache.bySlowRequestMs.size).toBeGreaterThan(0)
+      expect(caches.summaryCache).not.toBeNull()
+      expect(caches.coverageCache).not.toBeNull()
+      if (mutation === 'ingest') store.ingest(envelope(), 5_000)
+      if (mutation === 'prune') store.prune(7_000)
+      if (mutation === 'clear') store.clear()
+      if (mutation === 'restore') {
+        store.restore({ spans: [], errors: [], databaseQueries: [] })
+      }
+      expect(caches.indexCache.bySlowRequestMs.size).toBe(0)
+      expect(caches.summaryCache).toBeNull()
+      expect(caches.coverageCache).toBeNull()
+    },
+  )
+
   it('retains indexes for multiple slow-request thresholds in one revision', () => {
     const store = new TelemetryStore({ now: () => 5_000 })
     store.ingest(envelope(), 5_000)

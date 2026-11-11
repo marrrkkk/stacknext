@@ -922,7 +922,7 @@ export function App(): React.ReactElement {
               )}
               {pathname === 'redirect' && null}
               {pathname === 'database' && (
-                <DatabasePage refreshKey={refreshKeys.queries} onNavigate={navigate} />
+                <DatabasePage refreshKey={refreshKeys.telemetry} onNavigate={navigate} />
               )}
               {pathname === 'database-query' && route.id && (
                 <DatabaseQueryDetailPage
@@ -937,7 +937,7 @@ export function App(): React.ReactElement {
               {pathname === 'error' && route.id && (
                 <ErrorDetailPage
                   errorId={route.id}
-                  refreshKey={refreshKeys.errors}
+                  refreshKey={refreshKeys.telemetry}
                   onNavigate={navigate}
                 />
               )}

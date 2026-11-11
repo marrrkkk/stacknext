@@ -64,11 +64,23 @@ promise. See the repository
 [benchmark documentation](../../../docs/testing/benchmarks.md#dashboard-benchmark)
 for the method and recorded results.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:a25af0dc34b56730119fb669e3636707b50166cdf12dfd139e4a8372332c8a54 -->
+
 ## Data
+
+Live updates refresh database and error detail correlations when spans arrive.
+Automatic refresh ticks coalesce while a read is active; manual refresh replaces
+that read so a stalled request can be retried. Delayed telemetry updates preserve
+the current stream connection status.
 
 The dashboard has no fixtures of its own for normal development. It reads the
 live collector API. Make requests to the example app to populate requests,
 traces, errors, queries and diagnostics.
+
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 <!-- coderabbit-ai-generated:v1 -->
 

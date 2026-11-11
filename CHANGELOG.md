@@ -29,11 +29,23 @@ All notable changes to StackNext are documented here. The format follows
   budgets. It is report-only unless `--enforce` is passed, which enforces total
   initial JavaScript, largest initial chunk and largest route chunk sizes.
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:03b09cd1bbf807a84398deba49465ab0ee1de41e10f26df24d5836b651480750 -->
+
 ### Fixed
 
+- Release store read caches immediately when telemetry changes or is removed.
+- Refresh database and error correlations when spans arrive, allow manual
+  refresh to recover from stalled requests, and preserve reconnecting status
+  through delayed telemetry flushes.
 - Bounded the collector snapshot cache by both entry count and 32 MiB of
   estimated retained snapshot memory, with LRU eviction and uncached delivery
   for oversized snapshots.
+
+
+<!-- /coderabbit-ai-generated:v1 -->
+
 - Reused revision-keyed trace indexes across the configured and internal
   slow-request thresholds, so alternating reads at the same revision do not
   rebuild the same index.

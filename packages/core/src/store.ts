@@ -168,8 +168,15 @@ export class TelemetryStore {
       envelope.errors.length > 0 ||
       envelope.databaseQueries.length > 0
     ) {
-      this.revision += 1
+      this.advanceRevision()
     }
+  }
+
+  private advanceRevision(): void {
+    this.revision += 1
+    this.indexCache = { revision: this.revision, bySlowRequestMs: new Map() }
+    this.summaryCache = null
+    this.coverageCache = null
   }
 
   private insertSpan(span: StackNextSpan): void {
@@ -211,7 +218,7 @@ export class TelemetryStore {
       (query) => query.receivedAt,
       cutoff,
     )
-    if (removed > 0) this.revision += 1
+    if (removed > 0) this.advanceRevision()
   }
 
   private trimExpired<T>(
@@ -1039,7 +1046,7 @@ export class TelemetryStore {
     this.errorOrder.length = 0
     this.queries.clear()
     this.queryOrder.length = 0
-    if (hadData) this.revision += 1
+    if (hadData) this.advanceRevision()
   }
 
   /**
@@ -1071,7 +1078,7 @@ export class TelemetryStore {
     this.databaseQueriesReceived = data.databaseQueries.length
     this.droppedCapacity = 0
     this.droppedRetention = 0
-    this.revision += 1
+    this.advanceRevision()
   }
 }
 

@@ -13,9 +13,9 @@ export interface AsyncState<T> {
  *
  * Refreshes are single-flight: a tick that arrives while a request is running
  * is collapsed into one trailing reload instead of aborting and restarting the
- * request. Key changes still abort immediately because the previous data is no
- * longer relevant. Interval loads pause while the tab is hidden and catch up
- * once when it becomes visible.
+ * request. Manual refresh replaces the active request. Key changes abort
+ * immediately because the previous data is no longer relevant. Interval loads
+ * pause while the tab is hidden and catch up once when it becomes visible.
  */
 export function useAsync<T>(
   loader: (signal: AbortSignal) => Promise<T>,
@@ -46,32 +46,35 @@ export function useAsync<T>(
   }, [shouldPoll])
 
   useEffect(() => {
-    const controller = new AbortController()
+    let controller = new AbortController()
+    let requestId = 0
     let cancelled = false
     let inFlight = false
     let pending = false
-    let pendingShowLoading = false
     dataRef.current = null
     lastCompletedAtRef.current = 0
 
-    const settle = (): void => {
-      if (cancelled) return
+    const settle = (id: number): void => {
+      if (cancelled || id !== requestId) return
       inFlight = false
       lastCompletedAtRef.current = Date.now()
       if (!pending) return
       pending = false
-      const showLoading = pendingShowLoading
-      pendingShowLoading = false
-      request(showLoading)
+      request(false)
     }
 
     const request = (showLoading: boolean): void => {
       if (cancelled) return
-      if (inFlight) {
+      if (inFlight && !showLoading) {
         pending = true
-        pendingShowLoading = pendingShowLoading || showLoading
         return
       }
+      if (inFlight) {
+        controller.abort()
+        controller = new AbortController()
+        pending = false
+      }
+      const id = ++requestId
       inFlight = true
       if (showLoading) {
         setState((previous) => ({ ...previous, loading: true, error: null }))
@@ -92,20 +95,20 @@ export function useAsync<T>(
       }
       promise
         .then((data) => {
-          if (!cancelled) {
+          if (!cancelled && id === requestId) {
             dataRef.current = data
             setState({ data, error: null, loading: false })
           }
         })
         .catch((error: unknown) => {
-          if (cancelled || controller.signal.aborted) return
+          if (cancelled || id !== requestId || controller.signal.aborted) return
           setState((previous) => ({
             ...previous,
             loading: false,
             error: error instanceof Error ? error.message : String(error),
           }))
         })
-        .finally(settle)
+        .finally(() => settle(id))
     }
 
     runRef.current = request
@@ -118,8 +121,8 @@ export function useAsync<T>(
     }
   }, [key])
 
-  // Live and manual refreshes never abort the request in flight; they collapse
-  // into at most one trailing reload.
+  // Live refreshes collapse into one trailing reload. Manual refresh replaces
+  // an active request so a stalled loader cannot block recovery.
   useEffect(() => {
     const previous = inputsRef.current
     inputsRef.current = { key, refreshKey, localRefresh }
@@ -131,7 +134,7 @@ export function useAsync<T>(
       return
     }
     const live = previous.refreshKey !== refreshKey
-    runRef.current?.(live ? false : true)
+    runRef.current?.(previous.localRefresh !== localRefresh || !live)
   }, [key, refreshKey, localRefresh])
 
   // Interval polling. Hidden tabs make no read requests; a stale page catches
@@ -242,7 +245,7 @@ export function useLiveTelemetry(): LiveState {
       pending = null
       lastSequence = Math.max(lastSequence, next.sequence)
       setState((previous) => ({
-        status: 'live',
+        status: previous.status,
         sequence: lastSequence,
         lastEventAt: next.lastEventAt,
         spanEpoch: previous.spanEpoch + (next.spans ? 1 : 0),
