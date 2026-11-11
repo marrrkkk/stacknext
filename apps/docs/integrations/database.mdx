@@ -1,0 +1,102 @@
+---
+title: Database integrations
+description: Add Drizzle or Prisma query evidence without capturing SQL bind parameters.
+---
+
+StackNext accepts query events from optional adapter packages. Both adapters
+send SQL text after redaction and never send bind parameters.
+
+| ORM | Package | Duration | Registration |
+| --- | --- | --- | --- |
+| Drizzle | `@stacknext/drizzle` | `null` (unmeasured) | Pass the logger to `drizzle()` |
+| Prisma | `@stacknext/prisma` | Measured when Prisma provides it | Call `instrumentPrismaClient(client)` |
+
+Neither package is required for core telemetry, and neither is installed
+transitively by `@stacknext/next`. Add only the adapter the app uses.
+
+## Drizzle
+
+Install the adapter:
+
+```bash
+pnpm add @stacknext/drizzle
+```
+
+Add the logger when you create the client:
+
+```ts
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { createStackNextDrizzleLogger } from '@stacknext/drizzle'
+
+export const db = drizzle(client, {
+  logger: createStackNextDrizzleLogger({ databaseSystem: 'sqlite' }),
+})
+```
+
+Drizzle's logger does not expose duration. Queries appear with
+`durationMs: null`; do not rank or average them as if they were fast. Bind
+parameters are counted but never read or sent.
+
+Set `database.drizzle` to `true` in `stacknext.config.json` so `init`, `doctor`
+and coverage can describe the intended setup. The flag does not register the
+logger.
+
+## Prisma
+
+Install the adapter:
+
+```bash
+pnpm add @stacknext/prisma
+```
+
+Prisma must be configured to emit query events. Then register the adapter:
+
+```ts
+import { PrismaClient } from '@prisma/client'
+import { instrumentPrismaClient } from '@stacknext/prisma'
+
+const prisma = new PrismaClient({
+  log: [{ emit: 'event', level: 'query' }],
+})
+
+const stop = instrumentPrismaClient(prisma, {
+  databaseSystem: 'postgresql',
+})
+// Optional: call stop() during shutdown.
+```
+
+The event-based `query` log level is required. `instrumentPrismaClient` is
+idempotent for the same client and returns a stop function. Prisma query events
+include a duration; SQL text is redacted and `params` are never read.
+
+Set `database.prisma` to `true` in `stacknext.config.json` for the same setup
+hints. The flag does not attach the event handler.
+
+## Verify
+
+Make a request that queries the database, then check the **Database** page or:
+
+```bash
+pnpm exec stacknext coverage
+```
+
+`not-observed` means the current sample has no query evidence, not necessarily
+that the adapter is broken. A working app with no database traffic in the
+retention window also reports no queries.
+
+## Limits
+
+- Query text uses pattern-based redaction and may retain placeholders such as
+  `$1` and `?`, as well as inline literals. Bind values are never captured.
+- Drizzle durations are `null`. Never compare them with Prisma durations as if
+  both were measured.
+- StackNext does not run SQL, `EXPLAIN` or index analysis.
+- Database coverage is per adapter registration. StackNext does not infer which
+  ORM you use at runtime.
+
+## Related
+
+- [Configuration](/reference/configuration)
+- [Runtime evidence](/guides/runtime-evidence)
+- [Instrumentation coverage](/instrumentation-coverage)
+- [Privacy](/privacy)

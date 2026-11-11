@@ -255,7 +255,7 @@ Before merging a release PR, review the generated changelog section and add
 anything that must be called out: breaking changes, renamed packages, new
 commands, privacy changes and known limitations. Run `pnpm changelog:sync`
 after editing it so the website data matches. Update
-`apps/docs/compatibility.md` with the combinations actually validated for this
+`apps/docs/compatibility.mdx` with the combinations actually validated for this
 version. Regenerate screenshots if the UI changed. The version-only commit does
 not change the lockfile.
 

@@ -101,5 +101,5 @@ payloads or secrets in attribute values.
 - They do not create a new provider or exporter.
 - They do not capture arguments, return values or bodies.
 
-For broader guidance see the repository's `apps/docs/custom-instrumentation.md`
-and `apps/docs/server-actions.md`.
+For broader guidance see the repository's `apps/docs/custom-instrumentation.mdx`,
+including its Server Actions section.

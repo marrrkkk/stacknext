@@ -27,191 +27,193 @@
       {
         "group": "Getting started",
         "pages": [
-          "getting-started/requirements",
           "installation",
-          "getting-started/quickstart",
-          "getting-started",
-          "getting-started/configuration",
-          "getting-started/first-app",
-          "uninstall",
-          "compatibility"
-        ]
-      },
-      {
-        "group": "Core concepts",
-        "pages": [
-          "guides/nextjs",
-          "guides/runtime-evidence",
-          "guides/database",
-          "guides/diagnostics",
-          "guides/regression",
-          "guides/snapshots",
-          "instrumentation-coverage",
-          "custom-instrumentation",
-          "server-actions"
+          "getting-started/quickstart"
         ]
       },
       {
         "group": "Guides",
         "pages": [
+          "guides/runtime-evidence",
+          "guides/diagnostics",
+          "guides/snapshots",
           "regression-testing",
+          "ci-integration",
           "playwright-integration",
-          "baselines",
-          "comparison-methodology",
-          "ci-integration"
+          "custom-instrumentation",
+          "instrumentation-coverage"
         ]
       },
       {
-        "group": "CLI",
+        "group": "Integrations",
         "pages": [
-          "cli/index",
-          "cli/commands",
-          "cli/agent-setup",
-          "troubleshooting"
+          "integrations/nextjs",
+          "integrations/database",
+          "mcp"
         ]
       },
       {
-        "group": "AI integrations",
+        "group": "AI agents",
         "pages": [
           "ai-agents/index",
-          "ai-agents/local-docs",
-          "ai-agents/agents-md",
-          "ai-agents/skill",
-          "ai-agents/supported-agents",
+          "ai-agents/setup",
           "ai-agents/workflows",
-          "ai-agents/llms-txt",
-          "mcp",
-          "integrations/agent-instructions",
-          "integrations/opencode",
-          "integrations/codex",
-          "integrations/claude-code"
+          "ai-agents/local-docs"
         ]
       },
       {
-        "group": "Packages",
+        "group": "Reference",
         "pages": [
-          "packages/index",
-          {
-            "group": "CLI",
-            "pages": [
-              "packages/cli/index",
-              "packages/cli/commands",
-              "packages/cli/configuration",
-              "packages/cli/agent-setup",
-              "packages/cli/skill",
-              "packages/cli/packages",
-              "packages/cli/troubleshooting"
-            ]
-          },
-          {
-            "group": "Next.js",
-            "pages": [
-              "packages/next/index",
-              "packages/next/installation",
-              "packages/next/instrumentation",
-              "packages/next/configuration",
-              "packages/next/custom-spans",
-              "packages/next/troubleshooting"
-            ]
-          },
-          {
-            "group": "Drizzle",
-            "pages": [
-              "packages/drizzle/index",
-              "packages/drizzle/configuration",
-              "packages/drizzle/troubleshooting"
-            ]
-          },
-          {
-            "group": "Prisma",
-            "pages": [
-              "packages/prisma/index",
-              "packages/prisma/configuration",
-              "packages/prisma/troubleshooting"
-            ]
-          },
-          {
-            "group": "Playwright",
-            "pages": [
-              "packages/playwright/index",
-              "packages/playwright/fixture",
-              "packages/playwright/correlation",
-              "packages/playwright/troubleshooting"
-            ]
-          },
-          {
-            "group": "Core",
-            "pages": [
-              "packages/core/index",
-              "packages/core/schemas",
-              "packages/core/transport",
-              "packages/core/redaction",
-              "packages/core/configuration",
-              "packages/core/snapshots"
-            ]
-          },
-          {
-            "group": "Diagnostics",
-            "pages": [
-              "packages/diagnostics/index",
-              "packages/diagnostics/rules",
-              "packages/diagnostics/findings"
-            ]
-          },
-          {
-            "group": "Regression",
-            "pages": [
-              "packages/regression/index",
-              "packages/regression/captures",
-              "packages/regression/comparisons",
-              "packages/regression/storage"
-            ]
-          },
-          {
-            "group": "MCP",
-            "pages": [
-              "packages/mcp/index",
-              "packages/mcp/tools",
-              "packages/mcp/prompts",
-              "packages/mcp/security"
-            ]
-          },
-          {
-            "group": "Dashboard",
-            "pages": [
-              "packages/dashboard/index",
-              "packages/dashboard/routes",
-              "packages/dashboard/development"
-            ]
-          }
+          "cli/commands",
+          "reference/configuration",
+          "reference/mcp-tools",
+          "reference/packages",
+          "compatibility"
+        ]
+      },
+      {
+        "group": "Troubleshooting",
+        "pages": [
+          "troubleshooting"
         ]
       },
       {
         "group": "Security and privacy",
         "pages": [
-          "security/data-collection",
-          "security/redaction",
-          "security/retention",
           "privacy"
-        ]
-      },
-      {
-        "group": "Architecture",
-        "pages": [
-          "architecture",
-          "architecture/packages",
-          "architecture/boundaries"
-        ]
-      },
-      {
-        "group": "Contributing",
-        "pages": [
-          "contributing/index"
         ]
       }
     ]
   },
   "redirects": [
+    {
+      "source": "/getting-started",
+      "destination": "/getting-started/quickstart"
+    },
+    {
+      "source": "/getting-started/requirements",
+      "destination": "/installation"
+    },
+    {
+      "source": "/getting-started/first-app",
+      "destination": "/getting-started/quickstart"
+    },
+    {
+      "source": "/getting-started/configuration",
+      "destination": "/reference/configuration"
+    },
+    {
+      "source": "/uninstall",
+      "destination": "/installation#remove-stacknext"
+    },
+    {
+      "source": "/guides/nextjs",
+      "destination": "/integrations/nextjs"
+    },
+    {
+      "source": "/guides/database",
+      "destination": "/integrations/database"
+    },
+    {
+      "source": "/guides/regression",
+      "destination": "/regression-testing"
+    },
+    {
+      "source": "/baselines",
+      "destination": "/regression-testing#baselines"
+    },
+    {
+      "source": "/comparison-methodology",
+      "destination": "/regression-testing#comparison-methodology"
+    },
+    {
+      "source": "/server-actions",
+      "destination": "/custom-instrumentation#server-actions"
+    },
+    {
+      "source": "/cli",
+      "destination": "/cli/commands"
+    },
+    {
+      "source": "/cli/index",
+      "destination": "/cli/commands"
+    },
+    {
+      "source": "/cli/agent-setup",
+      "destination": "/ai-agents/setup"
+    },
+    {
+      "source": "/ai-agents/agents-md",
+      "destination": "/ai-agents/setup"
+    },
+    {
+      "source": "/ai-agents/skill",
+      "destination": "/ai-agents/setup#agent-skill"
+    },
+    {
+      "source": "/ai-agents/supported-agents",
+      "destination": "/ai-agents/setup#supported-clients"
+    },
+    {
+      "source": "/ai-agents/llms-txt",
+      "destination": "/ai-agents/local-docs#ai-readable-documentation"
+    },
+    {
+      "source": "/integrations/agent-instructions",
+      "destination": "/ai-agents/setup"
+    },
+    {
+      "source": "/integrations/opencode",
+      "destination": "/ai-agents/setup#opencode"
+    },
+    {
+      "source": "/integrations/codex",
+      "destination": "/ai-agents/setup#codex"
+    },
+    {
+      "source": "/integrations/claude-code",
+      "destination": "/ai-agents/setup#claude-code"
+    },
+    {
+      "source": "/packages",
+      "destination": "/reference/packages"
+    },
+    {
+      "source": "/packages/:slug*",
+      "destination": "/reference/packages"
+    },
+    {
+      "source": "/security/data-collection",
+      "destination": "/privacy#what-stacknext-collects"
+    },
+    {
+      "source": "/security/redaction",
+      "destination": "/privacy#redaction"
+    },
+    {
+      "source": "/security/retention",
+      "destination": "/privacy#retention"
+    },
+    {
+      "source": "/architecture",
+      "destination": "https://github.com/marrrkkk/stacknext/blob/main/docs/architecture/overview.md"
+    },
+    {
+      "source": "/architecture/packages",
+      "destination": "https://github.com/marrrkkk/stacknext/blob/main/docs/architecture/packages.md"
+    },
+    {
+      "source": "/architecture/boundaries",
+      "destination": "https://github.com/marrrkkk/stacknext/blob/main/docs/architecture/boundaries.md"
+    },
+    {
+      "source": "/contributing",
+      "destination": "https://github.com/marrrkkk/stacknext/blob/main/CONTRIBUTING.md"
+    },
+    {
+      "source": "/contributing/index",
+      "destination": "https://github.com/marrrkkk/stacknext/blob/main/CONTRIBUTING.md"
+    },
     {
       "source": "/contributing/environment",
       "destination": "https://github.com/marrrkkk/stacknext/blob/main/docs/development/environment-setup.md"
@@ -259,7 +261,7 @@
     }
   },
   "search": {
-    "prompt": "Search the StackNext docs, package references and agent guides"
+    "prompt": "Search the StackNext documentation"
   },
   "seo": {
     "metatags": {
@@ -268,6 +270,6 @@
     }
   },
   "markdown": {
-    "instructions": "StackNext documentation is organized by audience. Human-facing guides live under /guides, /cli and /ai-agents. Version-matched package reference documentation lives under /packages and also ships inside each npm package. AI agents should prefer the local files at node_modules/@stacknext/<package>/docs/ for the installed version, and use this site for concepts and cross-package workflows. Mintlify generates /llms.txt, /llms-full.txt and Markdown versions of every page; see /ai-agents/llms-txt. Diagnostic findings are evidence, not confirmed root causes; regression comparisons are deterministic and report-only."
+    "instructions": "StackNext documentation is written for developers using StackNext in a Next.js App Router project. Use the getting-started and guides sections to install and operate the product, and the reference section for CLI, configuration, MCP and package surfaces. Version-matched package API reference ships inside each npm package under node_modules/@stacknext/<package>/docs/ and is preferred over this site for installed-version APIs. Diagnostic findings are evidence, not confirmed root causes; regression comparisons are deterministic and report-only. Contributor and repository-maintenance documentation is not part of this site."
   }
 }

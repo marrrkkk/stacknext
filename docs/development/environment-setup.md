@@ -57,7 +57,7 @@ from npm publishing and from the CLI runtime. The engineering knowledge base is
 the root [`docs/`](../README.md) directory.
 
 ```bash
-pnpm docs:sync   # regenerate package copies and the CLI index
+pnpm docs:sync   # regenerate the installed CLI package-docs index
 pnpm check:docs  # validate navigation, links, frontmatter and generated output
 ```
 
@@ -87,4 +87,4 @@ ports 4400-4425 afterwards.
 - [Testing strategy](../testing/testing-strategy.md)
 - [Repository conventions](repository-conventions.md)
 - [Package architecture](../architecture/packages.md)
-- [Public compatibility matrix](../../apps/docs/compatibility.md)
+- [Public compatibility matrix](../../apps/docs/compatibility.mdx)

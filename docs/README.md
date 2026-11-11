@@ -17,7 +17,8 @@ deployed separately. Package API reference is canonical in
 | [Architecture boundaries](architecture/boundaries.md) | The invariants that keep StackNext local, bounded and deterministic. |
 | [Development environment](development/environment-setup.md) | Install, build, run the example app and preview the public site. |
 | [Repository conventions](development/repository-conventions.md) | Source layout, build/typecheck split, code style and change rules. |
-| [Documentation architecture](development/documentation.md) | Public site, engineering docs, package docs, generated copies and validation. |
+| [Documentation architecture](development/documentation.md) | Public site, engineering docs, package docs, generated index and validation. |
+| [Public documentation architecture](development/public-docs-architecture.md) | Research, page inventory and structural decisions behind the public guide. |
 | [Testing strategy](testing/testing-strategy.md) | Unit, e2e, archive, consumer and documentation checks. |
 | [Benchmarks](testing/benchmarks.md) | Collector, diagnostics and verbose-tracing measurements and caveats. |
 | [Agent compatibility](testing/agent-compatibility.md) | Recorded MCP and Agent Skill client checks. |
@@ -35,8 +36,8 @@ Repository-level policies live at the root:
 
 | Content | Canonical location | Generated copies |
 | --- | --- | --- |
-| Public product guides and concepts | `apps/docs/**/*.md` | none |
-| Package API reference | `packages/<package>/docs/**/*.md` | `apps/docs/packages/<slug>/` and `packages/cli/docs/packages.md` |
+| Public product guides and concepts | `apps/docs/**/*.mdx` | none |
+| Package API reference | `packages/<package>/docs/**/*.md` | `packages/cli/docs/packages.md` (installed index only) |
 | Contributor and engineering docs | `docs/**/*.md` | none |
 | Changelog | `CHANGELOG.md` | `apps/www/content/changelog.generated.ts` |
 | Agent Skill | `skills/stacknext-debugging/` | `packages/cli/skills/` at pack time |
@@ -58,8 +59,9 @@ pnpm test:packages
 ```
 
 `pnpm check:docs` validates the public Mintlify configuration, navigation,
-redirects, Markdown links, generated package copies, frontmatter, documented
-scripts and the generated website changelog. CI additionally runs
+redirects, Markdown links, absolute production URLs, package docs, the generated
+CLI package index, frontmatter, documented scripts and the generated website
+changelog. CI additionally runs
 `mint validate --no-build` and `mint broken-links` from `apps/docs/`.
 
 ## Working rules

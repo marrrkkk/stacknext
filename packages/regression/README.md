@@ -46,7 +46,7 @@ auto-deleted and are never uploaded.
 - [Storage](docs/storage.md)
 
 The `docs/` directory ships in the npm archive. Public guides live on the
-[documentation site](https://github.com/marrrkkk/stacknext/tree/main/apps/docs).
+[documentation site](https://stack-next.mintlify.site).
 
 ## AI agents
 

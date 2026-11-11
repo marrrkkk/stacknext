@@ -56,7 +56,7 @@ return values and errors, sanitize attributes and do not create a second SDK.
 - [Troubleshooting](docs/troubleshooting.md)
 
 The `docs/` directory ships in the npm archive. Public guides live on the
-[documentation site](https://github.com/marrrkkk/stacknext/tree/main/apps/docs).
+[documentation site](https://stack-next.mintlify.site).
 
 ## AI agents
 
@@ -64,7 +64,7 @@ Agents should read the installed `docs/installation.md` and
 `docs/instrumentation.md` before changing an app's `instrumentation.ts`. Never
 overwrite an existing file; add the StackNext hook to the existing registration.
 See the public
-[Next.js integration guide](https://github.com/marrrkkk/stacknext/blob/main/apps/docs/guides/nextjs.md).
+[Next.js integration guide](https://stack-next.mintlify.site/integrations/nextjs).
 
 ## Development
 

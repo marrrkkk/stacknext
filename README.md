@@ -25,7 +25,7 @@ Playwright-linked runtime captures against saved baselines, and freezes the
 current sample into redacted snapshots that outlive the live retention window.
 There is no cloud account, hosted backend, AI API client or telemetry upload.
 
-**Start here:** [Quick start](#quick-start) · [Installation](apps/docs/installation.md) · [CLI commands](apps/docs/getting-started.md#commands) · [MCP server](apps/docs/mcp.md) · [Privacy](apps/docs/privacy.md)
+**Start here:** [Quick start](#quick-start) · [Installation](apps/docs/installation.mdx) · [CLI commands](apps/docs/cli/commands.mdx) · [MCP server](apps/docs/mcp.mdx) · [Privacy](apps/docs/privacy.mdx)
 
 ![StackNext dashboard in dark mode](apps/docs/screenshots/overview-dark.png)
 
@@ -59,9 +59,9 @@ Already have `instrumentation.ts`, middleware, a proxy or an OpenTelemetry
 provider? StackNext preserves them and prints the hook to add manually. It yields
 to an existing tracer provider instead of replacing it.
 
-Installation, upgrade and cleanup: [apps/docs/installation.md](apps/docs/installation.md)
-and [apps/docs/uninstall.md](apps/docs/uninstall.md). Supported combinations:
-[apps/docs/compatibility.md](apps/docs/compatibility.md).
+Installation, upgrade and cleanup: [apps/docs/installation.mdx](apps/docs/installation.mdx)
+and [remove StackNext](apps/docs/installation.mdx#remove-stacknext). Supported combinations:
+[apps/docs/compatibility.mdx](apps/docs/compatibility.mdx).
 
 ## Try the example app
 
@@ -113,7 +113,7 @@ database becomes the selected database; the app does not merge tasks or resolve
 conflicting ids. Keep using the same data-directory override on later starts.
 Do not call `/api/seed` on the recovered database: that resets its tasks.
 
-For baselines, use the [documented artifact portability workflow](apps/docs/baselines.md#sharing-and-portability):
+For baselines, use the [documented artifact portability workflow](apps/docs/regression-testing.mdx#sharing-and-portability):
 copy individual immutable `base-*.json` records from the former app's
 `.stacknext/baselines/` into the new app's `.stacknext/baselines/` only when the
 destination id is absent. Create the directory with mode `0700`, retain `0600`
@@ -124,7 +124,7 @@ The CLI has no baseline import or merge command. Validate recovered records with
 `stacknext baseline list` and `stacknext baseline show <id>` from the new app.
 Old baselines retain their scenario identities and project/environment metadata;
 changed identities or environments can make comparisons inconclusive. Capture a
-new baseline for the rebuilt app using the [baseline workflow](apps/docs/baselines.md#create-a-baseline).
+new baseline for the rebuilt app using the [baseline workflow](apps/docs/regression-testing.mdx#create-a-baseline).
 
 For isolated Playwright captures, start a dedicated runtime with
 `STACKNEXT_EXAMPLE_DATA_DIR="$PWD/data/e2e" pnpm exec stacknext dev`.
@@ -187,7 +187,7 @@ the request, waterfall, database queries and errors on your machine.
 ## Requirements
 
 - Node.js **20.9+**. Public package validation runs on Node.js 22, 24 and 26;
-  see the [compatibility matrix](apps/docs/compatibility.md) for the current
+  see the [compatibility matrix](apps/docs/compatibility.mdx) for the current
   tested set.
 - npm, pnpm, yarn or bun to install the CLI and run your app.
 - Next.js **15 or 16** with the **App Router**, on the **Node.js runtime**.
@@ -252,7 +252,7 @@ creates `instrumentation.ts` (or `instrumentation.js` for a JavaScript project),
 and prints adapter setup for Drizzle/Prisma. It **never overwrites an existing
 instrumentation file**; it prints a manual hook instead. StackNext also yields to
 an already-registered OpenTelemetry provider rather than replacing existing
-monitoring. See [installation](apps/docs/installation.md) for upgrade and
+monitoring. See [installation](apps/docs/installation.mdx) for upgrade and
 configuration details.
 
 Drizzle:
@@ -297,10 +297,10 @@ export async function saveProject(formData: FormData) {
 }
 ```
 
-Full setup and configuration: [apps/docs/getting-started.md](apps/docs/getting-started.md).
-Instrumentation coverage: [apps/docs/instrumentation-coverage.md](apps/docs/instrumentation-coverage.md).
-Custom spans: [apps/docs/custom-instrumentation.md](apps/docs/custom-instrumentation.md).
-Server Actions: [apps/docs/server-actions.md](apps/docs/server-actions.md).
+Full setup: [apps/docs/getting-started/quickstart.mdx](apps/docs/getting-started/quickstart.mdx). Configuration: [apps/docs/reference/configuration.mdx](apps/docs/reference/configuration.mdx).
+Instrumentation coverage: [apps/docs/instrumentation-coverage.mdx](apps/docs/instrumentation-coverage.mdx).
+Custom spans: [apps/docs/custom-instrumentation.mdx](apps/docs/custom-instrumentation.mdx).
+Server Actions: [apps/docs/custom-instrumentation.mdx](apps/docs/custom-instrumentation.mdx#server-actions).
 
 ## CLI
 
@@ -383,9 +383,9 @@ The default is report-only. Add `--fail-on regression` in CI to exit non-zero
 only for a regression. The dashboard has `/runs`, `/baselines` and
 `/comparisons` views, and the MCP server exposes the same records read-only.
 Captured runs use one Playwright worker; see
-[apps/docs/regression-testing.md](apps/docs/regression-testing.md) for the full workflow,
-[apps/docs/playwright-integration.md](apps/docs/playwright-integration.md) for fixture
-setup, and [apps/docs/comparison-methodology.md](apps/docs/comparison-methodology.md) for
+[apps/docs/regression-testing.mdx](apps/docs/regression-testing.mdx) for the full workflow,
+[apps/docs/playwright-integration.mdx](apps/docs/playwright-integration.mdx) for fixture
+setup, and [comparison methodology](apps/docs/regression-testing.mdx#comparison-methodology) for
 the thresholds and status rules.
 
 ## Saved snapshots
@@ -509,15 +509,13 @@ pnpm exec stacknext skill install --client claude-code
 existing copy. The skill ships inside `@stacknext/cli`; the repository copy
 remains the canonical source. Do not overwrite existing instruction files; add
 the marked block from
-[apps/docs/integrations/agent-instructions.md](apps/docs/integrations/agent-instructions.md)
+[apps/docs/ai-agents/setup.mdx](apps/docs/ai-agents/setup.mdx)
 to `AGENTS.md` or `CLAUDE.md` only after reviewing it.
 
 Client setup:
 
-- [OpenCode](apps/docs/integrations/opencode.md)
-- [Codex](apps/docs/integrations/codex.md)
-- [Claude Code](apps/docs/integrations/claude-code.md)
-- [MCP tools, prompts and response metadata](apps/docs/mcp.md)
+- [OpenCode, Codex and Claude Code setup](apps/docs/ai-agents/setup.mdx)
+- [MCP tools, prompts and response metadata](apps/docs/mcp.mdx)
 - [Agent compatibility suite and current results](docs/testing/agent-compatibility.md)
 
 The agent should start with `get_project_summary`, cite tool evidence, check
@@ -543,7 +541,7 @@ runs, baselines, comparisons and snapshots are redacted JSON records under
 pruned automatically except for automatic exit/error snapshots, which keep the
 newest ten by default. Snapshots are redacted again on import.
 
-Read [apps/docs/privacy.md](apps/docs/privacy.md) for the full data table and caveats.
+Read [apps/docs/privacy.mdx](apps/docs/privacy.mdx) for the full data table and caveats.
 Redaction is pattern-based, not a formal secret scanner: review exports before
 sharing them.
 
@@ -561,7 +559,7 @@ comparisons use Playwright-linked samples, medians and explicit thresholds; they
 are not statistical tests, do not prove causality and report `inconclusive` when
 the environment or evidence is insufficient. Snapshots are frozen copies from
 their save time: they do not update, carry no live diagnostics or coverage, and
-do not prove current behavior. See [apps/docs/limitations.md](apps/docs/limitations.md).
+do not prove current behavior. See [apps/docs/limitations.mdx](apps/docs/limitations.mdx).
 
 ## Repository layout
 
@@ -584,7 +582,7 @@ docs/               contributor and engineering knowledge base
 ```
 
 More detail: [architecture overview](docs/architecture/overview.md) and the
-[public architecture page](apps/docs/architecture.md).
+[engineering architecture overview](https://github.com/marrrkkk/stacknext/blob/main/docs/architecture/overview.md).
 
 ## Development
 
@@ -625,7 +623,7 @@ and 26, validates real package archives, and runs the e2e and external-consumer
 smoke tests. A separate scheduled compatibility workflow covers Next.js 15/16
 with npm and pnpm, plus Windows and macOS smoke runs. See
 [release process](docs/deployment/release-process.md) and
-[compatibility](apps/docs/compatibility.md).
+[compatibility](apps/docs/compatibility.mdx).
 
 See [AGENTS.md](AGENTS.md) for the repository conventions, invariants and
 verification workflow, and [docs/README.md](docs/README.md) for the engineering

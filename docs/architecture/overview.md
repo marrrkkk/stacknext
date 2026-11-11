@@ -6,7 +6,7 @@ outbound telemetry. This page describes the implementation shape that
 contributors need to preserve.
 
 The user-facing explanation lives in
-[`apps/docs/architecture.md`](../../apps/docs/architecture.md).
+[`apps/docs/overview/core-concepts.mdx`](../../apps/docs/overview/core-concepts.mdx).
 
 ## Processes
 
@@ -127,7 +127,7 @@ The six rules are `n-plus-one-queries`, `slow-request`, `slow-span`,
 `repeated-external-http`, `error-fingerprint` and `server-error-response`.
 Finding ids are deterministic, evidence is bounded and re-sanitized, and a
 finding is never presented as a confirmed root cause. See
-[`apps/docs/guides/diagnostics.md`](../../apps/docs/guides/diagnostics.md) for
+[`apps/docs/guides/diagnostics.mdx`](../../apps/docs/guides/diagnostics.mdx) for
 the user-facing rule descriptions and
 `packages/diagnostics/docs/rules.md` for the package reference.
 
@@ -182,4 +182,4 @@ instead of truncating. Imports are re-normalized and re-redacted.
 - [Package architecture](packages.md)
 - [Architecture boundaries](boundaries.md)
 - [Testing strategy](../testing/testing-strategy.md)
-- [Public architecture page](../../apps/docs/architecture.md)
+- [Public core concepts](../../apps/docs/overview/core-concepts.mdx)

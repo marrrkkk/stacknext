@@ -49,7 +49,7 @@ testing notes.
 - [Development](docs/development.md)
 
 The package docs ship in the npm archive. User-facing guides live on the
-[documentation site](https://github.com/marrrkkk/stacknext/tree/main/apps/docs).
+[documentation site](https://stack-next.mintlify.site).
 Agents changing a route should read the package docs and the repository
 [dashboard layout specification](https://github.com/marrrkkk/stacknext/blob/main/docs/architecture/dashboard-layout.md).
 
