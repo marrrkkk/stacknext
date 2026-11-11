@@ -101,4 +101,4 @@ rules and [release process](../deployment/release-process.md) for publishing.
 
 - [Architecture overview](overview.md)
 - [Architecture boundaries](boundaries.md)
-- [Public package architecture](../../apps/docs/architecture/packages.md)
+- [Public package reference](../../apps/docs/reference/packages.mdx)

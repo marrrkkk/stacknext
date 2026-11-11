@@ -42,7 +42,7 @@ I/O unless a loopback collector URL and token are supplied.
 
 The `docs/` directory ships in the npm archive and matches the installed
 version. Public concepts live on the
-[documentation site](https://github.com/marrrkkk/stacknext/tree/main/apps/docs).
+[documentation site](https://stack-next.mintlify.site).
 
 ## AI agents
 

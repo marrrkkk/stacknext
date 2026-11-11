@@ -109,7 +109,7 @@ investigation.
 The same archives were also installed into external Next.js 15 and 16 fixtures
 with npm and pnpm on Node.js 22.23.3, 24.21.0 and 26.13.0. All 12 combinations
 passed the consumer journey, as did the Windows and macOS package smoke jobs.
-See the [public compatibility matrix](../../apps/docs/compatibility.md).
+See the [public compatibility matrix](../../apps/docs/compatibility.mdx).
 
 ### What was not tested in 0.6
 
@@ -272,7 +272,7 @@ cp -R skills/stacknext-debugging "$TEST/.claude/skills/"
 ```
 
 Use the marked block from
-[agent-instructions.md](../../apps/docs/integrations/agent-instructions.md) in the temporary
+[agent-instructions.md](../../apps/docs/ai-agents/setup.mdx) in the temporary
 project's `AGENTS.md` and `CLAUDE.md`.
 
 Exercise the diagnostics routes before the agent run:
@@ -352,9 +352,9 @@ Do not use a real collector token in test fixtures or transcripts.
 
 ## Related documentation
 
-- [Agent Skill](../../apps/docs/ai-agents/skill.md)
-- [MCP tools and security model](../../apps/docs/mcp.md)
-- [Project instructions for agents](../../apps/docs/integrations/agent-instructions.md)
-- [OpenCode setup](../../apps/docs/integrations/opencode.md)
-- [Codex setup](../../apps/docs/integrations/codex.md)
-- [Claude Code setup](../../apps/docs/integrations/claude-code.md)
+- [Agent Skill](../../apps/docs/ai-agents/setup.mdx)
+- [MCP tools and security model](../../apps/docs/mcp.mdx)
+- [Project instructions for agents](../../apps/docs/ai-agents/setup.mdx)
+- [OpenCode setup](../../apps/docs/ai-agents/setup.mdx)
+- [Codex setup](../../apps/docs/ai-agents/setup.mdx)
+- [Claude Code setup](../../apps/docs/ai-agents/setup.mdx)

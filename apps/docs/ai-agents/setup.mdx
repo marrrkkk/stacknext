@@ -1,0 +1,236 @@
+---
+title: Agent setup
+description: Install managed AGENTS.md instructions, the Agent Skill and the read-only MCP server for OpenCode, Codex or Claude Code.
+---
+
+StackNext supports AI coding agents through three complementary layers:
+
+| Layer | Installed by | Purpose |
+| --- | --- | --- |
+| Managed `AGENTS.md` block | `stacknext init --agents` | Point the agent at version-matched local docs |
+| Agent Skill | `stacknext skill install` | Evidence-first debugging workflows |
+| MCP server | Client configuration | Read-only runtime and regression evidence |
+
+## Order of operations
+
+1. Start `stacknext dev`.
+2. Install the skill and managed instructions.
+3. Configure MCP.
+4. Ask the agent to call `get_project_summary` before investigating.
+
+The managed block and skill are safe to commit if the project commits its
+client configuration. `.stacknext/run.json` contains a bearer token and must
+never be committed.
+
+## Managed AGENTS.md instructions
+
+```bash
+pnpm exec stacknext init --agents
+```
+
+This adds or updates a block between
+`<!-- BEGIN STACKNEXT AGENT RULES -->` and
+`<!-- END STACKNEXT AGENT RULES -->`. Existing content is preserved, repeated
+runs are idempotent, and line endings are kept. `--skip-agents` explicitly skips
+the block, which is also the default.
+
+The block tells an agent to:
+
+1. Read the local documentation entry point listed in the block.
+2. Read the docs for each StackNext package involved in the task, listing only
+   packages that are actually installed.
+3. Confirm the installed version in the adjacent `package.json`.
+4. Prefer local docs over external docs or model memory.
+5. Not assume undocumented APIs, configuration or internal packages exist.
+6. Use the read-only MCP tools for runtime investigation.
+7. Follow the `stacknext-debugging` skill for deeper workflows.
+8. Treat diagnostics and comparisons as evidence, not confirmed causes.
+9. Verify against the installed implementation and tests.
+
+Safety guarantees:
+
+- A missing `AGENTS.md` is created.
+- An existing file is never overwritten.
+- Content outside the markers is preserved byte-for-byte, including CRLF.
+- The block is replaced in place on later runs.
+- Duplicate or partial markers cause a clear error; the file is not modified.
+- No client config or global instruction file is touched.
+
+`--agents` writes `AGENTS.md` only. Tools that read `CLAUDE.md`,
+`.cursor/rules/`, `GEMINI.md` or a proprietary file need a manual copy of the
+same block. StackNext does not silently modify files it does not own.
+
+Re-run `stacknext init --agents` after upgrading StackNext. Only the managed
+block changes. To remove it, delete the block between the markers, or delete
+`AGENTS.md` when it contains nothing else.
+
+## Agent Skill
+
+```bash
+pnpm exec stacknext skill install --client opencode
+pnpm exec stacknext skill install --client codex
+pnpm exec stacknext skill install --client claude-code
+```
+
+| Client | Project skill path |
+| --- | --- |
+| OpenCode | `.opencode/skills/stacknext-debugging/` (also reads `.claude/skills/` and `.agents/skills/`) |
+| Codex | `.agents/skills/stacknext-debugging/` |
+| Claude Code | `.claude/skills/stacknext-debugging/` |
+
+The skill ships inside `@stacknext/cli`; the command copies the whole directory,
+including `references/`. Do not copy only `SKILL.md`. `--force` replaces an
+existing copy and `stacknext skill path` prints the bundled location. The skill
+is also available from
+[`skills/stacknext-debugging`](https://github.com/marrrkkk/stacknext/tree/main/skills/stacknext-debugging)
+in the repository.
+
+It covers runtime errors, slow requests, database activity, diagnostics,
+regression evidence, snapshots, coverage checks and the evidence-first report
+format. It does not grant new capabilities, replace the MCP server or duplicate
+the package API reference. After upgrading StackNext, reinstall the skill with
+`--force` so the workflow and tool list match.
+
+## MCP server configuration
+
+Start `stacknext dev` first, then configure the client to run:
+
+```bash
+pnpm --dir /absolute/path/to/your-app exec stacknext mcp
+```
+
+Use an absolute app path; a relative path depends on where the client starts
+the server. The server reads `.stacknext/run.json` and exposes twenty read-only
+tools plus five prompts. See the [MCP server](/mcp) for the generic JSON form and
+the [MCP tools reference](/reference/mcp-tools) for the full surface.
+
+### OpenCode
+
+Create or edit `opencode.json` in the project root. OpenCode V2 stores servers
+under `mcp.servers`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "stacknext": {
+        "type": "local",
+        "command": [
+          "pnpm",
+          "--dir",
+          "/absolute/path/to/your-app",
+          "exec",
+          "stacknext",
+          "mcp"
+        ],
+        "codemode": false
+      }
+    }
+  }
+}
+```
+
+`codemode: false` exposes the twenty StackNext tools directly instead of
+grouping them behind OpenCode's Code Mode. If you prefer Code Mode, omit the
+field and call the grouped tools as `tools.stacknext.<tool>`.
+
+You can also add the entry with the CLI:
+
+```bash
+opencode mcp add stacknext -- \
+  pnpm --dir /absolute/path/to/your-app exec stacknext mcp
+```
+
+Check the connection with `opencode mcp list`. OpenCode watches configuration
+files and applies changes without a restart.
+
+### Codex
+
+Add the server to your Codex configuration (`~/.codex/config.toml` for a user
+configuration, or the project configuration file your Codex version supports):
+
+```toml
+[mcp_servers.stacknext]
+command = "pnpm"
+args = ["--dir", "/absolute/path/to/your-app", "exec", "stacknext", "mcp"]
+```
+
+Restart Codex after changing the file. Codex reads the server's MCP
+`instructions` during initialization.
+
+### Claude Code
+
+Add the server with the Claude Code CLI:
+
+```bash
+claude mcp add stacknext -- \
+  pnpm --dir /absolute/path/to/your-app exec stacknext mcp
+```
+
+Or add it to a project `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "stacknext": {
+      "command": "pnpm",
+      "args": [
+        "--dir",
+        "/absolute/path/to/your-app",
+        "exec",
+        "stacknext",
+        "mcp"
+      ]
+    }
+  }
+}
+```
+
+Claude Code reads `CLAUDE.md` for project instructions. If you want the managed
+StackNext block there, copy it from `AGENTS.md` after running
+`init --agents`. Do not put the bearer token in `CLAUDE.md` or `.mcp.json`.
+
+## Supported clients
+
+| Client | MCP | Project skill | Project instructions |
+| --- | --- | --- | --- |
+| OpenCode | `opencode.json` | `.opencode/skills/` | `AGENTS.md` |
+| Codex | `config.toml` | `.agents/skills/` | `AGENTS.md` |
+| Claude Code | CLI or `.mcp.json` | `.claude/skills/` | `CLAUDE.md` |
+
+Any MCP client that can launch a local stdio server can use the same command.
+Do not use SSE, HTTP or a remote proxy. The server refuses non-loopback
+collector URLs, and the collector binds to loopback only.
+
+## Verify
+
+In a client session, ask:
+
+```text
+Call the StackNext get_project_summary tool and tell me whether instrumentation
+is connected. Then list the three slowest requests.
+```
+
+A healthy result has `meta.connection.instrumentation: "connected"`. If the tool
+does not appear, check the client's MCP logs and the absolute path. Restart the
+client after restarting `stacknext dev`, because the token changes.
+
+## Boundaries
+
+- Every MCP tool is read-only. The server cannot capture, save, compare, delete
+  or edit anything.
+- The skill shapes an investigation but cannot bypass redaction or add
+  capabilities.
+- The connected client may log or transmit tool results under its own policy.
+  StackNext does not control the client. Review that policy before using a
+  hosted model with project telemetry.
+- A client is listed as supported only after a recorded end-to-end check. See
+  [agent compatibility testing](https://github.com/marrrkkk/stacknext/blob/main/docs/testing/agent-compatibility.md).
+
+## Related
+
+- [MCP server](/mcp)
+- [MCP tools](/reference/mcp-tools)
+- [Agent workflows](/ai-agents/workflows)
+- [Local documentation](/ai-agents/local-docs)

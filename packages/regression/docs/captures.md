@@ -88,5 +88,5 @@ stacknext capture --name candidate --quiet --json \
 stacknext compare <baseline-id> <candidate-run-id> --fail-on regression
 ```
 
-See the repository `apps/docs/regression-testing.md` and
+See the repository `apps/docs/regression-testing.mdx` and
 `@stacknext/playwright/docs/index.md`.

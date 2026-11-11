@@ -1,0 +1,330 @@
+---
+title: Custom instrumentation
+description: Add application spans and record Server Actions with the @stacknext/next helpers.
+---
+
+Next.js emits request, route and render spans, but it does not know which part
+of your application is slow or important. `@stacknext/next` provides three
+optional helpers for adding application evidence to the same request trace:
+
+```ts
+import {
+  withStackNextSpan,
+  withStackNextSpanSync,
+  withStackNextAction,
+} from '@stacknext/next'
+
+await withStackNextSpan('catalog.refresh', async () => {
+  await refreshCatalog()
+})
+
+const digest = withStackNextSpanSync('auth.hash', () => hashPassword(input))
+
+await withStackNextAction('action/create-task', () => createTask(input))
+```
+
+The helpers use the OpenTelemetry API and the provider registered by
+`registerStackNext()`; they do not create a second SDK, exporter or collector
+connection. If StackNext is inert (no token or collector URL), the helpers are
+effectively no-ops through the OpenTelemetry no-op provider.
+
+## Signatures
+
+```ts
+withStackNextSpan<T>(
+  name: string,
+  fn: (span: Span) => T | Promise<T>,
+  options?: StackNextManualSpanOptions,
+): Promise<T>
+
+withStackNextSpan<T>(
+  name: string,
+  options: StackNextManualSpanOptions,
+  fn: (span: Span) => T | Promise<T>,
+): Promise<T>
+
+withStackNextSpanSync<T>(
+  name: string,
+  fn: (span: Span) => T,
+  options?: StackNextManualSpanOptions,
+): T
+
+withStackNextSpanSync<T>(
+  name: string,
+  options: StackNextManualSpanOptions,
+  fn: (span: Span) => T,
+): T
+
+withStackNextAction<T>(
+  name: string,
+  fn: (span: Span) => T | Promise<T>,
+  options?: StackNextManualSpanOptions,
+): Promise<T>
+
+withStackNextAction<T>(
+  name: string,
+  options: StackNextManualSpanOptions,
+  fn: (span: Span) => T | Promise<T>,
+): Promise<T>
+```
+
+The async helpers always await the callback and return its value. The sync
+helper preserves synchronous return values and exceptions exactly.
+
+### Options
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `attributes` | `Record<string, unknown>` | `undefined` | Attributes passed through the normal sanitizer |
+| `kind` | OpenTelemetry `SpanKind` | `SpanKind.INTERNAL` | Use `SpanKind.CLIENT` for a database/HTTP client, `PRODUCER`/`CONSUMER` for queue work |
+| `recordException` | `boolean` | `true` | Record thrown errors as span exceptions and set the span status to error. Redirect/not-found control flow is never marked as an error |
+
+## What the helpers guarantee
+
+- **Same trace.** The span is started with `startActiveSpan`, so it becomes the
+  active OpenTelemetry context. Nested StackNext or OpenTelemetry spans parent
+  correctly. Outside any request context, a helper starts a new trace root.
+- **Return values are preserved.** The callbacks may return a value, a promise
+  or nothing. The helpers return or resolve with the same result.
+- **Errors are preserved.** The original error is recorded on the span and
+  rethrown unchanged. Callers can still use `try`/`catch`.
+- **Control flow is preserved.** App Router `redirect()`, `notFound()` and HTTP
+  fallback errors use thrown digest objects. The helpers rethrow them without
+  marking the span as failed.
+- **Concurrency is isolated.** The active span comes from OpenTelemetry context,
+  not a module-level variable. Concurrent requests and concurrent calls within
+  one request do not cross-parent.
+- **Attributes are sanitized centrally.** The exporter applies the same
+  sanitizer used for Next.js spans before the collector's second redaction pass.
+- **No blocking network I/O.** Span creation and ending are local. The existing
+  bounded transport batches export in the background.
+- **Explicit markers.** Helpers add `stacknext.manual: true` and
+  `stacknext.span.kind` (`"custom"` or `"action"`). Coverage and the trace
+  explorer use these markers.
+
+## Examples
+
+### Measure a route handler
+
+```ts
+import { withStackNextSpan } from '@stacknext/next'
+
+export async function GET(): Promise<Response> {
+  const projects = await withStackNextSpan(
+    'projects.list',
+    { attributes: { 'app.feature': 'projects', 'app.result_limit': 50 } },
+    async () => listProjects(),
+  )
+  return Response.json({ projects })
+}
+```
+
+### Measure a synchronous library call
+
+```ts
+import { SpanKind } from '@opentelemetry/api'
+import { withStackNextSpanSync } from '@stacknext/next'
+
+const digest = withStackNextSpanSync(
+  'auth.hash-password',
+  {
+    kind: SpanKind.INTERNAL,
+    attributes: { 'crypto.algorithm': 'scrypt' },
+  },
+  () => hashPassword(password),
+)
+```
+
+### Measure a database driver
+
+```ts
+import { SpanKind } from '@opentelemetry/api'
+import { withStackNextSpan } from '@stacknext/next'
+
+const rows = await withStackNextSpan(
+  'orders.query',
+  {
+    kind: SpanKind.CLIENT,
+    attributes: {
+      'db.system': 'postgresql',
+      'db.operation': 'select',
+    },
+  },
+  () => client.query('select * from orders where id = $1', [id]),
+)
+```
+
+### Measure a Server Component
+
+```tsx
+import { withStackNextSpan } from '@stacknext/next'
+
+export default async function ProjectPage({ params }: Props) {
+  const project = await withStackNextSpan(
+    'project.load',
+    { attributes: { 'app.project_route': '/projects/[id]' } },
+    () => loadProject(params.id),
+  )
+
+  return <Project project={project} />
+}
+```
+
+This measures the work you wrap. It does not make Next.js trace every Server
+Component automatically, and it does not change caching or rendering behavior.
+
+## Server Actions
+
+Next.js calls `onRequestError` for failures, not for successful actions. A
+successful action that updates a row, revalidates a page and returns a value
+does not produce an error event, so it would be invisible if StackNext relied
+only on the error hook. The documented Next.js telemetry does not expose a
+stable per-action name that StackNext can use without patching internals.
+
+`withStackNextAction()` creates an explicit span with the same active trace as
+the request, a stable name you choose, `stacknext.manual: true` and
+`stacknext.span.kind: "action"`. The trace explorer classifies it as
+**app/custom**, and coverage reports it under `custom.server-actions`.
+
+### Basic usage
+
+```ts
+'use server'
+
+import { withStackNextAction } from '@stacknext/next'
+
+export async function createTask(formData: FormData) {
+  return withStackNextAction(
+    'action/create-task',
+    { attributes: { 'app.action': 'create-task' } },
+    async (span) => {
+      const title = formData.get('title')
+      span.setAttribute('app.has_title', typeof title === 'string')
+      span.setAttribute('app.title_length', typeof title === 'string' ? title.length : 0)
+
+      const task = await db.insert(tasks).values({ title }).returning()
+      revalidatePath('/tasks')
+      return { ok: true, taskId: task[0].id }
+    },
+  )
+}
+```
+
+The return value is returned unchanged. Only pass derived, non-sensitive values.
+Do not send the `FormData` object, field values, cookies, headers, file contents
+or raw request bodies as attributes.
+
+### Failures
+
+Thrown errors are recorded on the action span and rethrown unchanged:
+
+```ts
+export async function deleteTask(id: string) {
+  return withStackNextAction('action/delete-task', async () => {
+    const deleted = await deleteTaskById(id)
+    if (!deleted) throw new Error('task not found')
+    revalidatePath('/tasks')
+    return { ok: true }
+  })
+}
+```
+
+Next.js may also call `onRequestError`, producing a correlated error entry.
+Check the trace to see the action span, the error and any failed query together.
+
+### Redirects, `notFound()` and revalidation
+
+`redirect()`, `notFound()` and HTTP fallbacks work by throwing special
+control-flow objects. They are normal outcomes: the helper rethrows them and
+does not mark the span as an error. Keep the redirect inside the callback so the
+action span covers that path.
+
+```ts
+import { redirect } from 'next/navigation'
+import { withStackNextAction } from '@stacknext/next'
+
+export async function saveAndReturn(formData: FormData) {
+  return withStackNextAction('action/save-and-return', async () => {
+    await save(formData)
+    revalidatePath('/settings')
+    redirect('/settings?saved=1')
+  })
+}
+```
+
+`revalidatePath()` and `revalidateTag()` are ordinary calls. Put them inside the
+action callback so their work stays within the action span. Revalidation itself
+is not a separate StackNext span.
+
+### Concurrency
+
+Each call uses OpenTelemetry's active context, so concurrent actions do not share
+a parent accidentally:
+
+```ts
+const results = await Promise.all(
+  [0, 1, 2].map((index) =>
+    withStackNextAction(`action/refresh-${index}`, () => refresh(index)),
+  ),
+)
+```
+
+There is no module-level "current action" variable.
+
+### What is not automatic
+
+- **No automatic action naming.** Only exported actions you wrap have a named
+  action span.
+- **No argument or form capture.** Argument values, `FormData` entries, files
+  and return values are not recorded automatically.
+- **No browser/client tracing.** The span records server-side execution.
+- **No Edge support.** The helper is part of the Node.js runtime integration.
+- **No guarantee that every failure is correlated.** Failures normally reach
+  `onRequestError`; an error outside Next.js's error path may be missing or rely
+  on route/time fallback correlation.
+
+## Attributes and privacy
+
+The helpers accept arbitrary attribute-shaped data, but not every value is
+retained. The sanitizer:
+
+- replaces header/cookie/authorization/password/token/secret-shaped keys;
+- removes query strings and fragments from URL-like strings;
+- passes strings through text redaction and length caps;
+- drops nested objects and unsupported types rather than serializing them
+  blindly.
+
+Redaction is pattern-based. Prefer booleans, counts, enum values and route
+templates over user data. Never pass form fields, request bodies, cookies,
+authorization headers or raw SQL parameters.
+
+## Operation boundaries
+
+- **Do not wrap an entire request.** Next.js already creates the request root.
+  Wrapping everything creates an overlapping parent and makes the timeline
+  harder to read.
+- **Do not sum overlapping spans.** A parent span already contains its children.
+  Use the waterfall to compare work.
+- **Keep names stable and low-cardinality.** Use `catalog.refresh`, not
+  `catalog.refresh?sku=...` or a user id.
+- **Use `withStackNextSpanSync` only for synchronous work.** An async callback
+  returns a promise without awaiting it, so the span can end too early.
+
+## Coverage and the trace explorer
+
+Custom spans appear in the request/trace waterfall as **app/custom** spans.
+Coverage reports `custom.spans` as `observed` when at least one marked custom
+span is in the sample, and `custom.server-actions` when action spans are present.
+The two markers are separate: a generic custom span does not claim to be a
+Server Action.
+
+Manual spans are optional. `custom.spans: unknown` only means the sample
+contains no marked custom spans; it does not mean the application is
+uninstrumented or unhealthy.
+
+## Related
+
+- [Next.js integration](/integrations/nextjs)
+- [Instrumentation coverage](/instrumentation-coverage)
+- [Runtime evidence](/guides/runtime-evidence)
+- [Limitations](/limitations)
