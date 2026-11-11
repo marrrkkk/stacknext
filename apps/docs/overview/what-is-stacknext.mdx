@@ -16,21 +16,151 @@ in-memory sample and gives you four ways to read it:
 
 ## Data flow
 
-```text
-Next.js app + adapters
-        │  documented spans, query events, errors
-        ▼
-@stacknext/next  ──redact──▶  loopback collector  ──redact──▶  in-memory store
-                                                               │
-                                         ┌─────────────────────┼─────────────────────┐
-                                         ▼                     ▼                     ▼
-                                     dashboard              CLI / export          MCP server
-                                         │
-                                         └── explicit save ──▶ .stacknext/snapshots
-                                                                 .stacknext/runs
-                                                                 .stacknext/baselines
-                                                                 .stacknext/comparisons
-```
+<div className="sn-flow">
+  <div className="sn-caption">
+    <span>Fig 0.1</span>
+    <span>Local data flow</span>
+  </div>
+
+  <div className="sn-node">
+    <p className="sn-eyebrow">Your app</p>
+    <ul className="sn-chips">
+      <li className="sn-chip">
+        <span className="sn-tile sn-tile-next">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="9.8" y="2.6" width="4.4" height="4.4" rx="1.2" />
+            <rect x="3.2" y="17" width="4.4" height="4.4" rx="1.2" />
+            <rect x="16.4" y="17" width="4.4" height="4.4" rx="1.2" />
+            <path d="M12 7v3M12 10H5.4v7M12 10h6.6v7" />
+          </svg>
+        </span>
+        Next.js
+      </li>
+      <li className="sn-chip">
+        <span className="sn-tile sn-tile-drizzle">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 6.2c0-1.7 3.1-3 7-3s7 1.3 7 3" />
+            <path d="M5 6.2v12.4c0 1.7 3.1 3 7 3s7-1.3 7-3V6.2" />
+            <path d="M5 10.6c0 1.7 3.1 3 7 3s7-1.3 7-3M5 15c0 1.7 3.1 3 7 3s7-1.3 7-3" />
+          </svg>
+        </span>
+        Drizzle
+      </li>
+      <li className="sn-chip">
+        <span className="sn-tile sn-tile-prisma">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M13.4 2.5 21.2 18a1.5 1.5 0 0 1-1.3 2.2H4.1A1.5 1.5 0 0 1 2.8 18L10.6 2.5a1.6 1.6 0 0 1 2.8 0Z" />
+            <path d="m9.7 7.2 6.9 13" />
+          </svg>
+        </span>
+        Prisma
+      </li>
+    </ul>
+    <p className="sn-sub">plus custom spans and manual action helpers</p>
+  </div>
+
+  <div className="sn-link">
+    <span className="sn-link-label">spans · query events · errors</span>
+  </div>
+
+  <div className="sn-node">
+    <div className="sn-node-head">
+      <p className="sn-eyebrow">Instrumentation</p>
+      <span className="sn-pill">redact</span>
+    </div>
+    <p className="sn-title">@stacknext/next</p>
+    <p className="sn-sub">redacts in the app · sends asynchronously, off the request path</p>
+  </div>
+
+  <div className="sn-link">
+    <span className="sn-link-label">loopback only · bearer token</span>
+  </div>
+
+  <div className="sn-node">
+    <div className="sn-node-head">
+      <p className="sn-eyebrow">Collector · one Node process</p>
+      <span className="sn-pill">redact</span>
+    </div>
+    <p className="sn-title">127.0.0.1:4400</p>
+    <p className="sn-sub">validates every envelope · never blocks a request</p>
+    <div className="sn-sample">
+      <span className="sn-live" aria-hidden="true" />
+      <div>
+        <p className="sn-sample-title">in-memory sample</p>
+        <p className="sn-sample-sub">5,000 spans · 10-minute window</p>
+        <p className="sn-sample-sub">capacity limits · drop counters</p>
+      </div>
+    </div>
+  </div>
+
+  <div className="sn-fan">
+    <span className="sn-link-label">same sample · read-only</span>
+  </div>
+
+  <div className="sn-readers">
+    <div className="sn-node">
+      <div className="sn-reader-head">
+        <span className="sn-tile sn-tile-dashboard">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="3" width="7.4" height="7.4" rx="1.4" />
+            <rect x="13.6" y="3" width="7.4" height="7.4" rx="1.4" />
+            <rect x="3" y="13.6" width="7.4" height="7.4" rx="1.4" />
+            <rect x="13.6" y="13.6" width="7.4" height="7.4" rx="1.4" />
+          </svg>
+        </span>
+        <p className="sn-title">Dashboard</p>
+      </div>
+      <p className="sn-sub">requests · traces · queries</p>
+    </div>
+
+    <div className="sn-node">
+      <div className="sn-reader-head">
+        <span className="sn-tile">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="2.4" y="3.8" width="19.2" height="16.4" rx="2.4" />
+            <path d="m6.6 8.4 3.2 3.6-3.2 3.6M13.4 15.6h4.2" />
+          </svg>
+        </span>
+        <p className="sn-title">CLI + export</p>
+      </div>
+      <p className="sn-sub">coverage · diagnose · snapshot</p>
+    </div>
+
+    <div className="sn-node">
+      <div className="sn-reader-head">
+        <span className="sn-tile">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="2.6" y="9.2" width="5.6" height="5.6" rx="2.4" />
+            <rect x="15.8" y="3.4" width="5.6" height="5.6" rx="2.4" />
+            <rect x="15.8" y="15" width="5.6" height="5.6" rx="2.4" />
+            <path d="m7.8 10.6 8.4-3.2M7.8 13.2l8.4 3.2" />
+          </svg>
+        </span>
+        <p className="sn-title">MCP server</p>
+      </div>
+      <p className="sn-sub">read-only tools · GET only</p>
+    </div>
+  </div>
+
+  <div className="sn-link">
+    <span className="sn-link-label">only on an explicit save</span>
+  </div>
+
+  <div className="sn-node">
+    <div className="sn-node-head">
+      <p className="sn-eyebrow">Local records · redacted</p>
+    </div>
+    <div className="sn-chips sn-chips-plain">
+      <span className="sn-chip sn-chip-muted">snapshots</span>
+      <span className="sn-chip sn-chip-muted">runs</span>
+      <span className="sn-chip sn-chip-muted">baselines</span>
+      <span className="sn-chip sn-chip-muted">comparisons</span>
+    </div>
+    <p className="sn-sub">
+      <code>.stacknext/</code> · 0600 files · never uploaded or auto-deleted
+    </p>
+  </div>
+</div>
 
 `stacknext dev` starts the collector and runs your app's own `dev` script. It
 writes the collector URL and a short-lived bearer token to
