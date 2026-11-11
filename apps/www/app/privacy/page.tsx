@@ -3,6 +3,7 @@ import { ContentPage } from '@/components/content-page'
 import { contentNoteClass, contentTableClass, contentTableWrapClass } from '@/components/styles'
 import { pageMetadata } from '@/content/metadata'
 import { LINKS } from '@/content/site'
+import { POLICY_UPDATED, formatUpdatedDate } from '@/content/updates'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Privacy',
@@ -29,8 +30,10 @@ export default function PrivacyPage(): React.ReactElement {
       eyebrow="Legal / Privacy"
       title="Your data stays on your machine."
       lede="StackNext is a local-first debugging tool. This page explains what the collector receives, what is redacted or dropped, where records are stored, and why nothing is uploaded."
-      updated="November 10, 2026"
+      updated={formatUpdatedDate(POLICY_UPDATED)}
       sections={SECTIONS}
+      breadcrumb="Privacy"
+      path="/privacy"
     >
       <section id="overview">
         <h2>The short version</h2>

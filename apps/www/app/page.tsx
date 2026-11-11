@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { HOME_TITLE, SITE_DESCRIPTION, pageMetadata } from '@/content/metadata'
+import { faqJsonLd } from '@/content/structured-data'
+import { JsonLd } from '@/components/json-ld'
 import { ProductTour } from '@/components/product-tour'
 import { RevealProvider } from '@/components/reveal'
 import { SiteFooter } from '@/components/site-footer'
@@ -59,6 +61,7 @@ export default function Page(): React.ReactElement {
           <Faq />
           <Cta />
         </div>
+        <JsonLd data={faqJsonLd()} />
       </main>
       <SiteFooter />
       <RevealProvider />

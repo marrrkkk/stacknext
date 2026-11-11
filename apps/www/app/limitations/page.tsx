@@ -3,6 +3,7 @@ import { ContentPage } from '@/components/content-page'
 import { contentNoteClass } from '@/components/styles'
 import { pageMetadata } from '@/content/metadata'
 import { LINKS } from '@/content/site'
+import { POLICY_UPDATED, formatUpdatedDate } from '@/content/updates'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Limitations',
@@ -32,8 +33,10 @@ export default function LimitationsPage(): React.ReactElement {
       eyebrow="Product / Limitations"
       title="What StackNext does not do."
       lede="StackNext is a local development tool, not a production APM. These are intentional boundaries, not claims of completeness. Read them before treating a sample, finding or comparison as proof."
-      updated="November 10, 2026"
+      updated={formatUpdatedDate(POLICY_UPDATED)}
       sections={SECTIONS}
+      breadcrumb="Limitations"
+      path="/limitations"
     >
       <section id="overview">
         <h2>Start here</h2>
