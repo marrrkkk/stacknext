@@ -12,6 +12,16 @@ describe('schema and normalization', () => {
     expect(ingestEnvelopeSchema.safeParse(envelope()).success).toBe(true)
   })
 
+  it('accepts the external provider marker and rejects unknown modes', () => {
+    const external = envelope()
+    external.instance = { ...external.instance, provider: 'external' }
+    expect(ingestEnvelopeSchema.safeParse(external).success).toBe(true)
+
+    const unknown = envelope()
+    unknown.instance = { ...unknown.instance, provider: 'other' as never }
+    expect(ingestEnvelopeSchema.safeParse(unknown).success).toBe(false)
+  })
+
   it('rejects malformed trace ids, oversized arrays and unknown fields', () => {
     const badId = structuredClone(envelope())
     badId.spans[0] = { ...badId.spans[0]!, traceId: 'not-a-trace' }

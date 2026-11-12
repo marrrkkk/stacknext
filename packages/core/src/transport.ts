@@ -8,6 +8,7 @@ import {
   type StackNextErrorInput,
   type StackNextExporterDiagnostics,
   type StackNextIngestEnvelope,
+  type StackNextProviderMode,
   type StackNextSpanInput,
 } from './types.js'
 
@@ -30,6 +31,8 @@ export interface StackNextTransportOptions {
   requestTimeoutMs?: number
   heartbeatIntervalMs?: number
   debug?: boolean
+  /** Defaults to `stacknext`; `external` reports that capture is inactive. */
+  provider?: StackNextProviderMode
 }
 
 export interface TransportSnapshot {
@@ -42,6 +45,7 @@ export interface TransportSnapshot {
   droppedEvents: number
   lastError: string | null
   instanceId: string
+  provider: StackNextProviderMode
 }
 
 type PostResult = 'ok' | 'retry' | 'too-large'
@@ -241,6 +245,12 @@ export class StackNextTransport {
     this.timer.unref?.()
   }
 
+  /** Sends a heartbeat immediately so the collector learns the provider mode. */
+  announce(): void {
+    if (this.closed || this.stopping) return
+    void this.sendHeartbeat()
+  }
+
   stopTimers(): void {
     if (this.timer) clearTimeout(this.timer)
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer)
@@ -269,6 +279,9 @@ export class StackNextTransport {
           runtimeVersion: process.version,
           sdkVersion: STACKNEXT_SDK_VERSION,
           runtime: 'nodejs',
+          ...(this.options.provider === 'external'
+            ? { provider: 'external' as const }
+            : {}),
         },
         spans,
         errors,
@@ -410,6 +423,9 @@ export class StackNextTransport {
         runtimeVersion: process.version,
         sdkVersion: STACKNEXT_SDK_VERSION,
         runtime: 'nodejs',
+        ...(this.options.provider === 'external'
+          ? { provider: 'external' as const }
+          : {}),
       },
       spans: [],
       errors: [],
@@ -522,6 +538,7 @@ export class StackNextTransport {
       droppedEvents: this.droppedEvents,
       lastError: this.lastError,
       instanceId: this.instanceId,
+      provider: this.options.provider ?? 'stacknext',
     }
   }
 }

@@ -525,6 +525,12 @@ h4 {
   margin-top: var(--sp-2);
 }
 
+.nav-group__items {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
 .nav-group__label {
   padding: var(--sp-2) var(--sp-2) var(--sp-1);
   color: var(--text-tertiary);
@@ -532,6 +538,26 @@ h4 {
   line-height: 16px;
   font-weight: var(--fw-medium);
   letter-spacing: -0.01px;
+}
+
+.nav-group__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-group__toggle:hover {
+  color: var(--text-secondary);
+}
+
+.nav-group__toggle svg {
+  flex: 0 0 auto;
+  color: var(--text-tertiary);
 }
 
 .nav-item {
@@ -2252,6 +2278,17 @@ h4 {
 .row-clickable:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;
+}
+
+.row-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--text-tertiary);
+}
+
+.row-clickable:hover .row-open {
+  color: var(--text-primary);
 }
 
 .row-selected {

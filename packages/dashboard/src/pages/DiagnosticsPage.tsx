@@ -13,6 +13,7 @@ import { api } from '../api'
 import { useAsync, useDebounced } from '../hooks'
 import {
   Badge,
+  Banner,
   Card,
   CopyButton,
   EmptyState,
@@ -253,9 +254,11 @@ function FindingsSkeleton(): React.ReactElement {
 export function DiagnosticsPage({
   refreshKey,
   onNavigate,
+  repeatedQueryMin = 5,
 }: {
   refreshKey: number
   onNavigate: (path: string) => void
+  repeatedQueryMin?: number
 }): React.ReactElement {
   const traceId = new URLSearchParams(window.location.search).get('traceId') ?? undefined
   const [search, setSearch] = useState('')
@@ -331,6 +334,14 @@ export function DiagnosticsPage({
           </button>
         }
       />
+
+      <Banner tone="muted" icon="database" title="N+1 visibility">
+        Repeated SQL is visible on Database as soon as it is captured. A trace
+        becomes an <code>n-plus-one-queries</code> finding only when the same
+        normalized shape repeats at least {repeatedQueryMin} times in that trace
+        (<code>diagnostics.repeatedQueryMin</code>). Below the threshold, repeated
+        SQL is evidence, not a finding.
+      </Banner>
 
       {state.data ? (
         <StatStrip>
@@ -451,7 +462,7 @@ export function DiagnosticsPage({
             description={
               filtersActive
                 ? 'Clear a filter or widen the search.'
-                : 'No rule crossed its threshold in the current sample.'
+                : `No rule crossed its threshold in the current sample. Repeated SQL below ${repeatedQueryMin} runs per trace is still visible under Database.`
             }
             action={
               filtersActive ? (
@@ -462,7 +473,15 @@ export function DiagnosticsPage({
                 >
                   Clear filters
                 </button>
-              ) : undefined
+              ) : (
+                <button
+                  type="button"
+                  className="button button--secondary button--small"
+                  onClick={() => onNavigate('/traces?view=requests')}
+                >
+                  Browse requests
+                </button>
+              )
             }
           />
         </Card>

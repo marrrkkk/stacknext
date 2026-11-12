@@ -195,6 +195,30 @@ describe('local collector', () => {
     expect(errors.items[0]?.message).not.toContain('hunter2')
   })
 
+  it('records an external provider heartbeat without request spans', async () => {
+    const heartbeat = envelope()
+    heartbeat.instance = { ...heartbeat.instance, provider: 'external' }
+    heartbeat.spans = []
+    heartbeat.errors = []
+    heartbeat.databaseQueries = []
+
+    const response = await fetch(`${collector.url}/__stacknext/v1/ingest`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(heartbeat),
+    })
+    expect(response.status).toBe(202)
+
+    const healthResponse = await fetch(`${collector.url}/api/health`, {
+      headers: { authorization: `Bearer ${TOKEN}` },
+    })
+    const health = (await healthResponse.json()) as HealthResponse
+    expect(health.connected).toBe(true)
+    expect(health.counts.requests).toBe(0)
+    expect(health.connections).toHaveLength(1)
+    expect(health.connections[0]?.provider).toBe('external')
+  })
+
   it('reports an explicit NEXT_OTEL_VERBOSE override in health', async () => {
     const verboseCollector = await startCollector({
       port: 0,

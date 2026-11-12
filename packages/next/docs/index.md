@@ -68,7 +68,9 @@ Do not replace an existing `instrumentation.ts`. Import `registerStackNext` and
 - `register()` is inert when `STACKNEXT_COLLECTOR_URL` and `STACKNEXT_TOKEN` are
   absent. A production build can ship safely.
 - If another OpenTelemetry tracer provider is already registered, StackNext
-  yields to it and does not replace it.
+  yields to it, does not replace it, and reports capture as inactive over the
+  heartbeat so the dashboard and `doctor` do not present an empty sample as
+  healthy capture.
 - Spans are redacted and normalized before enqueueing.
 - The exporter never performs synchronous network I/O.
 - The transport shares one bounded queue with the Drizzle and Prisma adapters.

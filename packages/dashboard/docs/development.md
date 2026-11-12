@@ -124,7 +124,20 @@ the built dashboard directory at runtime. If the dashboard build is missing,
 
 <!-- /coderabbit-ai-generated:v1 -->
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:f6021290b4d637676ffc660de99a731d4eacf3bf4f6c4fdc49edcdd1a4f4945b -->
+
+Capture warnings name the affected services and instances. Mixed provider setups
+show partial request capture; an external provider on every connected instance
+shows inactive capture. Collapsing the sidebar keeps Regression destinations
+available. Empty saved trace lists link back to the snapshot; live empty states
+explain how to generate telemetry. Error records require a thrown error passed
+to `onRequestError`; a 5xx response without a throw is a failed request.
+
 ## Review checklist
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 - Preserve loopback-only behavior and the session-cookie boundary.
 - Do not add outbound analytics or remote fonts.

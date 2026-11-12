@@ -5,6 +5,7 @@ import {
   SNAPSHOT_SOURCES,
   SPAN_KINDS,
   SPAN_STATUSES,
+  STACKNEXT_PROVIDER_MODES,
 } from './types.js'
 
 const idSchema = (length: number) =>
@@ -119,6 +120,7 @@ export const instanceSchema = z
     runtimeVersion: z.string().max(100).optional(),
     sdkVersion: z.string().min(1).max(100),
     runtime: z.literal('nodejs'),
+    provider: z.enum(STACKNEXT_PROVIDER_MODES).optional(),
   })
   .strict()
 
