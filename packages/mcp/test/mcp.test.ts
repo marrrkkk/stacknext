@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildMeta } from '../src/meta.js'
 import { StackNextApiClient } from '../src/client.js'
 import { createStackNextMcpServer } from '../src/server.js'
+import { verifyMcpServer } from '../src/verify.js'
 
 const TOKEN = 'm'.repeat(32)
 const TRACE_A = 'a'.repeat(32)
@@ -1544,10 +1545,35 @@ describe('unreachable collector', () => {
 })
 
 
+it('verifies the MCP surface without an LLM client', async () => {
+  const collector = await startMockCollector()
+  try {
+    const result = await verifyMcpServer({
+      baseUrl: collector.url,
+      token: TOKEN,
+    })
+    expect(result.ok).toBe(true)
+    expect(result.toolCount).toBe(20)
+    expect(result.promptCount).toBe(5)
+    expect(result.connection).toBeDefined()
+    expect(result.requests).toBeGreaterThan(0)
+  } finally {
+    await collector.close()
+  }
+})
+
 it('keeps snapshot completeness independent of unavailable live health', () => {
   const base = { tool: 'snapshot', health: null, found: 1, returned: 1 }
   expect(buildMeta(base).completeness.complete).toBe(false)
   expect(buildMeta({ ...base, snapshot: true }).completeness).toEqual({ complete: true, reasons: [] })
   expect(buildMeta({ ...base, snapshot: true, reasons: ['Missing parent'] }).completeness.reasons).toEqual(['Missing parent'])
   expect(buildMeta({ ...base, snapshot: true, limit: 1, offset: 0, found: 2 }).completeness.complete).toBe(false)
+})
+
+it.each([
+  { baseUrl: 'not a URL', token: TOKEN, error: 'Collector URL is not a valid URL' },
+  { baseUrl: 'https://example.com', token: TOKEN, error: 'StackNext only reads from a loopback collector' },
+  { baseUrl: 'http://127.0.0.1:4400', token: 'short', error: 'Collector token is too short' },
+])('returns initialization failures through McpCheckResult: $error', async ({ baseUrl, token, error }) => {
+  await expect(verifyMcpServer({ baseUrl, token })).resolves.toEqual({ ok: false, error })
 })

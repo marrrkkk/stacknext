@@ -60,6 +60,12 @@ export const CHANGELOG_RELEASES = [
           [
             {
               "type": "text",
+              "value": "Return MCP check setup failures as JSON and recognize existing Next.js 15 and 16.0.0 dev workers on Linux when no JSON lock is available."
+            }
+          ],
+          [
+            {
+              "type": "text",
               "value": "Scoped dashboard capture warnings to affected services and instances, kept Regression navigation available in the collapsed sidebar, and clarified live request/error and saved snapshot empty states."
             }
           ],
