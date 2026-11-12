@@ -8,6 +8,7 @@ import {
   resolveSkillDirectory,
   runSkillInstall,
   runSkillPath,
+  runSkillUninstall,
 } from '../src/commands/skill.js'
 
 const roots: string[] = []
@@ -26,7 +27,11 @@ async function project(): Promise<string> {
 describe('Agent Skill commands', () => {
   it('registers the skill path and install commands', () => {
     const skill = createProgram('/tmp').commands.find((command) => command.name() === 'skill')
-    expect(skill?.commands.map((command) => command.name())).toEqual(['path', 'install'])
+    expect(skill?.commands.map((command) => command.name())).toEqual([
+      'path',
+      'install',
+      'uninstall',
+    ])
   })
 
   it('resolves the source skill and reports its version', async () => {
@@ -91,5 +96,26 @@ describe('Agent Skill commands', () => {
     await expect(runSkillInstall({ client: 'unknown', dir: root })).rejects.toThrow(
       '--client',
     )
+  })
+
+  it('previews and then removes installed skills', async () => {
+    const root = await project()
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    expect(await runSkillInstall({ client: 'opencode', dir: root, json: true })).toBe(0)
+    const installed = path.join(root, '.opencode', 'skills', 'stacknext-debugging')
+
+    expect(await runSkillUninstall({ dir: root, json: true })).toBe(0)
+    expect(await readFile(path.join(installed, 'SKILL.md'), 'utf8')).toContain(
+      'name: stacknext-debugging',
+    )
+
+    expect(await runSkillUninstall({ dir: root, yes: true, json: true })).toBe(0)
+    await expect(readFile(path.join(installed, 'SKILL.md'), 'utf8')).rejects.toThrow()
+  })
+
+  it('reports no skill without failing', async () => {
+    const root = await project()
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    expect(await runSkillUninstall({ dir: root, json: true })).toBe(0)
   })
 })

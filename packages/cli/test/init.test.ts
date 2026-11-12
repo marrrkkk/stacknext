@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -13,6 +13,7 @@ import { runtimeStatePath, writeRuntimeState } from '../src/runtime.js'
 const roots: string[] = []
 
 afterEach(async () => {
+  vi.restoreAllMocks()
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })))
 })
 
@@ -142,6 +143,26 @@ describe('stacknext uninstall', () => {
     expect(await runUninstall({ yes: true }, root)).toBe(0)
     expect(await readFile(path.join(runtime, '.gitignore'), 'utf8')).toBe('*\n')
     expect(await readFile(path.join(runtime, 'leftover.txt'), 'utf8')).toBe('keep\n')
+  })
+
+  it('reports installed Agent Skill directories without removing them', async () => {
+    const root = await project()
+    await runInit({}, root)
+    const skill = path.join(root, '.opencode', 'skills', 'stacknext-debugging')
+    await mkdir(skill, { recursive: true })
+    await writeFile(path.join(skill, 'SKILL.md'), 'name: stacknext-debugging\n')
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+
+    expect(await runUninstall({ yes: true, json: true }, root)).toBe(0)
+    const report = JSON.parse(String(log.mock.calls[0]?.[0])) as {
+      leftoverSkills: Array<{ client: string; directory: string }>
+    }
+    expect(report.leftoverSkills).toEqual([
+      { client: 'opencode', directory: skill },
+    ])
+    expect(await readFile(path.join(skill, 'SKILL.md'), 'utf8')).toContain(
+      'stacknext-debugging',
+    )
   })
 
   it('keeps user instrumentation and --keep-config', async () => {
