@@ -36,7 +36,27 @@ stderr. The collector must be running before the client starts the server.
 
 ## Client configuration
 
-Most clients accept a JSON server entry. Use an absolute app path:
+Most clients accept a JSON server entry. Use an absolute app path. With npm:
+
+```json
+{
+  "mcpServers": {
+    "stacknext": {
+      "command": "npm",
+      "args": [
+        "--prefix",
+        "/absolute/path/to/your-app",
+        "exec",
+        "--",
+        "stacknext",
+        "mcp"
+      ]
+    }
+  }
+}
+```
+
+With pnpm:
 
 ```json
 {
@@ -55,14 +75,14 @@ Most clients accept a JSON server entry. Use an absolute app path:
 }
 ```
 
-If your client supports `cwd`, this also works:
+If your client supports `cwd`, the shorter form also works:
 
 ```json
 {
   "mcpServers": {
     "stacknext": {
-      "command": "pnpm",
-      "args": ["exec", "stacknext", "mcp"],
+      "command": "npm",
+      "args": ["exec", "--", "stacknext", "mcp"],
       "cwd": "/absolute/path/to/your-app"
     }
   }
@@ -71,6 +91,22 @@ If your client supports `cwd`, this also works:
 
 If `stacknext` is installed globally, use `"command": "stacknext"` and
 `"args": ["mcp"]` instead. Restart the client after changing its MCP config.
+
+## Verify without an AI client
+
+`stacknext mcp --check` starts the server in memory, lists the tools and
+prompts, calls `get_project_summary` against the running collector and prints a
+JSON result. It exits non-zero when the collector is unreachable or the tool
+surface is broken:
+
+```bash
+npm exec -- stacknext mcp --check
+```
+
+With pnpm, use `pnpm exec stacknext mcp --check`. The output includes the server
+version, tool and prompt counts, instrumentation connection state and request,
+error and database counts. This checks the MCP surface itself; it does not test
+a specific AI client or model.
 
 For client-specific setup and skill installation, see
 [AI agent setup](/ai-agents/setup).

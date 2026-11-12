@@ -30,7 +30,9 @@ Start the loopback collector and dashboard, then run the app's `dev` script.
 | `--token <token>` | Use an existing token (16+ characters). |
 
 `dev` writes `.stacknext/run.json` with mode `0600` and removes it on graceful
-shutdown. Stop it with SIGINT/SIGTERM, not `SIGKILL`.
+shutdown. Stop it with SIGINT/SIGTERM, not `SIGKILL`. It refuses to start when
+a live Next.js dev server already owns the project; stop that server first so
+StackNext instruments the process it starts.
 
 ## `stacknext status`
 
@@ -43,7 +45,9 @@ Print the runtime, collector connection and current counts.
 ## `stacknext doctor`
 
 Check Node.js, Next.js, the App Router, config, instrumentation, adapters,
-dashboard build, runtime file permissions and collector health.
+dashboard build, runtime file permissions, collector health and first-request
+capture. An existing OpenTelemetry provider that owns tracing is a failure,
+because StackNext is yielding to it and request spans are not captured.
 
 | Option | Meaning |
 | --- | --- |
@@ -165,6 +169,10 @@ Start the read-only stdio MCP server.
 | --- | --- |
 | `--collector <url>` | Collector URL (defaults to runtime state). |
 | `--token <token>` | Bearer token (defaults to runtime state). |
+| `--check` | Verify the collector and MCP tool surface in memory, print JSON and exit. |
+
+`--check` exits non-zero when the collector is unreachable or the server surface
+is invalid. It is a protocol check, not a model-driven client test.
 
 ## `stacknext skill`
 
@@ -172,6 +180,10 @@ Start the read-only stdio MCP server.
 | --- | --- | --- |
 | `skill path` | `--json` | Print the bundled skill directory and version. |
 | `skill install` | `--client opencode\|codex\|claude-code`, `--dir`, `--force`, `--json` | Copy the skill into a project. |
+| `skill uninstall` | `--client opencode\|codex\|claude-code`, `--dir`, `--yes`, `--json` | Preview or remove installed skill directories. |
+
+`skill uninstall` removes the whole `stacknext-debugging` directory and any local
+edits inside it. Without `--yes` it only prints the plan.
 
 ## `stacknext uninstall`
 
@@ -183,6 +195,10 @@ Print a removal plan unless `--yes` is passed.
 | `--keep-config` | Preserve `stacknext.config.json`. |
 | `--remove-data` | Remove `.stacknext` saved data (refused while running). |
 | `--json` | Machine-readable report. |
+
+Agent Skill directories are installed separately from the npm packages.
+`uninstall` reports any it finds and points at `stacknext skill uninstall`; it
+does not delete them.
 
 ## Global
 

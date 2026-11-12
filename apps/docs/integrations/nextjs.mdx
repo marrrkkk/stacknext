@@ -33,8 +33,11 @@ semantics. See [instrumentation coverage](/instrumentation-coverage).
 
 ## Existing OpenTelemetry setup
 
-`registerStackNext()` yields to an already-registered provider. Keep your
-existing exporter and call StackNext from the existing `register()` hook:
+`registerStackNext()` yields to an already-registered provider. It sends a
+heartbeat with capture reported as inactive, so `stacknext status`,
+`stacknext doctor` and the dashboard warn instead of showing a healthy but empty
+connection. To let StackNext own tracing, remove the competing registration and
+call StackNext from the existing `register()` hook:
 
 ```ts
 import {
@@ -51,8 +54,10 @@ export async function register() {
 export const onRequestError = stackNextOnRequestError
 ```
 
-If your provider owns the pipeline, StackNext cannot add a second SDK. Verify
-what the collector receives with `stacknext status` and `stacknext coverage`.
+If another provider owns the pipeline, StackNext cannot add a second SDK. The
+heartbeat still identifies the app, but request spans are not captured; use the
+existing provider's exporter or remove the conflicting registration. Verify the
+state with `stacknext status`, `stacknext doctor` and `stacknext coverage`.
 
 ## Supported versions
 

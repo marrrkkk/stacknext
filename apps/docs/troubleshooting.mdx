@@ -146,8 +146,11 @@ Never copy a token from this file into source control or a bug report.
 - Run compatibility checks with `npx stacknext doctor`.
 
 If another OpenTelemetry provider is already registered, StackNext yields to it
-by design. Use the existing provider's exporter or remove the conflicting
-registration if you want StackNext to install its own.
+by design and reports capture as inactive. `stacknext status` shows
+"capture inactive", `stacknext doctor` fails and the dashboard shows a warning;
+the connection is not evidence that requests are being captured. Use the
+existing provider's exporter or remove the conflicting registration if you want
+StackNext to install its own.
 
 ### No database queries
 

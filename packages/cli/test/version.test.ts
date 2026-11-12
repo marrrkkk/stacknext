@@ -12,9 +12,16 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 describe('release version alignment', () => {
   it('keeps the CLI, SDK, packages and Agent Skill versions aligned', async () => {
     const packages = ['core', 'cli', 'dashboard', 'diagnostics', 'drizzle', 'mcp', 'next', 'playwright', 'prisma', 'regression']
+    const manifests = [
+      path.join(root, 'package.json'),
+      path.join(root, 'apps', 'example', 'package.json'),
+      path.join(root, 'apps', 'www', 'package.json'),
+      ...packages.map((name) =>
+        path.join(root, 'packages', name, 'package.json'),
+      ),
+    ]
     const versions = await Promise.all(
-      packages.map(async (name) => {
-        const file = path.join(root, 'packages', name, 'package.json')
+      manifests.map(async (file) => {
         return JSON.parse(await readFile(file, 'utf8')) as { version: string }
       }),
     )

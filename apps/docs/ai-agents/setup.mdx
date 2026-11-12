@@ -92,18 +92,35 @@ format. It does not grant new capabilities, replace the MCP server or duplicate
 the package API reference. After upgrading StackNext, reinstall the skill with
 `--force` so the workflow and tool list match.
 
+Preview and remove installed copies with `stacknext skill uninstall`, then add
+`--yes` to apply. It removes the whole `stacknext-debugging` directory,
+including local edits; `--client` limits it to one client. Removing the npm
+packages or running `stacknext uninstall` does not delete the skill directory.
+
 ## MCP server configuration
 
 Start `stacknext dev` first, then configure the client to run:
 
 ```bash
-pnpm --dir /absolute/path/to/your-app exec stacknext mcp
+npm --prefix /absolute/path/to/your-app exec -- stacknext mcp
 ```
 
-Use an absolute app path; a relative path depends on where the client starts
-the server. The server reads `.stacknext/run.json` and exposes twenty read-only
-tools plus five prompts. See the [MCP server](/mcp) for the generic JSON form and
-the [MCP tools reference](/reference/mcp-tools) for the full surface.
+With pnpm, use
+`pnpm --dir /absolute/path/to/your-app exec stacknext mcp`. Use an absolute app
+path; a relative path depends on where the client starts the server. The server
+reads `.stacknext/run.json` and exposes twenty read-only tools plus five prompts.
+See the [MCP server](/mcp) for the generic JSON form and the
+[MCP tools reference](/reference/mcp-tools) for the full surface.
+
+Verify the server without an AI client before changing your client config:
+
+```bash
+npm exec -- stacknext mcp --check
+```
+
+It lists the tools and prompts, calls `get_project_summary` and exits non-zero
+if the collector or the MCP surface is unavailable. This is a protocol check,
+not a model-driven client test.
 
 ### OpenCode
 
@@ -118,10 +135,11 @@ under `mcp.servers`:
       "stacknext": {
         "type": "local",
         "command": [
-          "pnpm",
-          "--dir",
+          "npm",
+          "--prefix",
           "/absolute/path/to/your-app",
           "exec",
+          "--",
           "stacknext",
           "mcp"
         ],
@@ -140,8 +158,11 @@ You can also add the entry with the CLI:
 
 ```bash
 opencode mcp add stacknext -- \
-  pnpm --dir /absolute/path/to/your-app exec stacknext mcp
+  npm --prefix /absolute/path/to/your-app exec -- stacknext mcp
 ```
+
+With pnpm, use
+`pnpm --dir /absolute/path/to/your-app exec stacknext mcp` after the `--`.
 
 Check the connection with `opencode mcp list`. OpenCode watches configuration
 files and applies changes without a restart.
@@ -153,9 +174,12 @@ configuration, or the project configuration file your Codex version supports):
 
 ```toml
 [mcp_servers.stacknext]
-command = "pnpm"
-args = ["--dir", "/absolute/path/to/your-app", "exec", "stacknext", "mcp"]
+command = "npm"
+args = ["--prefix", "/absolute/path/to/your-app", "exec", "--", "stacknext", "mcp"]
 ```
+
+For pnpm, use `command = "pnpm"` and
+`args = ["--dir", "/absolute/path/to/your-app", "exec", "stacknext", "mcp"]`.
 
 Restart Codex after changing the file. Codex reads the server's MCP
 `instructions` during initialization.
@@ -166,7 +190,7 @@ Add the server with the Claude Code CLI:
 
 ```bash
 claude mcp add stacknext -- \
-  pnpm --dir /absolute/path/to/your-app exec stacknext mcp
+  npm --prefix /absolute/path/to/your-app exec -- stacknext mcp
 ```
 
 Or add it to a project `.mcp.json`:
@@ -175,11 +199,12 @@ Or add it to a project `.mcp.json`:
 {
   "mcpServers": {
     "stacknext": {
-      "command": "pnpm",
+      "command": "npm",
       "args": [
-        "--dir",
+        "--prefix",
         "/absolute/path/to/your-app",
         "exec",
+        "--",
         "stacknext",
         "mcp"
       ]
@@ -194,15 +219,20 @@ StackNext block there, copy it from `AGENTS.md` after running
 
 ## Supported clients
 
-| Client | MCP | Project skill | Project instructions |
-| --- | --- | --- | --- |
-| OpenCode | `opencode.json` | `.opencode/skills/` | `AGENTS.md` |
-| Codex | `config.toml` | `.agents/skills/` | `AGENTS.md` |
-| Claude Code | CLI or `.mcp.json` | `.claude/skills/` | `CLAUDE.md` |
+| Client | MCP | Project skill | Project instructions | Last recorded end-to-end check |
+| --- | --- | --- | --- | --- |
+| OpenCode | `opencode.json` | `.opencode/skills/` | `AGENTS.md` | 0.4 model-driven diagnostics; not rerun for 0.12 |
+| Codex | `config.toml` | `.agents/skills/` | `AGENTS.md` | 0.4 model-driven diagnostics; not rerun for 0.12 |
+| Claude Code | CLI or `.mcp.json` | `.claude/skills/` | `CLAUDE.md` | Setup and stdio connection only; model workflows unverified |
 
 Any MCP client that can launch a local stdio server can use the same command.
 Do not use SSE, HTTP or a remote proxy. The server refuses non-loopback
-collector URLs, and the collector binds to loopback only.
+collector URLs, and the collector binds to loopback only. The 0.12 release
+checks all twenty tools and five prompts at the protocol level with
+`stacknext mcp --check` and the e2e suite; it does not claim a fresh
+model-driven client pass. See
+[agent compatibility](https://github.com/marrrkkk/stacknext/blob/main/docs/testing/agent-compatibility.md)
+for the dated record.
 
 ## Verify
 

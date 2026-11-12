@@ -1,0 +1,76 @@
+name: Adoption review
+description: Maintainer-only monthly snapshot of public adoption signals. Do not include user or project data.
+title: 'chore: adoption review'
+labels: ['maintainer']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use only aggregate public sources defined in
+        `docs/development/adoption-metrics.md`. Do not add telemetry, analytics
+        or per-user identifiers, and never paste a token, project path, captured
+        request, SQL or environment detail.
+  - type: input
+    id: date
+    attributes:
+      label: Review date
+      placeholder: YYYY-MM-DD
+    validations:
+      required: true
+  - type: input
+    id: release
+    attributes:
+      label: Latest StackNext release
+      placeholder: 0.12.1
+    validations:
+      required: true
+  - type: input
+    id: cli-downloads
+    attributes:
+      label: '@stacknext/cli weekly npm downloads'
+    validations:
+      required: true
+  - type: input
+    id: next-downloads
+    attributes:
+      label: '@stacknext/next weekly npm downloads'
+    validations:
+      required: true
+  - type: input
+    id: repository
+    attributes:
+      label: GitHub stars / forks / watchers
+      placeholder: '0 / 0 / 0'
+    validations:
+      required: true
+  - type: input
+    id: issues
+    attributes:
+      label: Open issues / open pull requests
+      placeholder: '0 / 0'
+    validations:
+      required: true
+  - type: textarea
+    id: themes
+    attributes:
+      label: Notable issue and discussion themes
+      description: Summarize recurring problems or requests without identifying a reporter.
+  - type: textarea
+    id: docs
+    attributes:
+      label: Documentation analytics
+      description: Aggregate page views only, if the docs host exposes them. Leave blank otherwise.
+  - type: textarea
+    id: followups
+    attributes:
+      label: Follow-ups
+      description: Link public issues or pull requests that address a theme.
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I used aggregate public sources only.
+          required: true
+        - label: The snapshot contains no token, user, project or captured telemetry data.
+          required: true

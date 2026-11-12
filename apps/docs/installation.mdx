@@ -151,7 +151,9 @@ Never commit it, paste it into an issue or copy it into another app.
 </Info>
 
 Make a request to your app. The dashboard reflects a bounded in-memory sample;
-it does not show historical data from a previous run.
+it does not show historical data from a previous run. The first request to a
+route also includes Next.js compile time, so request it once, then repeat it
+before comparing latency or creating a baseline.
 
 ## Verify the installation
 
@@ -231,7 +233,14 @@ npx stacknext uninstall --yes
 
 The command leaves an instrumentation file you edited or wrote yourself,
 application code, `node_modules`, lockfiles and `.stacknext` capture data alone
-unless `--remove-data` is passed.
+unless `--remove-data` is passed. It also reports Agent Skill directories
+installed in the project, because those are copied separately from the npm
+packages. Preview and remove them with:
+
+```bash
+npx stacknext skill uninstall
+npx stacknext skill uninstall --yes
+```
 
 Remove the packages with your package manager. For pnpm:
 

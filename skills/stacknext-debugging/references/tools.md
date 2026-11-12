@@ -55,8 +55,8 @@ immutable snapshots and are never deleted by these tools.
       "instrumentation": "connected",
       "instances": 1,
       "lastSeen": "2026-11-02T11:59:59.000Z",
-      "sdkVersion": "0.11.0",
-      "collectorVersion": "0.11.0"
+      "sdkVersion": "<installed-version>",
+      "collectorVersion": "<installed-version>"
     },
     "completeness": { "complete": true, "reasons": [] },
     "notes": []
