@@ -8,3 +8,4 @@ export {
   startMcpServer,
   type StartMcpServerOptions,
 } from './server.js'
+export { verifyMcpServer, type McpCheckResult } from './verify.js'

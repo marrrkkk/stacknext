@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildMeta } from '../src/meta.js'
 import { StackNextApiClient } from '../src/client.js'
 import { createStackNextMcpServer } from '../src/server.js'
+import { verifyMcpServer } from '../src/verify.js'
 
 const TOKEN = 'm'.repeat(32)
 const TRACE_A = 'a'.repeat(32)
@@ -1543,6 +1544,23 @@ describe('unreachable collector', () => {
   })
 })
 
+
+it('verifies the MCP surface without an LLM client', async () => {
+  const collector = await startMockCollector()
+  try {
+    const result = await verifyMcpServer({
+      baseUrl: collector.url,
+      token: TOKEN,
+    })
+    expect(result.ok).toBe(true)
+    expect(result.toolCount).toBe(20)
+    expect(result.promptCount).toBe(5)
+    expect(result.connection).toBeDefined()
+    expect(result.requests).toBeGreaterThan(0)
+  } finally {
+    await collector.close()
+  }
+})
 
 it('keeps snapshot completeness independent of unavailable live health', () => {
   const base = { tool: 'snapshot', health: null, found: 1, returned: 1 }

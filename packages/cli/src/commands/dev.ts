@@ -22,6 +22,7 @@ import {
   type RuntimeState,
 } from '../runtime.js'
 import { resolveDashboardDir, startCollector } from '../collector/server.js'
+import { detectRunningNextDev } from '../next-dev.js'
 import { CLI_VERSION } from '../version.js'
 
 export interface DevOptions {
@@ -113,6 +114,17 @@ export async function runDev(
     throw new Error('--token must be at least 16 characters')
   }
   await assertNotAlreadyRunning(project.dir)
+  const runningNext = await detectRunningNextDev(project.dir)
+  if (runningNext) {
+    const endpoint = runningNext.appUrl
+      ? ` (${runningNext.appUrl})`
+      : runningNext.port
+        ? ` on port ${runningNext.port}`
+        : ''
+    throw new Error(
+      `A Next.js dev server is already running for this project${endpoint} as pid ${runningNext.pid}. Stop it before starting "stacknext dev" so StackNext instruments the server it starts.`,
+    )
+  }
   const lock = await acquireRuntimeLock(project.dir)
   try {
     return await runDevLocked(options, nextArgs, project, lock)

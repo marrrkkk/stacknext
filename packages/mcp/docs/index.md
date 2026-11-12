@@ -29,6 +29,8 @@ import {
   StackNextApiError,
   createStackNextMcpServer,
   startMcpServer,
+  verifyMcpServer,
+  type McpCheckResult,
 } from '@stacknext/mcp'
 ```
 
@@ -36,8 +38,9 @@ import {
 | --- | --- |
 | `StackNextApiClient` | Read-only loopback HTTP client for collector APIs. |
 | `StackNextApiError` | API/transport error with status context. |
-| `createStackNextMcpServer(options)` | Builds the server for embedding or tests. |
+| `createStackNextMcpServer(client)` | Builds the server around a `StackNextApiClient` for embedding or tests. |
 | `startMcpServer(options)` | Starts the stdio server. |
+| `verifyMcpServer(options)` | Checks the server over an in-memory transport and returns `McpCheckResult`. |
 
 ## Start through the CLI
 
@@ -49,6 +52,12 @@ stacknext mcp          # terminal 2
 `stacknext mcp` reads `.stacknext/run.json` for the collector URL and token. It
 also accepts `--collector <url>` and `--token <token>`. stdout is reserved for
 MCP protocol messages; logs go to stderr.
+
+Run `stacknext mcp --check` to verify the collector and the tool surface
+without an AI client. It lists the tools and prompts, calls
+`get_project_summary` over an in-memory transport, prints a JSON result and
+exits non-zero on failure. This mode prints the check result to stdout instead
+of starting the stdio protocol server.
 
 ## Documentation map
 
