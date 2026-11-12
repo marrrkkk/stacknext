@@ -1,6 +1,6 @@
 {
   "name": "@stacknext/prisma",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Prisma Client query instrumentation adapter for StackNext",
   "license": "MIT",
   "type": "module",
