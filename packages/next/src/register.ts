@@ -50,6 +50,7 @@ export interface StackNextRegistration {
 }
 
 interface RegistrationGlobalState {
+  __stacknextExternalTransport?: StackNextTransport
   __stacknextRegistration?: StackNextRegistration
   __stacknextBeforeExit?: () => void
 }
@@ -156,6 +157,7 @@ export async function registerStackNext(
     // dashboard and doctor cannot report a healthy connection with zero spans.
     const externalTransport = resolveTransport(options, 'external')
     if (externalTransport) {
+      state.__stacknextExternalTransport = externalTransport
       externalTransport.announce()
       console.warn(
         '[stacknext] An existing OpenTelemetry provider is registered. StackNext is yielding to it and will not capture request spans. Run `npx stacknext doctor` for the supported setup.',
@@ -245,21 +247,27 @@ export function getStackNextRegistration():
 export async function shutdownStackNext(): Promise<void> {
   const state = globalState()
   const registration = state.__stacknextRegistration
-  if (!registration) return
+  const externalTransport = state.__stacknextExternalTransport
+  state.__stacknextExternalTransport = undefined
   state.__stacknextRegistration = undefined
   if (state.__stacknextBeforeExit) {
     process.removeListener('beforeExit', state.__stacknextBeforeExit)
     state.__stacknextBeforeExit = undefined
   }
   try {
-    await registration.provider.shutdown()
+    await registration?.provider.shutdown()
   } catch (error) {
     debugLog(
       `provider shutdown failed: ${error instanceof Error ? error.message : String(error)}`,
     )
   }
   try {
-    await registration.transport.shutdown(1_000)
+    await registration?.transport.shutdown(1_000)
+  } catch {
+    // Transport shutdown is best effort; the process is exiting.
+  }
+  try {
+    await externalTransport?.shutdown(1_000)
   } catch {
     // Transport shutdown is best effort; the process is exiting.
   }

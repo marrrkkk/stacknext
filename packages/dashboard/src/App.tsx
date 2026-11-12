@@ -19,6 +19,7 @@ import { Icon, type IconName } from './components/Icon'
 import { TooltipLayer } from './components/TooltipLayer'
 import { Banner, cx, Kbd, PageChromeContext, shortcutLabel, StatusDot } from './components/ui'
 import { formatDuration, formatNumber, formatRelative } from './format'
+import { captureStatus } from './captureStatus'
 import { SampleStatus } from './components/SampleStatus'
 
 const OverviewPage = lazy(() =>
@@ -359,17 +360,16 @@ function ConnectionFooter({ health }: { health: HealthResponse | null }): React.
       </div>
     )
   }
-  const connected = health.connections.filter((connection) => connection.connected)
-  const external =
-    connected.find((connection) => connection.provider === 'external') ?? null
-  const primary = external ?? connected[0]
+  const { connected, inactive, partial, affected } = captureStatus(health.connections)
+  const primary = connected[0]
+  const hasInactive = inactive.length > 0
   return (
     <div className="sidebar__connection">
       <div className="sidebar__row">
         <span className="sidebar__row-label">
-          <StatusDot status={health.connected && !external ? 'live' : 'connecting'} />
-          {external
-            ? `${external.serviceName} · capture inactive`
+          <StatusDot status={health.connected && !hasInactive ? 'live' : 'connecting'} />
+          {hasInactive
+            ? `${partial ? 'Partial request capture' : 'Request capture inactive'} · ${affected}`
             : health.connected
               ? primary?.serviceName ?? 'App connected'
               : 'Waiting for app'}
@@ -377,8 +377,8 @@ function ConnectionFooter({ health }: { health: HealthResponse | null }): React.
       </div>
       <div className="sidebar__row-meta">
         {primary?.nextVersion ? `Next.js ${primary.nextVersion} · ` : ''}
-        {external
-          ? 'external OpenTelemetry provider'
+        {hasInactive
+          ? 'external OpenTelemetry provider on affected instances'
           : health.connected
             ? `${formatNumber(health.counts.spans)} spans · ${formatDuration(health.uptimeMs)} up`
             : 'make a request to start a trace'}
@@ -693,10 +693,7 @@ export function App(): React.ReactElement {
   }, [path])
 
   const pageHealth = health.data
-  const externalCapture =
-    pageHealth?.connections.find(
-      (connection) => connection.connected && connection.provider === 'external',
-    ) ?? null
+  const externalCapture = captureStatus(pageHealth?.connections ?? [])
   const pathname = route.page
   const projectName = pageHealth?.projectName ?? 'StackNext'
   const errorCount = pageHealth?.counts.errors ?? 0
@@ -792,7 +789,7 @@ export function App(): React.ReactElement {
 
         <nav className="sidebar__nav" aria-label="Primary">
           {NAV_GROUPS.map((group) => {
-            const open = !group.collapsible || regressionOpen
+            const open = !group.collapsible || sidebarIsCollapsed || regressionOpen
             const itemsId = `nav-group-${group.id}`
             return (
               <div className="nav-group" key={group.id}>
@@ -955,16 +952,18 @@ export function App(): React.ReactElement {
         </header>
         <PageChromeContext.Provider value={chrome}>
           <main className="content" id="main-content" ref={contentRef} tabIndex={-1}>
-            {externalCapture && (
+            {externalCapture.inactive.length > 0 && (
               <Banner
                 tone="warn"
                 icon="shield"
                 role="alert"
-                title="Request capture is inactive"
+                title={externalCapture.partial ? 'Request capture is partial' : 'Request capture is inactive'}
               >
-                An existing OpenTelemetry provider is registered, so StackNext is
-                yielding to it and is not receiving request spans. The connection can
-                look healthy while this dashboard stays empty. Run{' '}
+                Request capture is inactive for {externalCapture.affected} because an
+                external OpenTelemetry provider is registered on those instances.
+                StackNext yields to those providers. {externalCapture.partial
+                  ? 'Other connected instances still have StackNext request capture enabled.'
+                  : 'No connected instance has StackNext request capture enabled.'} Run{' '}
                 <code>npx stacknext doctor</code> and follow the Next.js integration
                 guide.
               </Banner>

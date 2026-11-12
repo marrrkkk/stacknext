@@ -767,7 +767,7 @@ export function OverviewPage({
 
       {summary && summary.totalRequests === 0 ? (
         <Banner tone="accent" icon="requests" title="Waiting for the first request">
-          The collector is running, but this sample is empty. Make a request to
+          No HTTP requests are captured in this sample. Make a request to
           your app, then return here. The first request to a route can look slow
           because Next.js compiles it; request the route again before comparing
           timings. If nothing appears, run <code>npx stacknext doctor</code>.

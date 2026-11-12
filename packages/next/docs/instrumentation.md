@@ -75,9 +75,16 @@ import { shutdownStackNext } from '@stacknext/next'
 await shutdownStackNext()
 ```
 
-Flushes buffered spans and shuts down the provider and transport. Safe to call
-more than once. Next.js owns process signals; StackNext only hooks
-`beforeExit`.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:7cb409f99f945049c73682f9cbfcf408f600e3d1b296e10ee0ae3a9825c602aa -->
+
+Flushes buffered spans and shuts down the StackNext provider and transport. When
+yielding to an external provider, closes only the StackNext transport and leaves
+the application provider running. Safe to call more than once. Next.js owns
+process signals; StackNext only hooks `beforeExit`.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## Manual exporter utilities
 

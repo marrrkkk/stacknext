@@ -215,7 +215,7 @@ export function ErrorsPage({
                 ? 'Clear a filter or widen the search.'
                 : snapshotId
                   ? 'This snapshot contains no server errors.'
-                  : 'Errors appear when a route throws or returns a 5xx response. Make a failing request, or use Diagnostics to review other evidence. Empty is not proof that the app is healthy.'
+                  : 'Error records appear when a route throws an error passed to onRequestError. A 5xx response without a throw appears as a failed request instead. Make a failing request, or use Diagnostics to review other evidence. Empty is not proof that the app is healthy.'
             }
             action={
               filtersActive ? (
