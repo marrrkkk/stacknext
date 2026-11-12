@@ -56,16 +56,34 @@ export async function runStatus(
     )
   } else {
     for (const connection of connected) {
+      const external = connection.provider === 'external'
       console.log(
-        `Instrumentation ${style.green('connected')} — ${connection.serviceName}` +
+        `Instrumentation ${external ? style.yellow('connected (capture inactive)') : style.green('connected')} — ${connection.serviceName}` +
           (connection.nextVersion ? ` (Next.js ${connection.nextVersion})` : '') +
           style.dim(` last seen ${formatRelativeTime(connection.lastSeen, health.time)}`),
       )
+      if (external) {
+        console.log(
+          `              ${style.yellow('An existing OpenTelemetry provider owns tracing; StackNext is not capturing request spans.')}`,
+        )
+        console.log(
+          `              ${style.dim('Run "npx stacknext doctor" for the supported setup.')}`,
+        )
+      }
     }
   }
   console.log(
     `Requests    ${health.counts.requests} total, ${health.counts.failedRequests} failed, ${health.counts.slowRequests} slow`,
   )
+  if (
+    connected.length > 0 &&
+    health.counts.requests === 0 &&
+    !connected.some((connection) => connection.provider === 'external')
+  ) {
+    console.log(
+      `            ${style.yellow('No request captured yet — open the app and make one request to confirm first-run success.')}`,
+    )
+  }
   console.log(
     `Telemetry   ${health.counts.spans} spans, ${health.counts.errors} errors, ${health.counts.databaseQueries} database queries`,
   )

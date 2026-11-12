@@ -226,18 +226,35 @@ export async function runDoctor(
         state.token,
       )
       add('Collector', 'pass', `Collector healthy on port ${state.port}`)
-      add(
-        'Collector',
-        health.connected ? 'pass' : 'warn',
-        health.connected ? 'Instrumentation connected' : 'No app heartbeat yet',
-        health.connected
-          ? `${health.connections.filter((entry) => entry.connected).length} instance(s)`
-          : 'Make a request after Next.js starts',
+      const externalConnections = health.connections.filter(
+        (entry) => entry.connected && entry.provider === 'external',
       )
+      if (externalConnections.length > 0) {
+        add(
+          'Instrumentation',
+          'fail',
+          'An existing OpenTelemetry provider owns tracing',
+          'StackNext is yielding to it and is not capturing request spans. Remove the other provider and let @stacknext/next register, then restart "stacknext dev". See https://github.com/marrrkkk/stacknext/blob/main/apps/docs/integrations/nextjs.mdx',
+        )
+      } else {
+        add(
+          'Collector',
+          health.connected ? 'pass' : 'warn',
+          health.connected ? 'Instrumentation connected' : 'No app heartbeat yet',
+          health.connected
+            ? `${health.connections.filter((entry) => entry.connected).length} instance(s)`
+            : 'Make a request after Next.js starts',
+        )
+      }
       add(
-        'Collector',
-        'pass',
-        `${health.counts.requests} requests, ${health.counts.spans} spans, ${health.counts.errors} errors`,
+        'Capture',
+        health.counts.requests > 0 ? 'pass' : 'warn',
+        health.counts.requests > 0
+          ? `${health.counts.requests} request(s) captured`
+          : 'No request captured yet',
+        health.counts.requests > 0
+          ? `${health.counts.spans} spans, ${health.counts.errors} errors`
+          : 'Open the app and make one real request; the Overview should show it within a few seconds',
       )
       if (health.exporter.lastError) {
         add('Collector', 'warn', 'Exporter reported an error', health.exporter.lastError)

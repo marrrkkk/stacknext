@@ -231,14 +231,14 @@ export async function runInit(options: InitOptions, cwd = process.cwd()): Promis
     printCheck(
       'warn',
       'Drizzle detected',
-      'Add createStackNextDrizzleLogger() from @stacknext/drizzle to your db client.',
+      'Verify createStackNextDrizzleLogger() from @stacknext/drizzle is registered in your db client; add it if query events are missing.',
     )
   }
   if (project.hasPrisma) {
     printCheck(
       'warn',
       'Prisma detected',
-      'Add instrumentPrismaClient() from @stacknext/prisma after creating PrismaClient.',
+      'Verify instrumentPrismaClient() from @stacknext/prisma is called after creating PrismaClient; add it if query events are missing.',
     )
   }
 

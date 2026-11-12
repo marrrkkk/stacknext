@@ -76,6 +76,7 @@ interface StackNextTransportOptions {
   requestTimeoutMs?: number
   heartbeatIntervalMs?: number
   debug?: boolean
+  provider?: 'stacknext' | 'external'
 }
 ```
 
@@ -83,6 +84,13 @@ The queue is bounded. Its default capacity is 5,000 events, the batch size is
 250, the heartbeat interval is 10 seconds and one ingest request is capped at
 1.5 MB. When the queue is full the oldest queued events are dropped; the
 exporter reports drop counters through `diagnostics`.
+
+`provider` defaults to `stacknext`, and the field is added to the envelope only
+when it is `external`. Set it to `external` only when another OpenTelemetry
+provider owns tracing: the transport still sends heartbeats so the collector can
+report that capture is inactive, but StackNext does not generate request spans.
+`announce()` sends one heartbeat immediately, which `registerStackNext()` uses
+before yielding to an existing provider.
 
 ## Shared instance
 
@@ -92,8 +100,10 @@ share one queue instead of creating competing buffers. Calling it without
 options resolves the environment configuration.
 
 A different collector URL, token or service name creates a new transport and
-shuts down the previous one. Adapters should call
-`getStackNextTransport()` without options so they attach to the active instance.
+shuts down the previous one. The provider mode is metadata, so an adapter call
+without options attaches to the active transport even when `registerStackNext()`
+created it as `external`. Adapters should call `getStackNextTransport()` without
+options so they share the active instance.
 
 `resetGlobalTransportForTests()` detaches the global transport. It is a test
 helper and does not export queued data.

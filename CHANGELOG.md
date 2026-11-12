@@ -4,7 +4,32 @@ All notable changes to StackNext are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:eb672a1d8931953934b4596e054bd241859cae312aaa69b52d658a079281cd4b -->
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:588fb0a0359b40691822da878ffcafe43983898e50142dd692ce14da113ec679 -->
+
 ## [Unreleased]
+
+## [0.13.0] - 2026-11-12
+
+### Fixed
+
+- Return MCP check setup failures as JSON and recognize existing Next.js 15
+  and 16.0.0 dev workers on Linux when no JSON lock is available.
+
+
+<!-- /coderabbit-ai-generated:v1 -->
+- Scoped dashboard capture warnings to affected services and instances, kept
+  Regression navigation available in the collapsed sidebar, and clarified live
+  request/error and saved snapshot empty states.
+- Close the StackNext transport when yielding to an external OpenTelemetry
+  provider without shutting down the application provider.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## [0.12.1] - 2026-11-11
 
