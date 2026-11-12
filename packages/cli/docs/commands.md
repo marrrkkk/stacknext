@@ -184,8 +184,26 @@ Print a removal plan unless `--yes` is passed.
 | `--remove-data` | Remove `.stacknext` saved data (refused while running). |
 | `--json` | Machine-readable report. |
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:f0b0f4db0160e464ebbb113c8d04c849514b6a8a59349fc715c1a69023e18416 -->
+
+## Existing Next.js servers
+
+`stacknext dev` checks live JSON lock records before starting Next.js. For
+Next.js 15 and 16.0.0, which do not provide those records, Linux discovery
+checks the dev worker identity and its open `.next/trace` (or
+`.next/dev/trace`) file. This fallback requires readable `/proc` entries and
+the default output directory; it is best effort and does not cover other
+operating systems or custom output directories.
+
+`stacknext mcp --check` prints `{ ok: false, error }` and exits with code 1
+when runtime discovery, token validation or collector verification fails.
+
 ## Global
 
+
+<!-- /coderabbit-ai-generated:v1 -->
 ```bash
 stacknext --version
 stacknext --help

@@ -52,18 +52,20 @@ export async function verifyMcpServer(options: {
   token: string
   timeoutMs?: number
 }): Promise<McpCheckResult> {
-  const api = new StackNextApiClient({
-    baseUrl: options.baseUrl,
-    token: options.token,
-    ...(options.timeoutMs ? { timeoutMs: options.timeoutMs } : {}),
-  })
-  const server = createStackNextMcpServer(api)
-  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-  const client = new Client({
-    name: 'stacknext-mcp-check',
-    version: STACKNEXT_SDK_VERSION,
-  })
+  let server: ReturnType<typeof createStackNextMcpServer> | undefined
+  let client: Client | undefined
   try {
+    const api = new StackNextApiClient({
+      baseUrl: options.baseUrl,
+      token: options.token,
+      ...(options.timeoutMs ? { timeoutMs: options.timeoutMs } : {}),
+    })
+    server = createStackNextMcpServer(api)
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    client = new Client({
+      name: 'stacknext-mcp-check',
+      version: STACKNEXT_SDK_VERSION,
+    })
     await server.connect(serverTransport)
     await client.connect(clientTransport)
     const [tools, prompts, result] = await Promise.all([
@@ -124,7 +126,7 @@ export async function verifyMcpServer(options: {
             : String(error),
     }
   } finally {
-    await client.close().catch(() => undefined)
-    await server.close().catch(() => undefined)
+    await client?.close().catch(() => undefined)
+    await server?.close().catch(() => undefined)
   }
 }

@@ -1,3 +1,6 @@
+import { fork } from 'node:child_process'
+import { once } from 'node:events'
+import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -54,4 +57,47 @@ describe('Next.js dev preflight', () => {
     const empty = await project()
     await expect(detectRunningNextDev(empty)).resolves.toBeNull()
   })
+})
+
+// These releases have no JSON lock: exercise the upstream worker identity
+// fixture as a real process, including its trace descriptor and environment.
+it.skipIf(process.platform !== 'linux').each(['15.5.0', '16.0.0'])(
+  'detects the lockless Next %s dev worker for this project only',
+  async (version) => {
+    const dir = await project()
+    const other = await project()
+    const child = fork(fileURLToPath(new URL('./fixtures/next-legacy-worker.mjs', import.meta.url)), {
+      cwd: dir,
+      env: { ...process.env, __NEXT_VERSION: version, NEXT_PRIVATE_WORKER: '1', NODE_ENV: 'development' },
+      stdio: ['ignore', 'ignore', 'inherit', 'ipc'],
+    })
+    try {
+      await once(child, 'message')
+      await expect(detectRunningNextDev(dir, version)).resolves.toEqual({ pid: child.pid })
+      await expect(detectRunningNextDev(other, version)).resolves.toBeNull()
+      await expect(detectRunningNextDev(dir, '17.0.0')).resolves.toBeNull()
+    } finally {
+      const exited = once(child, 'exit')
+      child.kill()
+      await exited
+    }
+    await expect(detectRunningNextDev(dir, version)).resolves.toBeNull()
+  },
+)
+
+it.skipIf(process.platform !== 'linux')('ignores a production server with the same version and cwd', async () => {
+  const dir = await project()
+  const child = fork(fileURLToPath(new URL('./fixtures/next-legacy-worker.mjs', import.meta.url)), {
+    cwd: dir,
+    env: { ...process.env, __NEXT_VERSION: '16.0.0', NODE_ENV: 'production', NEXT_PRIVATE_WORKER: '' },
+    stdio: ['ignore', 'ignore', 'inherit', 'ipc'],
+  })
+  try {
+    await once(child, 'message')
+    await expect(detectRunningNextDev(dir, '16.0.0')).resolves.toBeNull()
+  } finally {
+    const exited = once(child, 'exit')
+    child.kill()
+    await exited
+  }
 })

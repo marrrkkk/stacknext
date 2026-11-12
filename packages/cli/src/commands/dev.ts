@@ -114,7 +114,7 @@ export async function runDev(
     throw new Error('--token must be at least 16 characters')
   }
   await assertNotAlreadyRunning(project.dir)
-  const runningNext = await detectRunningNextDev(project.dir)
+  const runningNext = await detectRunningNextDev(project.dir, project.nextVersion)
   if (runningNext) {
     const endpoint = runningNext.appUrl
       ? ` (${runningNext.appUrl})`

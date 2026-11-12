@@ -16,27 +16,35 @@ export async function runMcp(
   options: McpOptions,
   cwd = process.cwd(),
 ): Promise<number> {
-  let baseUrl = options.collector
-  let token = options.token
-  if (!baseUrl || !token) {
-    const state = await requireRunningState(cwd)
-    baseUrl = baseUrl ?? state.collectorUrl
-    token = token ?? state.token
-  }
-  if (!token || token.length < 16) {
-    throw new Error('A collector token of at least 16 characters is required')
-  }
-  const { startMcpServer, verifyMcpServer } = await import('@stacknext/mcp')
-  if (options.check) {
-    const result = await verifyMcpServer({ baseUrl, token })
-    console.log(JSON.stringify(result, null, 2))
-    if (!result.ok) {
-      console.error(result.error ?? 'MCP check failed')
-      return 1
+  try {
+    let baseUrl = options.collector
+    let token = options.token
+    if (!baseUrl || !token) {
+      const state = await requireRunningState(cwd)
+      baseUrl = baseUrl ?? state.collectorUrl
+      token = token ?? state.token
     }
-    return 0
+    if (!token || token.length < 16) {
+      throw new Error('A collector token of at least 16 characters is required')
+    }
+    const { startMcpServer, verifyMcpServer } = await import('@stacknext/mcp')
+    if (options.check) {
+      const result = await verifyMcpServer({ baseUrl, token })
+      console.log(JSON.stringify(result, null, 2))
+      if (!result.ok) {
+        console.error(result.error ?? 'MCP check failed')
+        return 1
+      }
+      return 0
+    }
+    await startMcpServer({ baseUrl, token })
+  } catch (error) {
+    if (!options.check) throw error
+    const message = error instanceof Error ? error.message : String(error)
+    console.log(JSON.stringify({ ok: false, error: message }, null, 2))
+    console.error(message)
+    return 1
   }
-  await startMcpServer({ baseUrl, token })
   // MCP stdio servers run until the client closes stdin.
   return new Promise<never>(() => {})
 }

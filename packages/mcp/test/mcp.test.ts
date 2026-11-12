@@ -1569,3 +1569,11 @@ it('keeps snapshot completeness independent of unavailable live health', () => {
   expect(buildMeta({ ...base, snapshot: true, reasons: ['Missing parent'] }).completeness.reasons).toEqual(['Missing parent'])
   expect(buildMeta({ ...base, snapshot: true, limit: 1, offset: 0, found: 2 }).completeness.complete).toBe(false)
 })
+
+it.each([
+  { baseUrl: 'not a URL', token: TOKEN, error: 'Collector URL is not a valid URL' },
+  { baseUrl: 'https://example.com', token: TOKEN, error: 'StackNext only reads from a loopback collector' },
+  { baseUrl: 'http://127.0.0.1:4400', token: 'short', error: 'Collector token is too short' },
+])('returns initialization failures through McpCheckResult: $error', async ({ baseUrl, token, error }) => {
+  await expect(verifyMcpServer({ baseUrl, token })).resolves.toEqual({ ok: false, error })
+})
