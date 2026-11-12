@@ -6,7 +6,7 @@ import type {
 } from './diagnostics.js'
 
 export const STACKNEXT_SCHEMA_VERSION = 1
-export const STACKNEXT_SDK_VERSION = '0.14.0'
+export const STACKNEXT_SDK_VERSION = '0.15.0'
 
 export const STACKNEXT_PROVIDER_MODES = ['stacknext', 'external'] as const
 export type StackNextProviderMode = (typeof STACKNEXT_PROVIDER_MODES)[number]

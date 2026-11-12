@@ -1,6 +1,6 @@
 {
   "name": "@stacknext/regression",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "Deterministic Playwright-linked runtime regression capture for StackNext",
   "license": "MIT",
   "type": "module",
