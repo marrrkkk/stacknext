@@ -517,14 +517,18 @@ export function TracesPage({
               title={
                 filtersActive
                   ? `No ${itemLabel}s match these filters`
-                  : view === 'requests'
+                  : snapshotId
+                    ? `No ${view === 'requests' ? 'HTTP requests' : 'traces'} in this snapshot`
+                    : view === 'requests'
                     ? 'No HTTP requests captured yet'
                     : 'No traces captured yet'
               }
               description={
                 filtersActive
                   ? 'Adjust the search, method, status or slow filter.'
-                  : 'Start the app with StackNext instrumentation, then make a request to see the full trace.'
+                  : snapshotId
+                    ? `This snapshot contains no ${view === 'requests' ? 'HTTP requests' : 'traces'}.`
+                    : 'Make a request to the app to capture a trace. The first request to a route also includes Next.js compile time. If this stays empty, run "npx stacknext doctor" and check that instrumentation is loaded.'
               }
               action={
                 filtersActive ? (
@@ -535,8 +539,22 @@ export function TracesPage({
                   >
                     Clear filters
                   </button>
+                ) : snapshotId ? (
+                  <button
+                    type="button"
+                    className="button button--secondary button--small"
+                    onClick={() => onNavigate(`/snapshots/${snapshotId}`)}
+                  >
+                    Back to snapshot
+                  </button>
                 ) : (
-                  <code className="inline-code">stacknext dev</code>
+                  <button
+                    type="button"
+                    className="button button--secondary button--small"
+                    onClick={() => onNavigate('/diagnostics')}
+                  >
+                    Check diagnostics
+                  </button>
                 )
               }
             />
