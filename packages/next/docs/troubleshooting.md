@@ -22,9 +22,11 @@ Possible causes:
 
 - `STACKNEXT_COLLECTOR_URL` or `STACKNEXT_TOKEN` is missing. Start the app with
   `stacknext dev`.
-- Another OpenTelemetry provider is already registered. Run with
-  `STACKNEXT_DEBUG=1` and look for the "leaving it untouched" message. StackNext
-  intentionally yields instead of replacing another APM.
+- Another OpenTelemetry provider is already registered. StackNext intentionally
+  yields instead of replacing another APM and reports `provider: "external"` on
+  its heartbeat. `stacknext status` shows "capture inactive", `doctor` fails and
+  the dashboard shows a warning. Run with `STACKNEXT_DEBUG=1` and look for the
+  "leaving it untouched" message.
 - The runtime is not Node.js. Edge is unsupported.
 - `enabled: false` was passed explicitly.
 

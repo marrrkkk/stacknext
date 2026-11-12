@@ -503,7 +503,7 @@ export function StackTrace({
       )}
 
       <details className="disclosure stack-raw">
-        <summary>Original stack</summary>
+        <summary>Verbatim redacted stack</summary>
         <pre className="code-block code-block--scroll">{stack}</pre>
       </details>
     </div>

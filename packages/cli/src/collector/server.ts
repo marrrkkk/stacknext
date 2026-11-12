@@ -1060,6 +1060,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
         ...(instance.nextVersion ? { nextVersion: instance.nextVersion } : {}),
         ...(instance.runtimeVersion ? { runtimeVersion: instance.runtimeVersion } : {}),
         sdkVersion: instance.sdkVersion,
+        ...(instance.provider ? { provider: instance.provider } : {}),
         lastSeen: now,
         ...(diagnostics ? { diagnostics } : existing?.info.diagnostics
           ? { diagnostics: existing.info.diagnostics }

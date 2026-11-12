@@ -524,7 +524,7 @@ export function TracesPage({
               description={
                 filtersActive
                   ? 'Adjust the search, method, status or slow filter.'
-                  : 'Start the app with StackNext instrumentation, then make a request to see the full trace.'
+                  : 'Make a request to the app to capture a trace. The first request to a route also includes Next.js compile time. If this stays empty, run "npx stacknext doctor" and check that instrumentation is loaded.'
               }
               action={
                 filtersActive ? (
@@ -536,7 +536,13 @@ export function TracesPage({
                     Clear filters
                   </button>
                 ) : (
-                  <code className="inline-code">stacknext dev</code>
+                  <button
+                    type="button"
+                    className="button button--secondary button--small"
+                    onClick={() => onNavigate('/diagnostics')}
+                  >
+                    Check diagnostics
+                  </button>
                 )
               }
             />

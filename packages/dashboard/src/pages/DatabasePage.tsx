@@ -122,10 +122,12 @@ export function DatabasePage({
   refreshKey,
   onNavigate,
   snapshotId,
+  repeatedQueryMin = 5,
 }: {
   refreshKey: number
   onNavigate: (path: string) => void
   snapshotId?: string
+  repeatedQueryMin?: number
 }): React.ReactElement {
   const initial = new URLSearchParams(window.location.search)
   const [traceId, setTraceId] = useState(initial.get('traceId') ?? '')
@@ -238,10 +240,13 @@ export function DatabasePage({
             description={
               filtersActive ? (
                 'Adjust the search, database system or duration filter.'
+              ) : snapshotId ? (
+                'This snapshot contains no database query events.'
               ) : (
                 <>
                   Add <code>createStackNextDrizzleLogger()</code> to drizzle or call{' '}
-                  <code>instrumentPrismaClient(prisma)</code> in a server-only module.
+                  <code>instrumentPrismaClient(prisma)</code> in a server-only module,
+                  then make a request that runs a query.
                 </>
               )
             }
@@ -253,6 +258,14 @@ export function DatabasePage({
                   onClick={clearFilters}
                 >
                   Clear filters
+                </button>
+              ) : snapshotId ? (
+                <button
+                  type="button"
+                  className="button button--secondary button--small"
+                  onClick={() => onNavigate(`/snapshots/${snapshotId}`)}
+                >
+                  Back to snapshot
                 </button>
               ) : (
                 <button
@@ -372,7 +385,7 @@ export function DatabasePage({
         description={
           snapshotId
             ? 'Redacted SQL frozen in this snapshot. Open a linked trace to inspect the request that produced it.'
-            : 'Redacted SQL captured by the Drizzle or Prisma adapters. Open a row to inspect its normalized query shape, executions and related evidence.'
+            : `Redacted SQL captured by the Drizzle or Prisma adapters. Open a row to inspect its normalized shape and executions. Repeated SQL appears here immediately; an N+1 finding starts at ${repeatedQueryMin} repeats of the same shape in one trace.`
         }
         actions={
           <button

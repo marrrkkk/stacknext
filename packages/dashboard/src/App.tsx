@@ -17,7 +17,7 @@ import { BrandMark } from './components/BrandMark'
 import { CommandPalette } from './components/CommandPalette'
 import { Icon, type IconName } from './components/Icon'
 import { TooltipLayer } from './components/TooltipLayer'
-import { cx, Kbd, PageChromeContext, shortcutLabel, StatusDot } from './components/ui'
+import { Banner, cx, Kbd, PageChromeContext, shortcutLabel, StatusDot } from './components/ui'
 import { formatDuration, formatNumber, formatRelative } from './format'
 import { SampleStatus } from './components/SampleStatus'
 
@@ -130,30 +130,70 @@ interface NavGroup {
   id: string
   label: string
   items: NavItem[]
+  collapsible?: boolean
+}
+
+const REGRESSION_PATHS = ['/runs', '/baselines', '/comparisons']
+
+function isRegressionPath(path: string): boolean {
+  return REGRESSION_PATHS.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`) || path.startsWith(`${prefix}?`),
+  )
+}
+
+function isRequestsView(path: string): boolean {
+  return path.startsWith('/traces') && path.includes('view=requests')
 }
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    id: 'observe',
-    label: 'Observe',
+    id: 'debug',
+    label: 'Debug',
     items: [
       {
         label: 'Overview',
         path: '/',
         icon: 'overview',
-        match: (path) => path === '/' || path === '',
+        match: (path) => {
+          const pathname = path.split(/[?#]/)[0] ?? '/'
+          return pathname === '/' || pathname === ''
+        },
+      },
+      {
+        label: 'Requests',
+        path: '/traces?view=requests',
+        icon: 'requests',
+        match: isRequestsView,
       },
       {
         label: 'Traces',
         path: '/traces',
         icon: 'traces',
-        match: (path) => path.startsWith('/traces'),
+        match: (path) => path.startsWith('/traces') && !isRequestsView(path),
       },
       {
         label: 'Database',
         path: '/database',
         icon: 'database',
         match: (path) => path.startsWith('/database'),
+      },
+      {
+        label: 'Errors',
+        path: '/errors',
+        icon: 'errors',
+        match: (path) => path.startsWith('/errors'),
+      },
+    ],
+  },
+  {
+    id: 'evidence',
+    label: 'Evidence',
+    items: [
+      {
+        label: 'Diagnostics',
+        path: '/diagnostics',
+        icon: 'pulse',
+        match: (path) => path.startsWith('/diagnostics'),
       },
       {
         label: 'Snapshots',
@@ -164,26 +204,9 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    id: 'investigate',
-    label: 'Investigate',
-    items: [
-      {
-        label: 'Errors',
-        path: '/errors',
-        icon: 'errors',
-        match: (path) => path.startsWith('/errors'),
-      },
-      {
-        label: 'Diagnostics',
-        path: '/diagnostics',
-        icon: 'pulse',
-        match: (path) => path.startsWith('/diagnostics'),
-      },
-    ],
-  },
-  {
-    id: 'test',
-    label: 'Test',
+    id: 'regression',
+    label: 'Regression',
+    collapsible: true,
     items: [
       {
         label: 'Test runs',
@@ -337,19 +360,28 @@ function ConnectionFooter({ health }: { health: HealthResponse | null }): React.
     )
   }
   const connected = health.connections.filter((connection) => connection.connected)
+  const external =
+    connected.find((connection) => connection.provider === 'external') ?? null
+  const primary = external ?? connected[0]
   return (
     <div className="sidebar__connection">
       <div className="sidebar__row">
         <span className="sidebar__row-label">
-          <StatusDot status={health.connected ? 'live' : 'connecting'} />
-          {health.connected ? connected[0]?.serviceName ?? 'App connected' : 'Waiting for app'}
+          <StatusDot status={health.connected && !external ? 'live' : 'connecting'} />
+          {external
+            ? `${external.serviceName} · capture inactive`
+            : health.connected
+              ? primary?.serviceName ?? 'App connected'
+              : 'Waiting for app'}
         </span>
       </div>
       <div className="sidebar__row-meta">
-        {connected[0]?.nextVersion ? `Next.js ${connected[0].nextVersion} · ` : ''}
-        {health.connected
-          ? `${formatNumber(health.counts.spans)} spans · ${formatDuration(health.uptimeMs)} up`
-          : 'make a request to start a trace'}
+        {primary?.nextVersion ? `Next.js ${primary.nextVersion} · ` : ''}
+        {external
+          ? 'external OpenTelemetry provider'
+          : health.connected
+            ? `${formatNumber(health.counts.spans)} spans · ${formatDuration(health.uptimeMs)} up`
+            : 'make a request to start a trace'}
       </div>
     </div>
   )
@@ -378,6 +410,7 @@ export function App(): React.ReactElement {
     () => localStorage.getItem('stacknext-sidebar-collapsed') === '1',
   )
   const [commandOpen, setCommandOpen] = useState(false)
+  const [regressionOpen, setRegressionOpen] = useState(() => isRegressionPath(path))
   const [isMobile, setIsMobile] = useState(
     () => window.matchMedia('(max-width: 900px)').matches,
   )
@@ -516,6 +549,7 @@ export function App(): React.ReactElement {
       const nextPath = normalizePath(rawPath)
       if (nextPath !== rawPath) window.history.replaceState({}, '', nextPath)
       setPath(nextPath)
+      if (isRegressionPath(nextPath)) setRegressionOpen(true)
       if (isTraceList(nextPath)) setTracesEpoch((value) => value + 1)
     }
     window.addEventListener('popstate', onPopState)
@@ -617,6 +651,7 @@ export function App(): React.ReactElement {
     applyPendingLiveKey()
     window.history.pushState({}, '', target)
     setPath(target)
+    if (isRegressionPath(target)) setRegressionOpen(true)
     if (isTraceList(target)) setTracesEpoch((value) => value + 1)
   }, [applyPendingLiveKey, pausedAtSequence])
 
@@ -658,6 +693,10 @@ export function App(): React.ReactElement {
   }, [path])
 
   const pageHealth = health.data
+  const externalCapture =
+    pageHealth?.connections.find(
+      (connection) => connection.connected && connection.provider === 'external',
+    ) ?? null
   const pathname = route.page
   const projectName = pageHealth?.projectName ?? 'StackNext'
   const errorCount = pageHealth?.counts.errors ?? 0
@@ -752,44 +791,68 @@ export function App(): React.ReactElement {
         </div>
 
         <nav className="sidebar__nav" aria-label="Primary">
-          {NAV_GROUPS.map((group) => (
-            <div className="nav-group" key={group.id}>
-              <div className="nav-group__label" aria-hidden="true">
-                {group.label}
-              </div>
-              {group.items.map((item) => {
-                const active = item.match(path.split('?')[0] ?? '/')
-                return (
+          {NAV_GROUPS.map((group) => {
+            const open = !group.collapsible || regressionOpen
+            const itemsId = `nav-group-${group.id}`
+            return (
+              <div className="nav-group" key={group.id}>
+                {group.collapsible ? (
                   <button
                     type="button"
-                    key={item.path}
-                    className={cx('nav-item', active && 'nav-item--active')}
-                    onClick={() => navigate(item.path)}
-                    aria-current={active ? 'page' : undefined}
-                    title={sidebarIsCollapsed ? item.label : undefined}
+                    className="nav-group__label nav-group__toggle"
+                    onClick={() => setRegressionOpen((value) => !value)}
+                    aria-expanded={open}
+                    aria-controls={itemsId}
+                    title={sidebarIsCollapsed ? group.label : undefined}
                   >
-                    <Icon name={item.icon} size={16} />
-                    <span className="nav-item__label">{item.label}</span>
-                    {item.path === '/errors' && errorCount > 0 && (
-                      <span
-                        className={cx(
-                          'nav-item__count',
-                          unseenErrors && 'nav-item__count--unseen',
-                        )}
-                        title={
-                          unseenErrors
-                            ? 'New errors since your last visit'
-                            : `${errorCount} errors`
-                        }
-                      >
-                        {errorCount}
-                      </span>
-                    )}
+                    <span>{group.label}</span>
+                    <Icon
+                      name={open ? 'chevron-down' : 'chevron-right'}
+                      size={12}
+                    />
                   </button>
-                )
-              })}
-            </div>
-          ))}
+                ) : (
+                  <div className="nav-group__label" aria-hidden="true">
+                    {group.label}
+                  </div>
+                )}
+                <div className="nav-group__items" id={itemsId}>
+                  {open &&
+                    group.items.map((item) => {
+                      const active = item.match(path)
+                      return (
+                        <button
+                          type="button"
+                          key={item.path}
+                          className={cx('nav-item', active && 'nav-item--active')}
+                          onClick={() => navigate(item.path)}
+                          aria-current={active ? 'page' : undefined}
+                          title={sidebarIsCollapsed ? item.label : undefined}
+                        >
+                          <Icon name={item.icon} size={16} />
+                          <span className="nav-item__label">{item.label}</span>
+                          {item.path === '/errors' && errorCount > 0 && (
+                            <span
+                              className={cx(
+                                'nav-item__count',
+                                unseenErrors && 'nav-item__count--unseen',
+                              )}
+                              title={
+                                unseenErrors
+                                  ? 'New errors since your last visit'
+                                  : `${errorCount} errors`
+                              }
+                            >
+                              {errorCount}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                </div>
+              </div>
+            )
+          })}
         </nav>
 
         <div className="sidebar__spacer" />
@@ -892,6 +955,20 @@ export function App(): React.ReactElement {
         </header>
         <PageChromeContext.Provider value={chrome}>
           <main className="content" id="main-content" ref={contentRef} tabIndex={-1}>
+            {externalCapture && (
+              <Banner
+                tone="warn"
+                icon="shield"
+                role="alert"
+                title="Request capture is inactive"
+              >
+                An existing OpenTelemetry provider is registered, so StackNext is
+                yielding to it and is not receiving request spans. The connection can
+                look healthy while this dashboard stays empty. Run{' '}
+                <code>npx stacknext doctor</code> and follow the Next.js integration
+                guide.
+              </Banner>
+            )}
             <Suspense fallback={<RouteFallback />}>
               {pathname === 'overview' && (
                 <OverviewPage
@@ -922,7 +999,11 @@ export function App(): React.ReactElement {
               )}
               {pathname === 'redirect' && null}
               {pathname === 'database' && (
-                <DatabasePage refreshKey={refreshKeys.telemetry} onNavigate={navigate} />
+                <DatabasePage
+                  refreshKey={refreshKeys.telemetry}
+                  onNavigate={navigate}
+                  repeatedQueryMin={pageHealth?.config.diagnostics.repeatedQueryMin}
+                />
               )}
               {pathname === 'database-query' && route.id && (
                 <DatabaseQueryDetailPage
@@ -942,7 +1023,11 @@ export function App(): React.ReactElement {
                 />
               )}
               {pathname === 'diagnostics' && (
-                <DiagnosticsPage refreshKey={refreshKeys.telemetry} onNavigate={navigate} />
+                <DiagnosticsPage
+                  refreshKey={refreshKeys.telemetry}
+                  onNavigate={navigate}
+                  repeatedQueryMin={pageHealth?.config.diagnostics.repeatedQueryMin}
+                />
               )}
               {pathname === 'diagnostic' && route.id && (
                 <DiagnosticDetailPage
@@ -1039,6 +1124,7 @@ export function App(): React.ReactElement {
                   refreshKey={0}
                   onNavigate={navigate}
                   snapshotId={route.id}
+                  repeatedQueryMin={pageHealth?.config.diagnostics.repeatedQueryMin}
                 />
               )}
               {pathname === 'settings' && (

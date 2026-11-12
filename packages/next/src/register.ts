@@ -21,6 +21,7 @@ import {
 } from '@stacknext/core'
 import {
   getStackNextTransport,
+  transportOptionsFromEnv,
   type StackNextTransport,
   type StackNextTransportOptions,
 } from '@stacknext/core/transport'
@@ -116,16 +117,21 @@ function buildResource(
 
 function resolveTransport(
   options: StackNextRegisterOptions,
+  provider: 'stacknext' | 'external' = 'stacknext',
 ): StackNextTransport | null {
   if (options.transport) {
     return getStackNextTransport({
       ...options.transport,
+      provider,
       ...(options.serviceName ? { serviceName: options.serviceName } : {}),
       ...(options.projectName ? { projectName: options.projectName } : {}),
       ...(readNextVersion(options) ? { nextVersion: readNextVersion(options) } : {}),
     })
   }
-  return getStackNextTransport()
+  const fromEnv = transportOptionsFromEnv()
+  return 'options' in fromEnv
+    ? getStackNextTransport({ ...fromEnv.options, provider })
+    : null
 }
 
 /**
@@ -145,6 +151,16 @@ export async function registerStackNext(
   if (!isNodeRuntime()) return null
 
   if (registeredProvider()) {
+    // The application owns tracing. Never install a second SDK, but still tell
+    // the collector that this process is alive with capture inactive so the
+    // dashboard and doctor cannot report a healthy connection with zero spans.
+    const externalTransport = resolveTransport(options, 'external')
+    if (externalTransport) {
+      externalTransport.announce()
+      console.warn(
+        '[stacknext] An existing OpenTelemetry provider is registered. StackNext is yielding to it and will not capture request spans. Run `npx stacknext doctor` for the supported setup.',
+      )
+    }
     debugLog(
       'an OpenTelemetry tracer provider is already registered; leaving it untouched',
     )

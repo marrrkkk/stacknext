@@ -44,7 +44,10 @@ It returns a `StackNextRegistration` with `provider`, `transport`, `exporter`,
 
 1. Return the existing registration if this process already registered.
 2. Return `null` when `enabled: false` or the runtime is not Node.js.
-3. Return `null` when another OTel provider is already registered.
+3. Return `null` when another OTel provider is already registered. Before
+   returning, send one heartbeat with `provider: "external"` so `status`,
+   `doctor` and the dashboard can report that capture is inactive. Never create
+   a second SDK.
 4. Resolve the shared transport from options or environment.
 5. Return `null` when collector URL/token are absent.
 6. Build a `NodeTracerProvider` with a `BatchSpanProcessor`:

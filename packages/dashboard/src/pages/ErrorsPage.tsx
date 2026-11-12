@@ -210,6 +210,13 @@ export function ErrorsPage({
                   ? 'No server errors in this snapshot'
                   : 'No server errors in the current retention window'
             }
+            description={
+              filtersActive
+                ? 'Clear a filter or widen the search.'
+                : snapshotId
+                  ? 'This snapshot contains no server errors.'
+                  : 'Errors appear when a route throws or returns a 5xx response. Make a failing request, or use Diagnostics to review other evidence. Empty is not proof that the app is healthy.'
+            }
             action={
               filtersActive ? (
                 <button
@@ -224,8 +231,22 @@ export function ErrorsPage({
                 >
                   Clear filters
                 </button>
+              ) : snapshotId ? (
+                <button
+                  type="button"
+                  className="button button--secondary button--small"
+                  onClick={() => onNavigate(`/snapshots/${snapshotId}`)}
+                >
+                  Back to snapshot
+                </button>
               ) : (
-                <Badge tone="good">healthy</Badge>
+                <button
+                  type="button"
+                  className="button button--secondary button--small"
+                  onClick={() => onNavigate('/traces?view=requests')}
+                >
+                  Browse requests
+                </button>
               )
             }
           />
@@ -286,6 +307,7 @@ export function ErrorsPage({
                           align: 'right',
                           width: '96px',
                         },
+                        { key: 'open', label: '', width: '36px' },
                       ]}
                     >
                       {occurrences.map((error) => (
@@ -293,6 +315,7 @@ export function ErrorsPage({
                           key={error.id}
                           className="row-clickable"
                           tabIndex={0}
+                          title="Open error details"
                           onClick={() => onNavigate(`${basePath}/errors/${error.id}`)}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
@@ -325,6 +348,11 @@ export function ErrorsPage({
                             title={formatDateTime(error.timestamp)}
                           >
                             {formatRelative(error.timestamp)}
+                          </td>
+                          <td className="numeric">
+                            <span className="row-open" aria-hidden="true">
+                              <Icon name="chevron-right" size={14} />
+                            </span>
                           </td>
                         </tr>
                       ))}
