@@ -34,6 +34,19 @@ export interface SkillInstallOptions {
   json?: boolean
 }
 
+export interface SkillUninstallOptions {
+  client?: string
+  dir?: string
+  yes?: boolean
+  json?: boolean
+}
+
+export interface InstalledSkill {
+  client: SkillClient
+  label: string
+  directory: string
+}
+
 async function pathExists(target: string): Promise<boolean> {
   try {
     await stat(target)
@@ -41,6 +54,20 @@ async function pathExists(target: string): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+/** Finds skill directories installed in a project, independent of package files. */
+export async function installedSkills(projectDir: string): Promise<InstalledSkill[]> {
+  const found: InstalledSkill[] = []
+  for (const [client, config] of Object.entries(SKILL_CLIENTS) as Array<
+    [SkillClient, (typeof SKILL_CLIENTS)[SkillClient]]
+  >) {
+    const directory = path.join(projectDir, config.path)
+    if (await pathExists(directory)) {
+      found.push({ client, label: config.label, directory })
+    }
+  }
+  return found
 }
 
 /**
@@ -134,10 +161,100 @@ export async function runSkillInstall(
   return 0
 }
 
+export async function runSkillUninstall(
+  options: SkillUninstallOptions,
+  cwd = process.cwd(),
+): Promise<number> {
+  const project = path.resolve(cwd, options.dir ?? '.')
+  if (options.client && !(options.client in SKILL_CLIENTS)) {
+    throw new Error(
+      'Choose a client with --client opencode, --client codex or --client claude-code.',
+    )
+  }
+  const all = await installedSkills(project)
+  const targets = options.client
+    ? all.filter((entry) => entry.client === options.client)
+    : all
+
+  if (targets.length === 0) {
+    if (options.json) {
+      console.log(
+        JSON.stringify({ project, applied: options.yes === true, removed: [] }, null, 2),
+      )
+    } else {
+      printCheck('pass', 'No StackNext Agent Skill found in this project', project)
+    }
+    return 0
+  }
+
+  if (!options.yes) {
+    if (options.json) {
+      console.log(
+        JSON.stringify(
+          {
+            project,
+            applied: false,
+            removed: targets.map((entry) => ({
+              client: entry.client,
+              directory: entry.directory,
+            })),
+          },
+          null,
+          2,
+        ),
+      )
+    } else {
+      printSection('StackNext Agent Skill uninstall')
+      for (const entry of targets) {
+        printCheck(
+          'warn',
+          `Will remove the ${entry.label} skill`,
+          `${path.relative(project, entry.directory)} — local edits in this directory are removed too`,
+        )
+      }
+      console.log(
+        `\n${style.yellow('No changes made.')} Re-run with ${style.cyan('stacknext skill uninstall --yes')} to remove the listed skill directories.`,
+      )
+    }
+    return 0
+  }
+
+  for (const entry of targets) {
+    await rm(entry.directory, { recursive: true, force: true })
+  }
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        {
+          project,
+          applied: true,
+          removed: targets.map((entry) => ({
+            client: entry.client,
+            directory: entry.directory,
+          })),
+        },
+        null,
+        2,
+      ),
+    )
+  } else {
+    printSection('StackNext Agent Skill uninstall')
+    for (const entry of targets) {
+      printCheck(
+        'pass',
+        `Removed the ${entry.label} skill`,
+        path.relative(project, entry.directory),
+      )
+    }
+    console.log(style.dim('Reload the client if it caches discovered skills.'))
+  }
+  return 0
+}
+
 export function registerSkillCommand(program: Command, cwd: string): void {
   const skill = program
     .command('skill')
-    .description('Inspect and install the bundled Agent Skill')
+    .description('Inspect, install and remove the bundled Agent Skill')
 
   skill
     .command('path')
@@ -157,6 +274,18 @@ export function registerSkillCommand(program: Command, cwd: string): void {
     .option('--json', 'print a JSON result')
     .action(async (options: SkillInstallOptions) => {
       const code = await runSkillInstall(options, cwd)
+      if (code !== 0) process.exitCode = code
+    })
+
+  skill
+    .command('uninstall')
+    .description('Remove an installed Agent Skill from the project')
+    .option('--client <client>', 'opencode, codex or claude-code (defaults to all found)')
+    .option('--dir <project-dir>', 'project directory (defaults to the current directory)')
+    .option('--yes', 'apply the removal (without it, only prints the plan)')
+    .option('--json', 'print a JSON result')
+    .action(async (options: SkillUninstallOptions) => {
+      const code = await runSkillUninstall(options, cwd)
       if (code !== 0) process.exitCode = code
     })
 }
