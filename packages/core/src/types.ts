@@ -6,7 +6,10 @@ import type {
 } from './diagnostics.js'
 
 export const STACKNEXT_SCHEMA_VERSION = 1
-export const STACKNEXT_SDK_VERSION = '0.12.1'
+export const STACKNEXT_SDK_VERSION = '0.15.0'
+
+export const STACKNEXT_PROVIDER_MODES = ['stacknext', 'external'] as const
+export type StackNextProviderMode = (typeof STACKNEXT_PROVIDER_MODES)[number]
 
 export const SPAN_KINDS = ['internal', 'server', 'client', 'producer', 'consumer'] as const
 export type StackNextSpanKind = (typeof SPAN_KINDS)[number]
@@ -114,6 +117,12 @@ export interface StackNextInstance {
   runtimeVersion?: string
   sdkVersion: string
   runtime: 'nodejs'
+  /**
+   * Which OpenTelemetry provider owns tracing in this process. `external`
+   * means StackNext yielded to an application provider and is only sending
+   * heartbeats, so request spans are not captured. Older SDKs omit this field.
+   */
+  provider?: StackNextProviderMode
 }
 
 export interface StackNextIngestEnvelope {
@@ -348,6 +357,8 @@ export interface ConnectionInfo {
   sdkVersion: string
   lastSeen: number
   connected: boolean
+  /** `external` means request span capture is inactive. */
+  provider?: StackNextProviderMode
   diagnostics?: StackNextExporterDiagnostics
 }
 

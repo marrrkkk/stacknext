@@ -1,6 +1,6 @@
 {
   "name": "@stacknext/diagnostics",
-  "version": "0.12.1",
+  "version": "0.15.0",
   "description": "Deterministic, evidence-backed runtime diagnostics for StackNext telemetry",
   "license": "MIT",
   "type": "module",

@@ -44,7 +44,10 @@ It returns a `StackNextRegistration` with `provider`, `transport`, `exporter`,
 
 1. Return the existing registration if this process already registered.
 2. Return `null` when `enabled: false` or the runtime is not Node.js.
-3. Return `null` when another OTel provider is already registered.
+3. Return `null` when another OTel provider is already registered. Before
+   returning, send one heartbeat with `provider: "external"` so `status`,
+   `doctor` and the dashboard can report that capture is inactive. Never create
+   a second SDK.
 4. Resolve the shared transport from options or environment.
 5. Return `null` when collector URL/token are absent.
 6. Build a `NodeTracerProvider` with a `BatchSpanProcessor`:
@@ -72,9 +75,16 @@ import { shutdownStackNext } from '@stacknext/next'
 await shutdownStackNext()
 ```
 
-Flushes buffered spans and shuts down the provider and transport. Safe to call
-more than once. Next.js owns process signals; StackNext only hooks
-`beforeExit`.
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:7cb409f99f945049c73682f9cbfcf408f600e3d1b296e10ee0ae3a9825c602aa -->
+
+Flushes buffered spans and shuts down the StackNext provider and transport. When
+yielding to an external provider, closes only the StackNext transport and leaves
+the application provider running. Safe to call more than once. Next.js owns
+process signals; StackNext only hooks `beforeExit`.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## Manual exporter utilities
 

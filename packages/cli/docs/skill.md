@@ -43,6 +43,8 @@ stacknext skill install --client codex
 stacknext skill install --client claude-code
 stacknext skill install --client codex --dir ./apps/my-app
 stacknext skill install --client codex --force
+stacknext skill uninstall --client codex
+stacknext skill uninstall --yes
 ```
 
 ## Behavior
@@ -52,8 +54,13 @@ stacknext skill install --client codex --force
 - `skill install` copies the whole directory into the client's project path.
 - An existing destination is not replaced without `--force`; the command exits
   `1` and reports the path.
+- `skill uninstall` finds installed skill directories and prints a removal plan
+  without `--yes`. With `--yes`, it removes the whole `stacknext-debugging`
+  directory, including local edits. `--client` limits the removal to one client.
 - `--dir` selects the project root; it defaults to the current directory.
 - Unsupported clients throw with the three supported names.
+- `stacknext uninstall` reports skill directories that remain installed; it does
+  not remove them.
 
 ## Version alignment
 

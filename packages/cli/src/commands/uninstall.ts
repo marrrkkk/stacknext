@@ -11,6 +11,7 @@ import {
   runtimeStatePath,
 } from '../runtime.js'
 import { fileExists, isGeneratedInstrumentation } from './init.js'
+import { installedSkills } from './skill.js'
 
 export interface UninstallOptions {
   yes?: boolean
@@ -33,6 +34,7 @@ interface UninstallReport {
   manual: string[]
   packageCommand: string | null
   runtimeProcess: number | null
+  leftoverSkills: Array<{ client: string; directory: string }>
 }
 
 async function removeGeneratedRuntimeFiles(dir: string): Promise<void> {
@@ -144,6 +146,13 @@ export async function runUninstall(
       ? installRemovalCommand(project.packageManager, packages)
       : null
 
+  const skills = await installedSkills(project.dir)
+  for (const skill of skills) {
+    manual.push(
+      `Remove the ${skill.label} Agent Skill at ${path.relative(project.dir, skill.directory)} with "stacknext skill uninstall --yes"; it is installed separately from the npm packages.`,
+    )
+  }
+
   const report: UninstallReport = {
     project: project.dir,
     applied: false,
@@ -152,6 +161,10 @@ export async function runUninstall(
     manual,
     packageCommand,
     runtimeProcess,
+    leftoverSkills: skills.map((skill) => ({
+      client: skill.client,
+      directory: skill.directory,
+    })),
   }
 
   if (!options.yes) {

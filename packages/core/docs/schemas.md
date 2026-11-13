@@ -57,6 +57,7 @@ const envelope: StackNextIngestEnvelope = {
 | `instance.projectName` | No | From `stacknext.config.json` or the transport. |
 | `instance.nextVersion` | No | Next.js version reported by the app. |
 | `instance.runtimeVersion` | No | Node.js version, used for environment checks. |
+| `instance.provider` | No | `stacknext` or `external`. The transport sends `external` only when another OpenTelemetry provider owns tracing and StackNext is heartbeating without capture; normal captures and older SDKs omit it. |
 | `spans` | Yes | At most 500 per envelope. |
 | `errors` | Yes | At most 25 per envelope. |
 | `databaseQueries` | Yes | At most 100 per envelope. |

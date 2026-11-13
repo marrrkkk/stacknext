@@ -48,6 +48,54 @@ export interface ChangelogRelease {
 
 export const CHANGELOG_RELEASES = [
   {
+    "id": "v0-15-0",
+    "version": "0.15.0",
+    "date": "2026-11-12",
+    "dateLabel": "November 12, 2026",
+    "intro": [],
+    "groups": []
+  },
+  {
+    "id": "v0-14-0",
+    "version": "0.14.0",
+    "date": "2026-11-12",
+    "dateLabel": "November 12, 2026",
+    "intro": [],
+    "groups": []
+  },
+  {
+    "id": "v0-13-0",
+    "version": "0.13.0",
+    "date": "2026-11-12",
+    "dateLabel": "November 12, 2026",
+    "intro": [],
+    "groups": [
+      {
+        "title": "Fixed",
+        "items": [
+          [
+            {
+              "type": "text",
+              "value": "Return MCP check setup failures as JSON and recognize existing Next.js 15 and 16.0.0 dev workers on Linux when no JSON lock is available."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Scoped dashboard capture warnings to affected services and instances, kept Regression navigation available in the collapsed sidebar, and clarified live request/error and saved snapshot empty states."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Close the StackNext transport when yielding to an external OpenTelemetry provider without shutting down the application provider."
+            }
+          ]
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-12-1",
     "version": "0.12.1",
     "date": "2026-11-11",

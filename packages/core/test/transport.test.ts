@@ -1,7 +1,17 @@
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
-import { describe, expect, it } from 'vitest'
-import { isLoopbackUrl, StackNextTransport, transportOptionsFromEnv } from '../src/transport.js'
+import { afterEach, describe, expect, it } from 'vitest'
+import {
+  getStackNextTransport,
+  isLoopbackUrl,
+  resetGlobalTransportForTests,
+  StackNextTransport,
+  transportOptionsFromEnv,
+} from '../src/transport.js'
+
+afterEach(() => {
+  resetGlobalTransportForTests()
+})
 
 describe('transport helpers', () => {
   it('only accepts loopback collector URLs', () => {
@@ -64,6 +74,68 @@ describe('transport helpers', () => {
     expect(snapshot.queuedErrors).toBe(2)
     expect(snapshot.droppedEvents).toBe(1)
     await transport.shutdown(25)
+  })
+
+  it('reuses the external transport for adapter calls without options', () => {
+    const previousUrl = process.env.STACKNEXT_COLLECTOR_URL
+    const previousToken = process.env.STACKNEXT_TOKEN
+    const collectorUrl = 'http://127.0.0.1:9'
+    const token = 'a'.repeat(32)
+    try {
+      process.env.STACKNEXT_COLLECTOR_URL = collectorUrl
+      process.env.STACKNEXT_TOKEN = token
+      const external = getStackNextTransport({
+        collectorUrl,
+        token,
+        provider: 'external',
+      })
+      expect(external?.snapshot().provider).toBe('external')
+      expect(getStackNextTransport()).toBe(external)
+    } finally {
+      if (previousUrl === undefined) delete process.env.STACKNEXT_COLLECTOR_URL
+      else process.env.STACKNEXT_COLLECTOR_URL = previousUrl
+      if (previousToken === undefined) delete process.env.STACKNEXT_TOKEN
+      else process.env.STACKNEXT_TOKEN = previousToken
+    }
+  })
+
+  it('announces the external provider in its heartbeat', async () => {
+    let resolveBody!: (body: string) => void
+    const bodyReceived = new Promise<string>((resolve) => {
+      resolveBody = resolve
+    })
+    const server = createServer((request, response) => {
+      let body = ''
+      request.setEncoding('utf8')
+      request.on('data', (chunk: string) => {
+        body += chunk
+      })
+      request.on('end', () => {
+        response.statusCode = 200
+        response.end('{}')
+        resolveBody(body)
+      })
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const address = server.address() as AddressInfo
+    const transport = new StackNextTransport({
+      collectorUrl: `http://127.0.0.1:${address.port}`,
+      token: 'a'.repeat(32),
+      heartbeatIntervalMs: 60_000,
+      provider: 'external',
+    })
+    try {
+      transport.announce()
+      const envelope = JSON.parse(await bodyReceived) as {
+        instance: { provider?: string }
+        spans: unknown[]
+      }
+      expect(envelope.instance.provider).toBe('external')
+      expect(envelope.spans).toEqual([])
+    } finally {
+      await transport.shutdown(100)
+      await new Promise<void>((resolve) => server.close(() => resolve()))
+    }
   })
 
   it('keeps every batch below the collector body limit', async () => {
