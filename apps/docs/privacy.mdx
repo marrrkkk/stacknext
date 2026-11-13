@@ -32,7 +32,7 @@ ingestion.
 | Saved snapshots | Derived yes | Frozen redacted copy of one sample under `.stacknext/snapshots`; no diagnostics or coverage |
 | Playwright screenshots, videos or trace archives | **No** | Never read, referenced or stored by the regression fixture |
 | Collector bearer token | **No** | Only in `.stacknext/run.json` (mode `0600`); never written into a regression or snapshot record |
-| Service name, version, runtime | Yes | Used to identify the connected app instance |
+| Service name, version, runtime, provider mode | Yes | Used to identify the connected app instance and whether StackNext or an existing OpenTelemetry provider owns tracing; provider mode is only `stacknext` or `external` |
 | Machine/user identifiers | **No** | Not collected by StackNext |
 
 ## Redaction

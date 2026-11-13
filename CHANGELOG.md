@@ -14,6 +14,49 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Added `stacknext mcp --check`, an in-memory protocol check that lists the MCP
+  tools and prompts, calls `get_project_summary` and exits non-zero when the
+  collector or server surface is unavailable.
+- Added `stacknext skill uninstall`, which previews installed Agent Skill
+  directories by default and removes them with `--yes`.
+- Added an external-provider signal to the SDK heartbeat. When another
+  OpenTelemetry provider already owns tracing, StackNext now reports
+  `provider: "external"` so `status`, `doctor` and the dashboard can explain
+  why request capture is inactive instead of showing a healthy but empty
+  connection.
+- Added `doctor` capture verification and first-request guidance to `status`,
+  the dashboard and the installation docs.
+- Added a maintainer runbook, an aggregate adoption-metrics process and a
+  version-parity check covering the root, app and package manifests, engine
+  constants and Agent Skill metadata.
+
+### Changed
+
+- Grouped dashboard navigation into Debug, Evidence, collapsible Regression and
+  Configure, with Requests as a first-class view.
+- Empty database, diagnostics, errors and traces views now link to the next
+  diagnostic step instead of only describing the absence of data.
+- Error occurrence rows now show an explicit open affordance, and the raw stack
+  disclosure is labelled as a verbatim redacted stack.
+- `stacknext init` now asks Drizzle and Prisma users to verify adapter
+  registration instead of repeating an add-this hint after setup is complete.
+- Clarified that the first request to a route includes Next.js compile time, so
+  latency comparisons should use a warmed route.
+- Documented `@stacknext/next` as an application dependency and
+  `@stacknext/cli` as a development dependency, with npm-native MCP commands.
+- `stacknext uninstall` now reports Agent Skill directories that remain after
+  package removal and points at `stacknext skill uninstall`.
+
+### Fixed
+
+- `stacknext dev` now refuses to start when a live Next.js dev server already
+  owns the project, preventing a second server from running without StackNext
+  instrumentation.
+- Documented `diagnostics.repeatedQueryMin` on Diagnostics and Database, so
+  repeated SQL below the N+1 threshold is not mistaken for a missing finding.
+
 ## [0.15.0] - 2026-11-12
 
 ## [0.14.0] - 2026-11-12

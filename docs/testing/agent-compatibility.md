@@ -4,15 +4,17 @@ This page records client and protocol checks for the MCP server and Agent
 Skill. It is a point-in-time record, not a guarantee that every model or client
 release will behave the same way.
 
-The current release is 0.11.0. The model-driven record below covers 0.4 and the
+The current release is 0.12.1. The model-driven record below covers 0.4 and the
 protocol-level record covers 0.6.1. The current e2e suite covers the MCP,
-regression and snapshot surface, but new model-driven client scenarios have not
+regression and snapshot surface, and 0.12 adds `stacknext mcp --check` as a
+repeatable in-memory protocol check. New model-driven client scenarios have not
 been recorded. Re-run the relevant client workflow and update this page before
 claiming current support.
 
-StackNext 0.11 includes deterministic diagnostic findings, 20 read-only MCP
+StackNext 0.12 includes deterministic diagnostic findings, 20 read-only MCP
 tools, five guided prompts, six read-only regression tools, three read-only
-snapshot tools and the Agent Skill workflows.
+snapshot tools and the Agent Skill workflows. It also adds an npm-native MCP
+command form and a dry-run-first `stacknext skill uninstall`.
 
 The regression tools were verified at the protocol level and in the real e2e
 stack; they were **not** run through new model-driven client scenarios. Do not
@@ -122,6 +124,43 @@ See the [public compatibility matrix](../../apps/docs/compatibility.mdx).
   e2e suite.
 - Large regression histories, concurrent captures and cross-machine baseline
   portability were not stress-tested.
+
+## 0.12 protocol-level verification
+
+The 0.12.1 MCP, regression, snapshot and dashboard surface was checked with the
+real built CLI, collector and example app:
+
+| Item | Value |
+| --- | --- |
+| Test date | 2026-11-12 |
+| Node.js | 24.21.0 |
+| pnpm | 12.16.1 |
+| StackNext | 0.12.1 |
+| Example app | Next.js 16.4.3, App Router, Node.js runtime |
+| Collector | `http://127.0.0.1:4400` |
+
+`pnpm test:e2e` passed 43 checks. They covered the same capture, baseline,
+candidate, comparison, snapshot, MCP tool, prompt, dashboard deep-link and
+secret-scan areas as 0.6, plus the current dashboard build. No model-driven
+client run was recorded for 0.12.
+
+`stacknext mcp --check` was run against the live collector and returned:
+
+```json
+{
+  "ok": true,
+  "server": { "name": "stacknext", "version": "0.12.1" },
+  "toolCount": 20,
+  "promptCount": 5,
+  "connection": "connected",
+  "requests": 1,
+  "errors": 0,
+  "databaseQueries": 2
+}
+```
+
+This verifies the protocol surface and the collector connection. It does not
+verify a model, a client's tool selection or an investigation workflow.
 
 ## Method
 

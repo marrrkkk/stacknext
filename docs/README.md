@@ -19,6 +19,9 @@ deployed separately. Package API reference is canonical in
 | [Repository conventions](development/repository-conventions.md) | Source layout, build/typecheck split, code style, commit/PR rules and compatibility surfaces. |
 | [Documentation architecture](development/documentation.md) | Public site, engineering docs, package docs, generated index and validation. |
 | [Public documentation architecture](development/public-docs-architecture.md) | Research, page inventory and structural decisions behind the public guide. |
+| [Example data recovery](development/example-data-recovery.md) | Recovering demo SQLite data and baselines from the former example app. |
+| [Maintainer runbook](development/maintainer-runbook.md) | Version parity, triage, pull request gates and release review. |
+| [Adoption metrics](development/adoption-metrics.md) | Aggregate public signals used to review adoption without telemetry. |
 | [Testing strategy](testing/testing-strategy.md) | Unit, e2e, archive, consumer and documentation checks. |
 | [Benchmarks](testing/benchmarks.md) | Collector, dashboard, diagnostics and verbose-tracing measurements and caveats. |
 | [Agent compatibility](testing/agent-compatibility.md) | Recorded MCP and Agent Skill client checks. |

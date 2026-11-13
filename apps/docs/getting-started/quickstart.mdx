@@ -46,6 +46,10 @@ and nowhere else. The in-memory sample stays empty until the app handles a
 request.
 </Info>
 
+The first request to a route includes Next.js compile time. Request the route
+once to warm it, then request it again before comparing durations or capturing a
+baseline. Both requests stay in the sample, so use the warmed one as evidence.
+
 ## 4. Verify
 
 ```bash
