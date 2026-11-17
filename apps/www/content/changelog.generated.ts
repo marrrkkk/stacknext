@@ -48,6 +48,266 @@ export interface ChangelogRelease {
 
 export const CHANGELOG_RELEASES = [
   {
+    "id": "v0-16-0",
+    "version": "0.16.0",
+    "date": "2026-11-17",
+    "dateLabel": "November 17, 2026",
+    "intro": [],
+    "groups": [
+      {
+        "title": "Added",
+        "items": [
+          [
+            {
+              "type": "text",
+              "value": "Added a setup prompt control to the website hero. It copies a one-line instruction for coding agents, opens the prompt directly in Claude Code, Codex or Cursor, and links to a hosted "
+            },
+            {
+              "type": "code",
+              "value": "stacknext-setup"
+            },
+            {
+              "type": "text",
+              "value": " skill at "
+            },
+            {
+              "type": "code",
+              "value": "/agent-setup/SKILL.md"
+            },
+            {
+              "type": "text",
+              "value": "."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Added "
+            },
+            {
+              "type": "code",
+              "value": "stacknext mcp --check"
+            },
+            {
+              "type": "text",
+              "value": ", an in-memory protocol check that lists the MCP tools and prompts, calls "
+            },
+            {
+              "type": "code",
+              "value": "get_project_summary"
+            },
+            {
+              "type": "text",
+              "value": " and exits non-zero when the collector or server surface is unavailable."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Added "
+            },
+            {
+              "type": "code",
+              "value": "stacknext skill uninstall"
+            },
+            {
+              "type": "text",
+              "value": ", which previews installed Agent Skill directories by default and removes them with "
+            },
+            {
+              "type": "code",
+              "value": "--yes"
+            },
+            {
+              "type": "text",
+              "value": "."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Added an external-provider signal to the SDK heartbeat. When another OpenTelemetry provider already owns tracing, StackNext now reports "
+            },
+            {
+              "type": "code",
+              "value": "provider: \"external\""
+            },
+            {
+              "type": "text",
+              "value": " so "
+            },
+            {
+              "type": "code",
+              "value": "status"
+            },
+            {
+              "type": "text",
+              "value": ", "
+            },
+            {
+              "type": "code",
+              "value": "doctor"
+            },
+            {
+              "type": "text",
+              "value": " and the dashboard can explain why request capture is inactive instead of showing a healthy but empty connection."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Added "
+            },
+            {
+              "type": "code",
+              "value": "doctor"
+            },
+            {
+              "type": "text",
+              "value": " capture verification and first-request guidance to "
+            },
+            {
+              "type": "code",
+              "value": "status"
+            },
+            {
+              "type": "text",
+              "value": ", the dashboard and the installation docs."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Added a maintainer runbook, an aggregate adoption-metrics process and a version-parity check covering the root, app and package manifests, engine constants and Agent Skill metadata."
+            }
+          ]
+        ]
+      },
+      {
+        "title": "Changed",
+        "items": [
+          [
+            {
+              "type": "text",
+              "value": "Rebuilt the website install command as a shared shadcn-style tabbed card in the hero and closing call to action, with pnpm, npm, bun and yarn tabs, a monochrome manager icon that follows the selected tab, a single copy control and a mobile command layout. The redundant "
+            },
+            {
+              "type": "code",
+              "value": "Full setup"
+            },
+            {
+              "type": "text",
+              "value": " link is gone."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Grouped dashboard navigation into Debug, Evidence, collapsible Regression and Configure, with Requests as a first-class view."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Empty database, diagnostics, errors and traces views now link to the next diagnostic step instead of only describing the absence of data."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Error occurrence rows now show an explicit open affordance, and the raw stack disclosure is labelled as a verbatim redacted stack."
+            }
+          ],
+          [
+            {
+              "type": "code",
+              "value": "stacknext init"
+            },
+            {
+              "type": "text",
+              "value": " now asks Drizzle and Prisma users to verify adapter registration instead of repeating an add-this hint after setup is complete."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Clarified that the first request to a route includes Next.js compile time, so latency comparisons should use a warmed route."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Documented "
+            },
+            {
+              "type": "code",
+              "value": "@stacknext/next"
+            },
+            {
+              "type": "text",
+              "value": " as an application dependency and "
+            },
+            {
+              "type": "code",
+              "value": "@stacknext/cli"
+            },
+            {
+              "type": "text",
+              "value": " as a development dependency, with npm-native MCP commands."
+            }
+          ],
+          [
+            {
+              "type": "code",
+              "value": "stacknext uninstall"
+            },
+            {
+              "type": "text",
+              "value": " now reports Agent Skill directories that remain after package removal and points at "
+            },
+            {
+              "type": "code",
+              "value": "stacknext skill uninstall"
+            },
+            {
+              "type": "text",
+              "value": "."
+            }
+          ]
+        ]
+      },
+      {
+        "title": "Fixed",
+        "items": [
+          [
+            {
+              "type": "code",
+              "value": "stacknext dev"
+            },
+            {
+              "type": "text",
+              "value": " now refuses to start when a live Next.js dev server already owns the project, preventing a second server from running without StackNext instrumentation."
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "value": "Documented "
+            },
+            {
+              "type": "code",
+              "value": "diagnostics.repeatedQueryMin"
+            },
+            {
+              "type": "text",
+              "value": " on Diagnostics and Database, so repeated SQL below the N+1 threshold is not mistaken for a missing finding."
+            }
+          ]
+        ]
+      }
+    ]
+  },
+  {
     "id": "v0-15-0",
     "version": "0.15.0",
     "date": "2026-11-12",

@@ -14,6 +14,8 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-17
+
 ### Added
 
 - Added a setup prompt control to the website hero. It copies a one-line
