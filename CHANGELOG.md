@@ -16,6 +16,10 @@ All notable changes to StackNext are documented here. The format follows
 
 ### Added
 
+- Added a setup prompt control to the website hero. It copies a one-line
+  instruction for coding agents, opens the prompt directly in Claude Code,
+  Codex or Cursor, and links to a hosted `stacknext-setup` skill at
+  `/agent-setup/SKILL.md`.
 - Added `stacknext mcp --check`, an in-memory protocol check that lists the MCP
   tools and prompts, calls `get_project_summary` and exits non-zero when the
   collector or server surface is unavailable.
@@ -34,6 +38,10 @@ All notable changes to StackNext are documented here. The format follows
 
 ### Changed
 
+- Rebuilt the website install command as a shared shadcn-style tabbed card in
+  the hero and closing call to action, with pnpm, npm, bun and yarn tabs, a
+  monochrome manager icon that follows the selected tab, a single copy control
+  and a mobile command layout. The redundant `Full setup` link is gone.
 - Grouped dashboard navigation into Debug, Evidence, collapsible Regression and
   Configure, with Requests as a first-class view.
 - Empty database, diagnostics, errors and traces views now link to the next

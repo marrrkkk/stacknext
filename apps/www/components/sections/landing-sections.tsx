@@ -1,13 +1,6 @@
-import {
-  ACCESS_PATHS,
-  COMPATIBILITY,
-  FAQS,
-  INSTALL_COMMANDS,
-  LINKS,
-  SPECS,
-} from '@/content/site'
+import { ACCESS_PATHS, COMPATIBILITY, FAQS, LINKS, SPECS } from '@/content/site'
 import { CodeTabs } from '../code-tabs'
-import { CopyCommand } from '../copy-command'
+import { InstallCommand } from '../install-command'
 import { AccessIcon, ArrowUpRight, LockIcon } from '../icons'
 import { PrivacyBoundary } from '../illustrations'
 import { RuntimeDiagram } from '../system-diagram'
@@ -494,11 +487,7 @@ export function Cta(): React.ReactElement {
           Install the packages, run init, then start your app with stacknext dev. No account
           or API key.
         </p>
-        <CopyCommand
-          className="max-720:mt-7"
-          value={INSTALL_COMMANDS.npm}
-          label="Copy install command"
-        />
+        <InstallCommand className="mt-[34px] max-720:mt-7" />
         <div className="mt-7 flex flex-wrap justify-center gap-[10px] max-560:flex-col max-560:items-stretch">
           <ButtonLink
             href={LINKS.quickstart}
