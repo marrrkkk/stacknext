@@ -4,3 +4,9 @@ packages:
 allowBuilds:
   esbuild: true
   better-sqlite3: true
+
+# The MCP SDK accepts a wide hono range. Pin the patched patch releases so a
+# transitive advisory cannot change the installed tree without a lockfile change.
+overrides:
+  hono: 4.13.16
+  '@hono/node-server': 2.1.6

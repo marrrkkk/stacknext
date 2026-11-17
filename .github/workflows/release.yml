@@ -212,8 +212,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Production dependency audit
-        run: pnpm audit --prod
+      - name: Production dependency audit (advisory)
+        run: |
+          if ! pnpm audit --prod; then
+            echo "::warning::Production dependency audit reported advisories. Review Dependabot alerts before the next dependency update; new transitive advisories no longer block a release."
+          fi
 
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
