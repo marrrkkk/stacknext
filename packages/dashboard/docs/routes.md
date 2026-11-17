@@ -15,8 +15,8 @@ paths and the browser handles the view.
 | Path | View |
 | --- | --- |
 | `/` | Overview: counts, latency, recent errors, coverage, top diagnostics. |
-| `/requests` | Request list with filters and sorting. |
-| `/requests/:traceId` | Request detail and span timeline. |
+| `/requests` | Legacy redirect to `/traces?view=requests` (request list with filters and sorting). |
+| `/requests/:traceId` | Legacy redirect to `/traces/:traceId` (request detail and span timeline). |
 | `/traces` | Trace list. |
 | `/traces/:traceId` | Trace waterfall, errors and queries. |
 | `/database` | Database query list. |

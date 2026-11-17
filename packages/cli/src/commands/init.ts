@@ -103,7 +103,7 @@ export async function fileExists(file: string): Promise<boolean> {
 }
 
 async function runInstall(project: ProjectInfo): Promise<boolean> {
-  const command = installCommand(project.packageManager, ['@stacknext/next'], true)
+  const command = installCommand(project.packageManager, ['@stacknext/next'], false)
   const [bin, ...args] = command.split(' ')
   if (!bin) return false
   return new Promise((resolve) => {
@@ -214,13 +214,13 @@ export async function runInit(options: InitOptions, cwd = process.cwd()): Promis
         printCheck(
           'warn',
           'Install @stacknext/next before starting Next.js',
-          installCommand(project.packageManager, ['@stacknext/next'], true),
+          installCommand(project.packageManager, ['@stacknext/next'], false),
         )
     } else {
       printCheck(
         'warn',
         '@stacknext/next is not installed',
-        installCommand(project.packageManager, ['@stacknext/next'], true),
+        installCommand(project.packageManager, ['@stacknext/next'], false),
       )
     }
   } else {

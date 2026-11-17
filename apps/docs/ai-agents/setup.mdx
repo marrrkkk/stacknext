@@ -102,13 +102,22 @@ packages or running `stacknext uninstall` does not delete the skill directory.
 Start `stacknext dev` first, then configure the client to run:
 
 ```bash
-npm --prefix /absolute/path/to/your-app exec -- stacknext mcp
+pnpm --dir /absolute/path/to/your-app exec stacknext mcp
 ```
 
-With pnpm, use
-`pnpm --dir /absolute/path/to/your-app exec stacknext mcp`. Use an absolute app
-path; a relative path depends on where the client starts the server. The server
-reads `.stacknext/run.json` and exposes twenty read-only tools plus five prompts.
+`pnpm --dir` changes the process working directory. npm's `--prefix` only
+changes where packages are resolved; it does **not** change the working
+directory, which is where the server reads `.stacknext/run.json`. With npm, set
+the client's `cwd` to the app directory and run `npm exec -- stacknext mcp`. If
+the client has no `cwd` option, use a wrapper:
+
+```bash
+sh -c 'cd /absolute/path/to/your-app && npm exec -- stacknext mcp'
+```
+
+Use an absolute app path; a relative path depends on where the client starts the
+server. The server reads `.stacknext/run.json` and exposes twenty read-only
+tools plus five prompts.
 See the [MCP server](/mcp) for the generic JSON form and the
 [MCP tools reference](/reference/mcp-tools) for the full surface.
 
@@ -135,11 +144,10 @@ under `mcp.servers`:
       "stacknext": {
         "type": "local",
         "command": [
-          "npm",
-          "--prefix",
+          "pnpm",
+          "--dir",
           "/absolute/path/to/your-app",
           "exec",
-          "--",
           "stacknext",
           "mcp"
         ],
@@ -158,11 +166,11 @@ You can also add the entry with the CLI:
 
 ```bash
 opencode mcp add stacknext -- \
-  npm --prefix /absolute/path/to/your-app exec -- stacknext mcp
+  pnpm --dir /absolute/path/to/your-app exec stacknext mcp
 ```
 
-With pnpm, use
-`pnpm --dir /absolute/path/to/your-app exec stacknext mcp` after the `--`.
+With npm, set the client's `cwd` or use the `sh -c` wrapper shown above;
+`npm --prefix` alone does not change the working directory.
 
 Check the connection with `opencode mcp list`. OpenCode watches configuration
 files and applies changes without a restart.
@@ -174,12 +182,13 @@ configuration, or the project configuration file your Codex version supports):
 
 ```toml
 [mcp_servers.stacknext]
-command = "npm"
-args = ["--prefix", "/absolute/path/to/your-app", "exec", "--", "stacknext", "mcp"]
+command = "pnpm"
+args = ["--dir", "/absolute/path/to/your-app", "exec", "stacknext", "mcp"]
+cwd = "/absolute/path/to/your-app"
 ```
 
-For pnpm, use `command = "pnpm"` and
-`args = ["--dir", "/absolute/path/to/your-app", "exec", "stacknext", "mcp"]`.
+For npm, set `cwd` and use `args = ["exec", "--", "stacknext", "mcp"]`, or
+launch the `sh -c` wrapper shown above. `npm --prefix` alone is not enough.
 
 Restart Codex after changing the file. Codex reads the server's MCP
 `instructions` during initialization.
@@ -190,7 +199,7 @@ Add the server with the Claude Code CLI:
 
 ```bash
 claude mcp add stacknext -- \
-  npm --prefix /absolute/path/to/your-app exec -- stacknext mcp
+  pnpm --dir /absolute/path/to/your-app exec stacknext mcp
 ```
 
 Or add it to a project `.mcp.json`:
@@ -199,12 +208,11 @@ Or add it to a project `.mcp.json`:
 {
   "mcpServers": {
     "stacknext": {
-      "command": "npm",
+      "command": "pnpm",
       "args": [
-        "--prefix",
+        "--dir",
         "/absolute/path/to/your-app",
         "exec",
-        "--",
         "stacknext",
         "mcp"
       ]

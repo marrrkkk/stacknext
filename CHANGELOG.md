@@ -14,6 +14,17 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Aligned the website install command and `stacknext init` with the documented
+  dependency split: `@stacknext/next` is a runtime dependency and
+  `@stacknext/cli` a development dependency.
+- Removed the untested Cursor deeplink from the website setup prompt. The copied
+  prompt still works in any client, including the tested OpenCode.
+- Corrected npm MCP configuration examples to set the app working directory and
+  fixed the `baseline save` example in the Agent Skill.
+- Updated stale version, route and layout values in the documentation.
+
 ## [0.16.0] - 2026-11-17
 
 ### Added
