@@ -9,7 +9,7 @@ public, shared or multi-user deployment.
 
 | Version | Security support |
 | --- | --- |
-| 0.10.x | Supported |
+| 0.16.x (latest release) | Supported |
 | Earlier versions | Not supported |
 
 Security fixes are released as patch or minor versions, depending on the

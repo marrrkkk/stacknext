@@ -218,10 +218,10 @@ export const PACKAGE_MANAGERS = ['pnpm', 'npm', 'bun', 'yarn'] as const
 export type PackageManager = (typeof PACKAGE_MANAGERS)[number]
 
 export const INSTALL_COMMANDS: Record<PackageManager, string> = {
-  npm: 'npm install --save-dev @stacknext/cli @stacknext/next',
-  pnpm: 'pnpm add -D @stacknext/cli @stacknext/next',
-  yarn: 'yarn add -D @stacknext/cli @stacknext/next',
-  bun: 'bun add -d @stacknext/cli @stacknext/next',
+  npm: 'npm install @stacknext/next && npm install --save-dev @stacknext/cli',
+  pnpm: 'pnpm add @stacknext/next && pnpm add -D @stacknext/cli',
+  yarn: 'yarn add @stacknext/next && yarn add -D @stacknext/cli',
+  bun: 'bun add @stacknext/next && bun add -d @stacknext/cli',
 }
 
 export const FOOTER_GROUPS = [

@@ -36,27 +36,9 @@ stderr. The collector must be running before the client starts the server.
 
 ## Client configuration
 
-Most clients accept a JSON server entry. Use an absolute app path. With npm:
-
-```json
-{
-  "mcpServers": {
-    "stacknext": {
-      "command": "npm",
-      "args": [
-        "--prefix",
-        "/absolute/path/to/your-app",
-        "exec",
-        "--",
-        "stacknext",
-        "mcp"
-      ]
-    }
-  }
-}
-```
-
-With pnpm:
+Most clients accept a JSON server entry. Use an absolute app path. The MCP
+process reads `.stacknext/run.json` from its working directory, so the client
+must start it in the app directory. With pnpm:
 
 ```json
 {
@@ -75,7 +57,9 @@ With pnpm:
 }
 ```
 
-If your client supports `cwd`, the shorter form also works:
+`pnpm --dir` changes the working directory. npm's `--prefix` only changes where
+packages are resolved; it does **not** change the working directory. With npm,
+set the client's `cwd` to the app directory instead:
 
 ```json
 {
@@ -84,6 +68,20 @@ If your client supports `cwd`, the shorter form also works:
       "command": "npm",
       "args": ["exec", "--", "stacknext", "mcp"],
       "cwd": "/absolute/path/to/your-app"
+    }
+  }
+}
+```
+
+If the client has no `cwd` option, launch npm through a wrapper that changes
+directory first:
+
+```json
+{
+  "mcpServers": {
+    "stacknext": {
+      "command": "sh",
+      "args": ["-c", "cd /absolute/path/to/your-app && npm exec -- stacknext mcp"]
     }
   }
 }

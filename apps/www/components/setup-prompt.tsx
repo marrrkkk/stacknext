@@ -27,13 +27,6 @@ const AGENTS = [
     logo: '/logos/agents/codex.svg',
     promptUrl: (prompt: string) => `codex://new?prompt=${encodeURIComponent(prompt)}`,
   },
-  {
-    id: 'cursor',
-    label: 'Cursor',
-    logo: '/logos/agents/cursor.svg',
-    promptUrl: (prompt: string) =>
-      `cursor://anysphere.cursor-deeplink/prompt?text=${encodeURIComponent(prompt)}`,
-  },
 ] as const
 
 type Agent = (typeof AGENTS)[number]

@@ -19,7 +19,7 @@ const logger = createStackNextDrizzleLogger({
 | --- | --- | --- | --- |
 | `databaseSystem` | No | `'sql'` | Use the engine name, for example `sqlite`, `postgresql` or `mysql`. |
 | `transport` | No | Process-wide transport | Must expose `enqueueDatabaseQuery`. |
-| `onError` | No | none | Receives telemetry failures; they never reach Drizzle. |
+| `onError` | No | none | Receives caught telemetry failures. Must not throw: a throwing callback can propagate to Drizzle. |
 
 ## Connect the logger
 

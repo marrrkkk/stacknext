@@ -4,7 +4,7 @@ This page records client and protocol checks for the MCP server and Agent
 Skill. It is a point-in-time record, not a guarantee that every model or client
 release will behave the same way.
 
-The current release is 0.12.1. The model-driven record below covers 0.4 and the
+The current release is 0.16.0. The model-driven record below covers 0.4 and the
 protocol-level record covers 0.6.1. The current e2e suite covers the MCP,
 regression and snapshot surface, and 0.12 adds `stacknext mcp --check` as a
 repeatable in-memory protocol check. New model-driven client scenarios have not

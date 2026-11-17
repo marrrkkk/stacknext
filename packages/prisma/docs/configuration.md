@@ -33,7 +33,7 @@ const stop = instrumentPrismaClient(prisma, {
 | --- | --- | --- | --- |
 | `databaseSystem` | No | `'prisma'` | Use the engine name, for example `sqlite` or `postgresql`. |
 | `transport` | No | Process-wide transport | Must expose `enqueueDatabaseQuery`. |
-| `onError` | No | none | Receives telemetry failures; they never reach Prisma. |
+| `onError` | No | none | Receives caught telemetry failures. Must not throw: a throwing callback can propagate to Prisma. |
 
 ## Lifecycle
 

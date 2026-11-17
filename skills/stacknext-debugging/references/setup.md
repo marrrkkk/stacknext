@@ -173,7 +173,7 @@ Capture runs, baselines and comparisons are written by the CLI:
 
 ```bash
 pnpm exec stacknext capture --name before -- pnpm exec playwright test --workers=1
-pnpm exec stacknext baseline save --run <run-id> --name main
+pnpm exec stacknext baseline save <run-id> --name main
 pnpm exec stacknext compare <baseline-id> <candidate-run-id>
 ```
 
