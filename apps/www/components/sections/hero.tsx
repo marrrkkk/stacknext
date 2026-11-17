@@ -1,5 +1,6 @@
 import { BrandSymbol } from '../icons'
 import { InstallCommand } from '../install-command'
+import { SetupPrompt } from '../setup-prompt'
 import { Eyebrow, ProductFrame, Screenshot } from '../primitives'
 
 export function Hero(): React.ReactElement {
@@ -13,7 +14,7 @@ export function Hero(): React.ReactElement {
         className="pointer-events-none absolute -top-[260px] left-1/2 h-[900px] w-[min(1200px,96%)] -translate-x-1/2 bg-[radial-gradient(ellipse_at_50%_32%,rgba(255,255,255,0.085),rgba(255,255,255,0.02)_42%,transparent_68%)]"
         aria-hidden="true"
       />
-      <div className="relative z-[1] mx-auto max-w-[1120px]">
+      <div className="relative z-[2] mx-auto max-w-[1120px]">
         <span
           className="mx-auto mb-6 grid size-14 animate-[rise_700ms_var(--ease-soft)_both_60ms] place-items-center rounded-[16px] border border-line-2 bg-[linear-gradient(180deg,#161616,#0a0a0a)] text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_18px_50px_rgba(0,0,0,0.6)] max-720:mb-5 max-720:size-12"
           aria-hidden="true"
@@ -37,7 +38,8 @@ export function Hero(): React.ReactElement {
           events and server errors. Follow any request through the dashboard, CLI or a
           read-only MCP server.
         </p>
-        <InstallCommand />
+        <SetupPrompt />
+        <InstallCommand className="mt-5 max-720:mt-4 animate-[rise_820ms_var(--ease-soft)_both_340ms]" />
       </div>
 
       <div className="relative z-[1] mx-auto mt-[clamp(56px,7vw,92px)] max-w-[1280px] animate-[rise_1050ms_var(--ease-soft)_both_470ms] max-720:mt-12">

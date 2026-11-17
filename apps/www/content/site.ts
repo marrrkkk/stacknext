@@ -213,7 +213,7 @@ export const FAQS = [
   },
 ] as const
 
-export const PACKAGE_MANAGERS = ['npm', 'pnpm', 'yarn', 'bun'] as const
+export const PACKAGE_MANAGERS = ['pnpm', 'npm', 'bun', 'yarn'] as const
 
 export type PackageManager = (typeof PACKAGE_MANAGERS)[number]
 
