@@ -188,19 +188,19 @@ export function InstallCommand({
           role="tabpanel"
           aria-labelledby={`install-tab-${uid}-${manager}`}
           tabIndex={0}
-          className="m-0 -translate-y-px overflow-x-auto px-4 py-3.5 font-mono text-sm leading-5 text-code-foreground outline-none [scrollbar-width:thin]"
+          className="m-0 -translate-y-px overflow-x-auto px-4 py-3.5 font-mono text-sm leading-5 text-code-foreground outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#737373] [scrollbar-width:thin]"
         >
           <code className="block text-left font-mono text-sm leading-5 max-sm:leading-6">
             <span className="block sm:inline-block">
               <span className="select-none">$ </span>
               {prefix}
-              <span className="select-none sm:hidden" aria-hidden="true">
+              <span className="sm:hidden" aria-hidden="true">
                 \
               </span>
             </span>
-            <span className="inline-flex gap-[1ch] text-[#fafafa] max-380:flex-col max-380:gap-0">
-              {packages.split(' ').map((item) => (
-                <span key={item}>{item}</span>
+            <span className="whitespace-pre-wrap text-[#fafafa]">
+              {packages.split(' ').map((item, index) => (
+                <span key={item}>{index > 0 ? ` ${item}` : item}</span>
               ))}
             </span>
           </code>

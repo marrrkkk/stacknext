@@ -89,13 +89,23 @@ the user does not want the file changed.
 
 ## 4. Configure the read-only MCP server
 
-The MCP server is local stdio. Use an absolute path to the application.
+The MCP server is local stdio and reads `.stacknext/run.json` from its working
+directory. Start it with the application directory as the working directory.
 Never use SSE, HTTP or a remote proxy, and never put the collector token in a
 client configuration file.
 
 ```bash
-npm --prefix /absolute/path/to/your-app exec -- stacknext mcp
 pnpm --dir /absolute/path/to/your-app exec stacknext mcp
+```
+
+With npm, set the client's working directory (`cwd`) to the application
+directory and run `npm exec -- stacknext mcp`. `npm --prefix` only resolves the
+local executable; it does not change the process working directory. If the
+client has no `cwd` option, launch the command through a wrapper that changes
+directory first:
+
+```bash
+sh -c 'cd /absolute/path/to/your-app && npm exec -- stacknext mcp'
 ```
 
 ### Claude Code

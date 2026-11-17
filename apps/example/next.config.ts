@@ -5,9 +5,6 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   agentRules: false,
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
-  experimental: {
-    agentUpgrade: 'security',
-  },
 }
 
 export default nextConfig
