@@ -16,14 +16,14 @@
     "@stacknext/next": "workspace:*",
     "better-sqlite3": "13.0.3",
     "drizzle-orm": "0.45.4",
-    "next": "16.4.3",
+    "next": "16.4.6",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "1.58.2",
     "@stacknext/cli": "workspace:*",
     "@stacknext/playwright": "workspace:*",
-    "@playwright/test": "1.58.2",
     "@types/better-sqlite3": "9.6.0",
     "@types/node": "24.10.1",
     "@types/react": "19.3.0",
