@@ -53,7 +53,7 @@ private vulnerability reporting.
 
 ## Supported versions
 
-Security fixes target the latest 0.10.x release. Older versions and unpublished
+Security fixes target the latest 0.16.x release. Older versions and unpublished
 source snapshots are not supported. See the [compatibility matrix](apps/docs/compatibility.mdx)
 for runtime support.
 

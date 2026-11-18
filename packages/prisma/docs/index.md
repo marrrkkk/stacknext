@@ -56,7 +56,11 @@ and does not attach a second listener.
 | --- | --- | --- | --- |
 | `databaseSystem` | string | `'prisma'` | Reported as `db.system.name`. |
 | `transport` | `Pick<StackNextTransport, 'enqueueDatabaseQuery'>` | global transport | Override for tests or custom setups. |
-| `onError` | `(error: unknown) => void` | none | Called when the sink throws. |
+| `onError` | `(error: unknown) => void` | none | Called when the sink throws. Must not throw. |
+
+Telemetry failures are caught, but a throwing `onError` callback can propagate
+its error to Prisma's query listener. Callers must ensure `onError` does not
+throw.
 
 ## What is recorded
 

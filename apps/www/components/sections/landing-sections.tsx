@@ -261,7 +261,7 @@ export function Setup(): React.ReactElement {
                   Run this inside the Next.js app, not at the workspace root.
                 </p>
                 <code className="mt-[10px] block w-fit rounded-[7px] border border-line bg-[#101010] px-[9px] py-[6px] text-[12.5px] text-[#c6c6c6]">
-                  npm install --save-dev @stacknext/cli @stacknext/next
+                  npm install @stacknext/next && npm install --save-dev @stacknext/cli
                 </code>
               </div>
             </li>

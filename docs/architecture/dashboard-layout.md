@@ -61,7 +61,7 @@ Use these working principles:
   Comparisons behind a nested disclosure.
 - Show the existing error count badge on Errors. In the collapsed rail it
   becomes a small dot, not a squashed number.
-- Sidebar width: `244px` expanded, `64px` collapsed. Animate width and
+- Sidebar width: `260px` expanded, `64px` collapsed. Animate width and
   flex-basis with the existing duration/easing tokens.
 - Desktop collapse control in the sidebar brand row. When the rail is
   collapsed, the logo is replaced by the expand control. Persist the preference
@@ -81,7 +81,7 @@ Use these working principles:
 
 ### 2. Topbar and breadcrumbs
 
-- Height stays `40px`; the topbar is chrome, not a second page header.
+- Height stays `36px`; the topbar is chrome, not a second page header.
 - Left to right: project name, breadcrumb trail, command/search trigger,
   connection status and dashboard URL. On mobile the navigation trigger comes
   first.

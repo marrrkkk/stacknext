@@ -295,7 +295,7 @@ stacknext snapshot import <file> [--label <text>] [--json]
 stacknext snapshot delete <snapshot-id> --yes [--json]
 stacknext export [-o <file> | --stdout] [--force]
 stacknext uninstall [--yes] [--keep-config] [--remove-data] [--json]
-stacknext mcp [--collector <url>] [--token <token>]
+stacknext mcp [--collector <url>] [--token <token>] [--check]
 ```
 
 `dev` starts the loopback collector, writes runtime state to
@@ -449,7 +449,7 @@ or delete a snapshot. Five optional prompts
 
 StackNext is designed to be used by coding agents without an AI API key or
 subscription. The portable skill at
-[`skills/stacknext-debugging`](skills/stacknext-debugging/SKILL.md) teaches six
+[`skills/stacknext-debugging`](skills/stacknext-debugging/SKILL.md) teaches seven
 evidence-first workflows:
 
 - **A — runtime error:** find the error, read the stack, follow the correlated

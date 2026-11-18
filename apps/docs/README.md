@@ -32,13 +32,16 @@ repository.
   index.
 - Contributor setup, testing, release, benchmark and architecture documents live
   in the repository engineering knowledge base at
-  [`../../docs/`](../../docs/README.md).
+  [`docs/`](https://github.com/marrrkkk/stacknext/blob/main/docs/README.md).
 
 Run `pnpm check:docs` from the repository root after changing navigation, links
 or package docs. Mintlify generates `/llms.txt`, `/llms-full.txt` and Markdown
 page variants automatically; do not commit them. See
 [AI-readable documentation](ai-agents/local-docs#ai-readable-documentation).
 
-Repository-level documents: [README](../../README.md),
-[CONTRIBUTING](../../CONTRIBUTING.md), [SECURITY](../../SECURITY.md),
-[SUPPORT](../../SUPPORT.md) and [AGENTS](../../AGENTS.md).
+Repository-level documents:
+[README](https://github.com/marrrkkk/stacknext/blob/main/README.md),
+[CONTRIBUTING](https://github.com/marrrkkk/stacknext/blob/main/CONTRIBUTING.md),
+[SECURITY](https://github.com/marrrkkk/stacknext/blob/main/SECURITY.md),
+[SUPPORT](https://github.com/marrrkkk/stacknext/blob/main/SUPPORT.md) and
+[AGENTS](https://github.com/marrrkkk/stacknext/blob/main/AGENTS.md).
