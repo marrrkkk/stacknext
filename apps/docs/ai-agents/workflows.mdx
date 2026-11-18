@@ -42,6 +42,16 @@ the same page creates an append-only case with
 Cases are local, redacted and never uploaded. Watch the resulting session in
 the dashboard's Agents navigation.
 
+## Verify the fix
+
+Turn a finding into one falsifiable claim and check it with `stacknext verify`.
+For example, `stacknext verify --route /api/projects --since <ms> --max-queries
+3 --json` samples at most 20 matching requests, newest first. The result is
+`supported`, `contradicted` or `unverifiable`; missing evidence and null
+durations are `unverifiable`, never a pass. Exit codes are 0, 1 and 2. Append
+the result to a case with `stacknext verify --case <case-id> --json` and review
+it on the case detail page. There is no write tool in MCP and no LLM involved.
+
 ## Error
 
 `list_errors` → `get_error` → `get_request` / `get_trace` →

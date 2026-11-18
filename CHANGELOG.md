@@ -49,6 +49,12 @@ All notable changes to StackNext are documented here. The format follows
   adds read-only `list_cases` and `get_case` tools. Dashboard `/cases` pages show
   the folded case, evidence links and session link. No write surface was added
   to MCP or the dashboard.
+- Added `stacknext verify`, which checks a claim with deterministic bounded
+  predicates (`requestStatus`, `maxDatabaseQueries`, `maxRequestDuration`,
+  `diagnosticStatus`) and returns `supported`, `contradicted` or `unverifiable`
+  with evidence ids, revision and sample size. Exit codes are 0, 1 and 2;
+  `--case` appends the result to a case and the dashboard renders it. No LLM,
+  source edit or MCP write tool is involved.
 
 ### Changed
 

@@ -1,5 +1,6 @@
 export * from './types.js'
 export * from './cases.js'
+export * from './verify.js'
 export * from './schema.js'
 export * from './redact.js'
 export * from './normalize.js'

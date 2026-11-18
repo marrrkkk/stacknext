@@ -20,7 +20,7 @@
 | 3 | Agent sessions and audit | M | Done | `ec595c9` | 2026-11-18 | 2026-11-19 |
 | 4 | Evidence hand-off | S | Done | `346b9f6` | 2026-11-19 | 2026-11-19 |
 | 5 | Investigation cases | L | Done | `fd4dc7c` | 2026-11-19 | 2026-11-19 |
-| 6 | Verification | M/L | Not started | — | — | — |
+| 6 | Verification | M/L | Done | `7c6d6e7` | 2026-11-19 | 2026-11-19 |
 
 ## Step 1 — Trust foundation
 
@@ -72,11 +72,11 @@
 
 ## Step 6 — Verification
 
-- [ ] Deterministic predicates in `packages/core/src/verify.ts`
-- [ ] `stacknext verify` with result shape and exit codes 0/1/2 documented
-- [ ] Case `verification` field and skill "verify the fix" workflow
-- [ ] Redaction and no-data/ambiguous cases → `unverifiable`
-- [ ] Full gate + `test:packages` + `test:e2e` + consumer smoke run and logged
+- [x] Deterministic predicates in `packages/core/src/verify.ts`
+- [x] `stacknext verify` with result shape and exit codes 0/1/2 documented
+- [x] Case `verification` field and skill "verify the fix" workflow
+- [x] Redaction and no-data/ambiguous cases → `unverifiable`
+- [x] Full gate + `test:packages` + `test:e2e` + consumer smoke run and logged
 
 ## Verification log
 
@@ -134,6 +134,16 @@ Add one row per command run. Record the exact command and result. Include
 | 2026-11-19 | 5 | Port check after e2e | pass | No listeners on 4400-4429. |
 | 2026-11-19 | 5 | `pnpm benchmark:dashboard -- --enforce` | pass | Initial JS 119.6 KiB gzip (budget 121), all enforced budgets passed. |
 | 2026-11-19 | 5 | Redaction verification (seven secret strings) | pass | CLI case test asserts title/hypothesis secrets are redacted; e2e asserts all seven absent from case files and collector case detail. |
+| 2026-11-19 | 6 | `pnpm exec vitest run packages/core/test/verify.test.ts packages/cli/test/verify.test.ts` | pass after fix | 9 tests; fixed trace-id correlation in fixtures, 404 handling and `--case` arg loading. |
+| 2026-11-19 | 6 | `pnpm lint` | pass | Clean. |
+| 2026-11-19 | 6 | `pnpm typecheck` | pass | All 13 workspace projects. |
+| 2026-11-19 | 6 | `pnpm test` | pass | 51 files, 404 tests. |
+| 2026-11-19 | 6 | `pnpm build` | pass | All packages and apps. |
+| 2026-11-19 | 6 | `pnpm check:docs` | pass | 141 Markdown files, 513 text files. |
+| 2026-11-19 | 6 | `pnpm test:packages` | pass | All 10 archives valid. |
+| 2026-11-19 | 6 | `pnpm test:e2e` | pass on third run | First two runs had flaky example-app scenario timeouts (a 30 s `waitForResponse` and a seeded-task visibility timeout) that retried successfully; third run passed all 49 checks including supported/contradicted/unverifiable verify exit codes. No product code was changed between runs. |
+| 2026-11-19 | 6 | Port check after e2e | pass | No listeners on 4400-4429. |
+| 2026-11-19 | 6 | `pnpm test:consumer --next 16.4.3 --pm npm --skip-build` | pass after fix | Updated consumer tool count to 23; handshake now reports 23 read-only tools and 5 prompts. |
 
 ## Decisions log
 
@@ -144,6 +154,9 @@ Add one row per command run. Record the exact command and result. Include
 | — | Agent audit on by default, local only | User answer, master prompt section 2 |
 | — | Dashboard case pages read-only; pinning via CLI command | PLAN.md section 5 |
 | — | No MCP `verify_claim` in v1 | PLAN.md section 5 |
+| 2026-11-19 | Dashboard case pinning stays a copyable CLI command | Step 5 prompt; no POST surface added |
+| 2026-11-19 | MCP-only verification client deferred until evidence of need | Step 6 prompt; `verify` lives in the CLI |
+| 2026-11-19 | Default-on `init --agents` deferred to a separate compatibility discussion | Master prompt non-goals |
 
 ## Blockers and open questions
 
@@ -156,8 +169,11 @@ Add one row per command run. Record the exact command and result. Include
 
 ## Final review checklist (all steps done)
 
-- [ ] `git diff` has no generated output, secrets, stale links or unrelated changes
-- [ ] All canonical docs, navigation and `CHANGELOG.md` updated
-- [ ] `pnpm docs:sync` / `pnpm changelog:sync` run where inputs changed
-- [ ] Shared version bumped consistently across manifests and constants
-- [ ] `stacknext dev` stopped with SIGINT/SIGTERM; no orphans on ports 4400–4425
+- [x] `git diff` has no generated output, secrets, stale links or unrelated changes
+- [x] All canonical docs, navigation and `CHANGELOG.md` updated
+- [x] `pnpm docs:sync` / `pnpm changelog:sync` run where inputs changed
+- [x] Shared version bumped consistently across manifests and constants (0.16.0 → 0.17.0)
+- [x] `stacknext dev` stopped with SIGINT/SIGTERM; no orphans on ports 4400–4425
+- [x] MCP annotations remain read-only for all 23 tools
+- [x] Redaction verification passed for steps 1, 3 and 5
+- [x] Deferred items recorded in the tracker decisions log

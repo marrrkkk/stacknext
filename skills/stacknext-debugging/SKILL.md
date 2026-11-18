@@ -104,6 +104,24 @@ through the CLI; MCP is read-only.
 Cases live under `.stacknext/cases`, are append-only, redacted and local. Never
 copy raw telemetry text into a note or assume a case was uploaded.
 
+## Verify the fix
+
+When a finding suggests a change, form one falsifiable claim and check it with
+`stacknext verify`. No LLM, source edit, SQL/EXPLAIN or time-window correlation
+is involved.
+
+1. State one claim, for example "route `/api/projects` issues at most 3 database
+   queries".
+2. Run the narrowest predicate: `stacknext verify --trace <id> --expect-status
+   200`, `stacknext verify --route <route> --since <ms> --max-queries <n>`,
+   `--max-duration <ms>` or `stacknext verify --diagnostic <id> --expect-status
+   <status>`. Pass `--json` for a stable result.
+3. Report `supported`, `contradicted` or `unverifiable` with the evidence ids.
+   `unverifiable` is never a pass and is never a confirmed fix.
+4. Append the result to a case with `stacknext verify --case <case-id> --json`;
+   the CLI re-runs the saved claim and appends one verification event.
+5. Exit codes are 0 supported, 1 contradicted and 2 unverifiable/error.
+
 ## Documentation sources
 
 The package API reference lives in the installed npm archives, not in this
