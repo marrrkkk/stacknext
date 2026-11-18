@@ -1,0 +1,209 @@
+import type { CaseEvent, CaseView } from '@stacknext/core'
+import { api } from '../api'
+import { useAsync } from '../hooks'
+import {
+  Badge,
+  Card,
+  EmptyState,
+  ErrorState,
+  Id,
+  KeyValue,
+  Loading,
+  PageHeader,
+  PageLayout,
+  type Tone,
+} from '../components/ui'
+import { RelativeTime } from '../components/details'
+import { Icon } from '../components/Icon'
+import { formatDateTime, formatNumber } from '../format'
+
+const STATUS_TONE: Record<CaseView['status'], Tone> = {
+  open: 'warn',
+  verified: 'good',
+  refuted: 'bad',
+  abandoned: 'muted',
+}
+
+function evidenceHref(kind: string, id: string): string | null {
+  const routes: Record<string, string> = {
+    trace: 'traces',
+    error: 'errors',
+    diagnostic: 'diagnostics',
+    comparison: 'comparisons',
+    snapshot: 'snapshots',
+  }
+  const route = routes[kind]
+  return route ? `/${route}/${encodeURIComponent(id)}` : null
+}
+
+function eventLabel(event: CaseEvent): string {
+  switch (event.kind) {
+    case 'created':
+      return `Created by ${event.actor}`
+    case 'evidence_added':
+      return `Added ${event.evidence.kind} evidence`
+    case 'note_added':
+      return 'Added note'
+    case 'verification_added':
+      return 'Recorded verification'
+    case 'closed':
+      return `Closed as ${event.status}`
+  }
+}
+
+export function CaseDetailPage({
+  caseId,
+  refreshKey,
+  onNavigate,
+}: {
+  caseId: string
+  refreshKey: number
+  onNavigate: (path: string) => void
+}): React.ReactElement {
+  const state = useAsync<CaseView>(
+    (signal) => api.case(caseId, signal),
+    `case:${caseId}`,
+    refreshKey,
+    5_000,
+  )
+  const back = {
+    label: 'Cases',
+    onClick: () => onNavigate('/cases'),
+    trail: caseId,
+  }
+
+  if (state.loading && !state.data) return <Loading rows={6} />
+  if (state.error && !state.data) {
+    return (
+      <PageLayout>
+        <PageHeader detail title="Case" back={back} />
+        <Card>
+          <div className="card__inner">
+            <ErrorState message={state.error} onRetry={state.reload} />
+          </div>
+        </Card>
+      </PageLayout>
+    )
+  }
+  const view = state.data
+  if (!view) return <Loading rows={4} />
+
+  return (
+    <PageLayout>
+      <PageHeader
+        detail
+        back={back}
+        eyebrow="Investigation case · read-only"
+        title={<span className="detail-title__text">{view.title}</span>}
+        detailAside={
+          <>
+            <Badge tone={STATUS_TONE[view.status]}>{view.status}</Badge>
+            <Badge tone="muted">v{view.version}</Badge>
+            <Badge tone="muted">{formatNumber(view.evidence.length)} evidence</Badge>
+          </>
+        }
+        description={
+          <>
+            <span className="mono"><Id value={view.id} /></span>
+            <span className="detail-meta__dot" aria-hidden="true">·</span>
+            <span>updated <RelativeTime timestamp={view.updatedAt} /></span>
+          </>
+        }
+        actions={
+          <button
+            type="button"
+            className="button button--secondary"
+            onClick={() => onNavigate('/cases')}
+          >
+            <Icon name="chevron-right" size={14} /> All cases
+          </button>
+        }
+      />
+
+      <Card title="Hypothesis" subtitle="What the case set out to test">
+        <div className="card__inner">
+          {view.hypothesis ? (
+            <p>{view.hypothesis}</p>
+          ) : (
+            <p className="muted">No hypothesis was recorded for this case.</p>
+          )}
+          <KeyValue
+            entries={[
+              {
+                label: 'Agent session',
+                value: view.agentSessionId ? (
+                  <button
+                    type="button"
+                    className="link-button mono"
+                    onClick={() => onNavigate(`/agents/${view.agentSessionId}`)}
+                  >
+                    <Id value={view.agentSessionId} />
+                  </button>
+                ) : (
+                  'human'
+                ),
+              },
+              { label: 'Created', value: formatDateTime(view.createdAt) },
+            ]}
+          />
+        </div>
+      </Card>
+
+      <Card title="Evidence" subtitle="Ids only; open the real record to verify it">
+        <div className="card__inner">
+          {view.evidence.length === 0 ? (
+            <EmptyState compact icon="inbox" title="No evidence recorded" />
+          ) : (
+            <ul className="case-evidence">
+              {view.evidence.map((item, index) => {
+                const href = evidenceHref(item.kind, item.id)
+                return (
+                  <li key={`${item.kind}:${item.id}:${index}`}>
+                    <Badge tone="accent">{item.kind}</Badge>{' '}
+                    {href ? (
+                      <button
+                        type="button"
+                        className="link-button mono"
+                        onClick={() => onNavigate(href)}
+                      >
+                        <Id value={item.id} />
+                      </button>
+                    ) : (
+                      <span className="mono"><Id value={item.id} /></span>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      </Card>
+
+      <Card title="Verification" subtitle="Deterministic check, not a confirmed root cause">
+        <div className="card__inner">
+          {view.verification ? (
+            <p className="muted">A verification result is recorded on this case.</p>
+          ) : (
+            <p className="muted">
+              No verification recorded. A case without a verification result is
+              not a proven conclusion.
+            </p>
+          )}
+        </div>
+      </Card>
+
+      <Card title="Event timeline" subtitle="Append-only history; newest last">
+        <div className="card__inner">
+          <ol className="case-timeline">
+            {view.events.map((event, index) => (
+              <li key={`${event.kind}:${event.at}:${index}`}>
+                <span className="mono">{formatDateTime(event.at)}</span> ·{' '}
+                <strong>{eventLabel(event)}</strong>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </Card>
+    </PageLayout>
+  )
+}

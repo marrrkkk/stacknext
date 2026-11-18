@@ -96,7 +96,7 @@ stores servers under `mcp.servers`:
 }
 ```
 
-`codemode: false` exposes the twenty-one tools directly. If you leave Code Mode
+`codemode: false` exposes the twenty-three tools directly. If you leave Code Mode
 on, the tools are grouped as `tools.stacknext.<tool>`.
 
 ### Codex

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { ErrorDetailResponse, ErrorListResponse } from '@stacknext/core'
 import { api } from '../api'
-import { buildEvidencePrompt } from '../evidence'
+import { buildCaseCommand, buildEvidencePrompt } from '../evidence'
 import { useAsync } from '../hooks'
 import {
   Badge,
@@ -207,6 +207,10 @@ export function ErrorDetailPage({
                 { traceId: linkedTraceId ?? undefined },
               )}
               label="Copy evidence prompt"
+            />
+            <CopyButton
+              value={buildCaseCommand({ kind: 'error', id: error.id })}
+              label="Copy case command"
             />
             {linkedTraceId && (
               <button

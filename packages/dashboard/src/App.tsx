@@ -91,6 +91,12 @@ const McpPage = lazy(() =>
 const AgentsPage = lazy(() =>
   import('./pages/AgentsPage').then((module) => ({ default: module.AgentsPage })),
 )
+const CasesPage = lazy(() =>
+  import('./pages/CasesPage').then((module) => ({ default: module.CasesPage })),
+)
+const CaseDetailPage = lazy(() =>
+  import('./pages/CaseDetailPage').then((module) => ({ default: module.CaseDetailPage })),
+)
 const CommandPalette = lazy(() =>
   import('./components/CommandPalette').then((module) => ({
     default: module.CommandPalette,
@@ -257,6 +263,12 @@ const NAV_GROUPS: NavGroup[] = [
         path: '/agents',
         icon: 'terminal',
         match: (path) => path.startsWith('/agents'),
+      },
+      {
+        label: 'Cases',
+        path: '/cases',
+        icon: 'compare',
+        match: (path) => path.startsWith('/cases'),
       },
     ],
   },
@@ -1179,6 +1191,17 @@ export function App(): React.ReactElement {
                 <AgentsPage
                   refreshKey={0}
                   {...(route.id ? { sessionId: route.id } : {})}
+                  onNavigate={navigate}
+                />
+              )}
+              {pathname === 'cases' && (
+                <CasesPage refreshKey={0} onNavigate={navigate} />
+              )}
+              {pathname === 'case' && route.id && (
+                <CaseDetailPage
+                  key={`case:${route.id}`}
+                  caseId={route.id}
+                  refreshKey={0}
                   onNavigate={navigate}
                 />
               )}

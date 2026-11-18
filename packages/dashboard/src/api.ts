@@ -2,6 +2,7 @@ import type {
   AgentsResponse,
   AgentReadsResponse,
   AgentSessionResponse,
+  CaseView,
   CombinedOverviewResponse,
   CoverageReport,
   DatabaseQueryListItem,
@@ -294,6 +295,18 @@ export const api = {
       `/api/agents${buildQuery({ recordId })}`,
       signal,
     )
+  },
+  cases(
+    query: { limit?: number; offset?: number } = {},
+    signal?: AbortSignal,
+  ): Promise<PageResult<CaseView> & { dropped: number }> {
+    return getJson<PageResult<CaseView> & { dropped: number }>(
+      `/api/cases${buildQuery({ limit: query.limit, offset: query.offset })}`,
+      signal,
+    )
+  },
+  case(id: string, signal?: AbortSignal): Promise<CaseView> {
+    return getJson<CaseView>(`/api/cases/${encodeURIComponent(id)}`, signal)
   },
   overview(signal?: AbortSignal): Promise<OverviewResponse> {
     return getJson<OverviewResponse>('/api/summary', signal)

@@ -1,6 +1,6 @@
 ---
 name: stacknext-debugging
-description: Investigate Next.js App Router runtime behavior with StackNext's local telemetry. Use when debugging server errors, slow requests, database query activity, request traces or deterministic diagnostic findings, or when comparing captured Playwright runs against baselines or inspecting saved snapshots, in a Next.js 15/16 app that has StackNext installed; when asked to use StackNext, its MCP tools or dashboard; or when runtime evidence is needed before changing code. Covers the twenty-one read-only MCP tools, evidence-first workflows, finding verification, runtime regression evidence, saved snapshot evidence, redaction limits and missing-telemetry troubleshooting.
+description: Investigate Next.js App Router runtime behavior with StackNext's local telemetry. Use when debugging server errors, slow requests, database query activity, request traces or deterministic diagnostic findings, or when comparing captured Playwright runs against baselines or inspecting saved snapshots, in a Next.js 15/16 app that has StackNext installed; when asked to use StackNext, its MCP tools or dashboard; or when runtime evidence is needed before changing code. Covers the twenty-three read-only MCP tools, evidence-first workflows, finding verification, runtime regression evidence, saved snapshot evidence, redaction limits and missing-telemetry troubleshooting.
 license: MIT
 compatibility: Next.js 15 or 16 App Router on the Node.js runtime, with a local StackNext collector. No cloud account, AI API key, or remote service is required.
 metadata:
@@ -53,7 +53,7 @@ run SQL or call an AI service.
   proximity. `inconclusive` is not a pass, and a comparison is not a
   statistical test. Report status and severity separately; never claim
   significance or causality.
-- **Stay read-only.** Use only the twenty-one StackNext MCP tools. Do not edit the
+- **Stay read-only.** Use only the twenty-three StackNext MCP tools. Do not edit the
   app, run migrations, execute SQL or EXPLAIN, clear data, capture runs, save
   baselines, run comparisons, save or delete snapshots, or restart services
   unless the user asks. Never invent an index recommendation or a source patch
@@ -85,6 +85,24 @@ run SQL or call an AI service.
 - **Do not over-correlate.** Errors without an active span context use a
   route/method plus 30-second fallback. Say "correlated" rather than "caused"
   when the link is fallback-based.
+
+## Investigation cases
+
+Use a case when an investigation needs a durable, local record. All writes go
+through the CLI; MCP is read-only.
+
+1. Create one with `stacknext case new --title "..." --hypothesis "..."`, or copy
+   the ready-made command from an evidence detail page.
+2. Append ids with `stacknext case add <case-id> --evidence <kind>:<id>` and
+   redacted notes with `stacknext case note <case-id> --text "..."`. Evidence
+   kinds are `trace`, `error`, `diagnostic`, `comparison` and `snapshot`.
+3. Read the record back with `list_cases` and `get_case`. Do not treat a case as
+   proof: verify the referenced evidence with the narrow MCP tools.
+4. Record an outcome with `stacknext case close <case-id> --status verified|refuted|abandoned`.
+   `verified` is a recorded status, not a confirmed root cause.
+
+Cases live under `.stacknext/cases`, are append-only, redacted and local. Never
+copy raw telemetry text into a note or assume a case was uploaded.
 
 ## Documentation sources
 

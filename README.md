@@ -141,7 +141,7 @@ the request, waterfall, database queries and errors on your machine.
   a graceful exit and on the first error, then browse full traces, errors and
   database queries read-only. Automatic snapshots keep the newest ten by
   default; manual and imported snapshots are never rotated away.
-- **MCP** — twenty-one read-only tools for coding agents, over local stdio, with
+- **MCP** — twenty-three read-only tools for coding agents, over local stdio, with
   structured output, response metadata, coverage summary, diagnostic findings,
   regression records, saved snapshots and optional guided prompts.
 - **Agent Skill** — a portable `stacknext-debugging` skill with evidence-first

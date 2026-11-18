@@ -49,6 +49,7 @@ import {
   type SnapshotSummary,
   type AgentsResponse,
   type AgentReadsResponse,
+  type CaseView,
   type AgentSessionResponse,
 } from '@stacknext/core'
 import {
@@ -96,6 +97,12 @@ import {
   isSessionId,
   sanitizeAttribution,
 } from './agent-activity.js'
+import {
+  caseEventPath,
+  isValidCaseId,
+  listCaseViews,
+  loadCaseView,
+} from '../cases-storage.js'
 import { CLI_VERSION } from '../version.js'
 
 const VERSION = CLI_VERSION
@@ -539,6 +546,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
   const sessions = new Map<string, number>()
   const agentActivity = new AgentActivityStore()
   const agentsEnabled = options.config.agents.audit
+  const caseCache = new Map<string, { mtimeMs: number; view: CaseView }>()
   const connections = new Map<string, ConnectionRecord>()
   const sseClients = new Set<SseClient>()
   const serverStats = {
@@ -1501,6 +1509,29 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     sendError(response, 500, `Could not read ${label.toLowerCase()}`)
   }
 
+  /** Small bounded view cache keyed by the event file's mtime. Never mutates. */
+  const cachedCaseView = async (id: string): Promise<CaseView | null> => {
+    if (!options.projectDir || !isValidCaseId(id)) return null
+    const file = caseEventPath(options.projectDir, id)
+    let mtimeMs = 0
+    try {
+      mtimeMs = (await stat(file)).mtimeMs
+    } catch {
+      caseCache.delete(id)
+      return null
+    }
+    const cached = caseCache.get(id)
+    if (cached && cached.mtimeMs === mtimeMs) return cached.view
+    const view = await loadCaseView(options.projectDir, id)
+    if (!view) return null
+    caseCache.set(id, { mtimeMs, view })
+    if (caseCache.size > 32) {
+      const oldest = caseCache.keys().next().value
+      if (oldest) caseCache.delete(oldest)
+    }
+    return view
+  }
+
   const handleApi = async (
     request: IncomingMessage,
     response: ServerResponse,
@@ -1606,6 +1637,33 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
         limit,
         offset,
       } satisfies AgentSessionResponse)
+      return
+    }
+    if (pathname === '/api/cases' || pathname.startsWith('/api/cases/')) {
+      if (!options.projectDir) {
+        sendJson(response, 200, { items: [], total: 0, limit: 50, offset: 0, dropped: 0 })
+        return
+      }
+      const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit') ?? 50)))
+      const offset = Math.max(0, Number(url.searchParams.get('offset') ?? 0))
+      if (pathname === '/api/cases') {
+        const { items, dropped } = await listCaseViews(options.projectDir)
+        sendJson(response, 200, {
+          items: items.slice(offset, offset + limit),
+          total: items.length,
+          limit,
+          offset,
+          dropped,
+        })
+        return
+      }
+      const id = decodeURIComponent(pathname.slice('/api/cases/'.length))
+      const view = await cachedCaseView(id)
+      if (!view) {
+        sendError(response, 404, 'Case not found')
+        return
+      }
+      sendJson(response, 200, view)
       return
     }
     if (pathname === '/api/coverage') {

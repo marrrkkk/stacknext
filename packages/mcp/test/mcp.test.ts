@@ -291,6 +291,22 @@ const COVERAGE = {
 }
 
 const DIAGNOSTIC_ID = 'diag-1234abcd-5678ef90'
+const CASE_ID = 'case_12345678-1234-4234-8234-123456789abc'
+const CASE_VIEW = {
+  version: 1,
+  id: CASE_ID,
+  title: 'N+1 on /api/projects',
+  status: 'open',
+  hypothesis: 'The route issues one query per project.',
+  evidence: [{ kind: 'trace', id: TRACE_A }],
+  agentSessionId: null,
+  verification: null,
+  createdAt: 10,
+  updatedAt: 10,
+  events: [
+    { kind: 'created', at: 10, actor: 'human', title: 'N+1 on /api/projects' },
+  ],
+}
 
 const DIAGNOSTIC_FINDING = {
   id: DIAGNOSTIC_ID,
@@ -903,6 +919,19 @@ async function startMockCollector(): Promise<MockCollector> {
       })
       return
     }
+    if (url.pathname === '/api/cases') {
+      send({ items: [CASE_VIEW], total: 1, limit: 50, offset: 0, dropped: 0 })
+      return
+    }
+    if (url.pathname === `/api/cases/${CASE_ID}`) {
+      send(CASE_VIEW)
+      return
+    }
+    if (url.pathname.startsWith('/api/cases/')) {
+      response.writeHead(404, { 'content-type': 'application/json' })
+      response.end('{"error":"Case not found"}')
+      return
+    }
     if (url.pathname === '/api/diagnostics') {
       const category = url.searchParams.get('category')
       const severity = url.searchParams.get('severity')
@@ -1015,11 +1044,13 @@ describe('read-only MCP server', () => {
     const names = tools.map((tool) => tool.name).sort()
     expect(names).toEqual([
       'find_slow_requests',
+      'get_case',
       'get_error',
       'get_investigation_brief',
       'get_project_summary',
       'get_request',
       'get_trace',
+      'list_cases',
       'list_database_queries',
       'list_errors',
       'list_requests',
@@ -1557,7 +1588,7 @@ it('verifies the MCP surface without an LLM client', async () => {
       token: TOKEN,
     })
     expect(result.ok).toBe(true)
-    expect(result.toolCount).toBe(21)
+    expect(result.toolCount).toBe(23)
     expect(result.promptCount).toBe(5)
     expect(result.connection).toBeDefined()
     expect(result.requests).toBeGreaterThan(0)
@@ -1591,6 +1622,8 @@ it('labels every tool result, including detail and error results, with trust and
     const calls: Array<{ name: string; args: Record<string, unknown> }> = [
       { name: 'get_project_summary', args: {} },
       { name: 'get_investigation_brief', args: {} },
+      { name: 'list_cases', args: {} },
+      { name: 'get_case', args: { caseId: CASE_ID } },
       { name: 'list_requests', args: {} },
       { name: 'get_request', args: { traceId: TRACE_A } },
       { name: 'list_traces', args: {} },
@@ -1614,7 +1647,7 @@ it('labels every tool result, including detail and error results, with trust and
         args: { snapshotId: SNAPSHOT_ID, traceId: TRACE_A },
       },
     ]
-    expect(calls).toHaveLength(21)
+    expect(calls).toHaveLength(23)
     for (const call of calls) {
       const result = await connection.client.callTool({
         name: call.name,
@@ -1930,6 +1963,8 @@ it('attributes every tool call and leaves --check unattributed', async () => {
     }
     if (url.pathname === '/api/health') send(HEALTH)
     else if (url.pathname === '/api/summary') send({ health: HEALTH, summary: SUMMARY, coverage: COVERAGE })
+    else if (url.pathname === '/api/cases') send({ items: [CASE_VIEW], total: 1, limit: 50, offset: 0, dropped: 0 })
+    else if (url.pathname.startsWith('/api/cases/')) send(CASE_VIEW)
     else send({ items: [], total: 0, limit: 50, offset: 0 })
   })
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
@@ -1943,6 +1978,8 @@ it('attributes every tool call and leaves --check unattributed', async () => {
   const calls: Array<{ name: string; args: Record<string, unknown> }> = [
     { name: 'get_project_summary', args: {} },
     { name: 'get_investigation_brief', args: {} },
+    { name: 'list_cases', args: {} },
+    { name: 'get_case', args: { caseId: CASE_ID } },
     { name: 'list_requests', args: {} },
     { name: 'get_request', args: { traceId: TRACE_A } },
     { name: 'list_traces', args: {} },

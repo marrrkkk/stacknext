@@ -19,7 +19,7 @@
 | 2 | Investigation brief | S | Done | `f646466` | 2026-11-18 | 2026-11-18 |
 | 3 | Agent sessions and audit | M | Done | `ec595c9` | 2026-11-18 | 2026-11-19 |
 | 4 | Evidence hand-off | S | Done | `346b9f6` | 2026-11-19 | 2026-11-19 |
-| 5 | Investigation cases | L | Not started | — | — | — |
+| 5 | Investigation cases | L | Done | `fd4dc7c` | 2026-11-19 | 2026-11-19 |
 | 6 | Verification | M/L | Not started | — | — | — |
 
 ## Step 1 — Trust foundation
@@ -62,13 +62,13 @@
 
 ## Step 5 — Investigation cases
 
-- [ ] `packages/core/src/cases.ts` schema v1, append-only event format
-- [ ] `0700`/`0600`, atomic create, caps, redaction of notes and titles
-- [ ] CLI `case new|add|list|show|close`, all `--json`
-- [ ] `GET /api/cases`, `/api/cases/:id`; read-only auth
-- [ ] MCP `list_cases`, `get_case` (#22–23) with docs and output schemas
-- [ ] Dashboard `/cases`, `/cases/:id`, read-only, linked from records
-- [ ] Full gate + `test:packages` + `test:e2e` + benchmark run and logged
+- [x] `packages/core/src/cases.ts` schema v1, append-only event format
+- [x] `0700`/`0600`, atomic create, caps, redaction of notes and titles
+- [x] CLI `case new|add|list|show|close`, all `--json`
+- [x] `GET /api/cases`, `/api/cases/:id`; read-only auth
+- [x] MCP `list_cases`, `get_case` (#22–23) with docs and output schemas
+- [x] Dashboard `/cases`, `/cases/:id`, read-only, linked from records
+- [x] Full gate + `test:packages` + `test:e2e` + benchmark run and logged
 
 ## Step 6 — Verification
 
@@ -123,6 +123,17 @@ Add one row per command run. Record the exact command and result. Include
 | 2026-11-19 | 4 | `pnpm test:packages` | pass | All 10 archives valid. |
 | 2026-11-19 | 4 | `pnpm test:e2e` | pass | 46 checks including browser clipboard assertion that the copied prompt names `stacknext_get_diagnostic`, the finding id and the untrusted-data warning with no client error. |
 | 2026-11-19 | 4 | Port check after e2e | pass | No listeners on 4400-4429. |
+| 2026-11-19 | 5 | `pnpm exec vitest run packages/core/test/cases.test.ts packages/cli/test/case-commands.test.ts packages/mcp/test/mcp.test.ts` | pass after fix | 31 tests; fixed ESM `.js` import, typed event param and JSON capture in tests. |
+| 2026-11-19 | 5 | `pnpm lint` | pass after fix | `prefer-const` in a test. |
+| 2026-11-19 | 5 | `pnpm typecheck` | pass | All 13 workspace projects. |
+| 2026-11-19 | 5 | `pnpm test` | pass | 49 files, 395 tests. |
+| 2026-11-19 | 5 | `pnpm build` | pass | All packages and apps; new `CasesPage` and `CaseDetailPage` chunks. |
+| 2026-11-19 | 5 | `pnpm check:docs` | pass | 141 Markdown files, 509 text files. |
+| 2026-11-19 | 5 | `pnpm test:packages` | pass | All 10 archives valid. |
+| 2026-11-19 | 5 | `pnpm test:e2e` | pass | 48 checks including CLI case round-trip, collector case detail, `list_cases`/`get_case` with trust metadata, and `/cases` deep links. |
+| 2026-11-19 | 5 | Port check after e2e | pass | No listeners on 4400-4429. |
+| 2026-11-19 | 5 | `pnpm benchmark:dashboard -- --enforce` | pass | Initial JS 119.6 KiB gzip (budget 121), all enforced budgets passed. |
+| 2026-11-19 | 5 | Redaction verification (seven secret strings) | pass | CLI case test asserts title/hypothesis secrets are redacted; e2e asserts all seven absent from case files and collector case detail. |
 
 ## Decisions log
 

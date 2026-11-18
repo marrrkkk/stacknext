@@ -65,9 +65,14 @@ The collector also serves read APIs used by the dashboard, CLI and MCP:
 `/api/database`, `/api/coverage`, `/api/diagnostics`, `/api/export`,
 `/api/test-runs`, `/api/baselines`, `/api/comparisons` and `/api/snapshots`.
 
-Agent read APIs also include `/api/agents`, `/api/agents/:sessionId` and
-`/api/agents?recordId=<id>`. All require the same read authorization as every
-other `/api` route.
+Investigation cases add two read-only views: `/cases` lists local append-only
+cases and `/cases/:caseId` shows the hypothesis, evidence links, session link
+and folded event timeline. Cases are created from the CLI with
+`stacknext case`; there is no dashboard write surface.
+
+Agent read APIs also include `/api/agents`, `/api/agents/:sessionId`,
+`/api/agents?recordId=<id>`, `/api/cases` and `/api/cases/:id`. All require the
+same read authorization as every other `/api` route.
 
 <!-- /coderabbit-ai-generated:v1 -->
 

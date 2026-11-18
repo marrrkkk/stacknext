@@ -35,9 +35,12 @@ On any error, trace, diagnostic, comparison or snapshot detail page, copy
 **Copy evidence prompt**. The generated prompt contains only the exact MCP tool
 or prompt name and validated record ids, a request to cite evidence and state
 what remains unproven, and the untrusted-data warning. It never contains
-telemetry text, a guessed cause or the collector token. The footer suggests
-`stacknext case add <id> --evidence <kind>:<id>` so the hand-off can be saved.
-Watch the resulting session in the dashboard's Agents navigation.
+telemetry text, a guessed cause or the collector token. **Copy case command** on
+the same page creates an append-only case with
+`stacknext case new --title "..." --evidence <kind>:<id>`. MCP reads cases with
+`list_cases` and `get_case`; a human reviews them at `/cases` and `/cases/:id`.
+Cases are local, redacted and never uploaded. Watch the resulting session in
+the dashboard's Agents navigation.
 
 ## Error
 

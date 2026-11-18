@@ -55,6 +55,16 @@ counted in `dropped`. The audit is never written to disk or uploaded. Set
 `"agents": { "audit": false }` in `stacknext.config.json` to disable it; the read
 API then returns `enabled: false` and records nothing.
 
+### Investigation cases
+
+Cases are created explicitly with `stacknext case` and stored as append-only
+`events.jsonl` files under `.stacknext/cases` with `0700` directories and `0600`
+files. Titles, hypotheses and notes are length-capped and passed through the
+redactor; evidence is referenced by id only, never copied as raw telemetry.
+Cases are local manual records: they are never uploaded, never auto-deleted and
+never overwritten without an explicit request. MCP and the dashboard read them
+without any write capability.
+
 ## Redaction
 
 Redaction happens twice: once in the application process before data is sent,

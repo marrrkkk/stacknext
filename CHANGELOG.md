@@ -43,6 +43,12 @@ All notable changes to StackNext are documented here. The format follows
   and snapshot detail pages. The prompt contains only validated record ids and
   exact MCP tool/prompt names, the untrusted-data warning and a `stacknext case
   add` footer; it adds no new API route or network request.
+- Added local, append-only investigation cases. `stacknext case
+  new|add|note|close|list|show` writes redacted `events.jsonl` files with private
+  permissions and explicit caps; the collector serves them read-only and MCP
+  adds read-only `list_cases` and `get_case` tools. Dashboard `/cases` pages show
+  the folded case, evidence links and session link. No write surface was added
+  to MCP or the dashboard.
 
 ### Changed
 
