@@ -39,6 +39,10 @@ All notable changes to StackNext are documented here. The format follows
   sessions and timelines with "Read by agent" chips on evidence pages.
   `agents.audit: false` disables it; no query values, bodies, tokens or machine
   and user identifiers are captured.
+- Added a "Copy evidence prompt" action to error, trace, diagnostic, comparison
+  and snapshot detail pages. The prompt contains only validated record ids and
+  exact MCP tool/prompt names, the untrusted-data warning and a `stacknext case
+  add` footer; it adds no new API route or network request.
 
 ### Changed
 

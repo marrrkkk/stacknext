@@ -47,7 +47,9 @@ Agent activity adds two read-only views: `/agents` lists local MCP sessions and
 `/agents/:sessionId` shows one session's bounded read timeline. Detail pages for
 errors, traces, diagnostics, comparisons and snapshots show a "Read by agent"
 chip backed by `/api/agents?recordId=<id>`. Session ids are random and local;
-these views never expose query values, bodies or tokens.
+these views never expose query values, bodies or tokens. Those detail pages also
+offer a "Copy evidence prompt" action that builds an ids-only prompt from
+`evidence.ts` without any new API route or network request.
 
 Deep links are stable for the lifetime of a record. A missing or expired
 telemetry record shows an empty state rather than inventing data.

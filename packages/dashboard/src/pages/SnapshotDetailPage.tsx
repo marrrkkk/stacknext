@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { SnapshotDetailResponse } from '@stacknext/core'
 import { api } from '../api'
+import { buildEvidencePrompt } from '../evidence'
 import { useAsync } from '../hooks'
 import {
   Badge,
@@ -387,6 +388,11 @@ export function SnapshotDetailPage({
             />
             <div className="button-row">
               <CopyButton value={snapshot.id} label="Copy snapshot id" small />
+              <CopyButton
+                value={buildEvidencePrompt({ kind: 'snapshot', id: snapshot.id })}
+                label="Copy evidence prompt"
+                small
+              />
             </div>
           </Card>
 

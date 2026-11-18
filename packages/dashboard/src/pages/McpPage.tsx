@@ -433,6 +433,16 @@ function McpContent({
             are unprefixed; diagnostics, regression and snapshot tools use the{' '}
             <code>stacknext_</code> prefix.
           </p>
+          <div className="handoff-note">
+            <strong>Hand off to an agent.</strong> On any evidence detail page,
+            copy the evidence prompt: it names the right tool and ids, carries the
+            untrusted-data warning and contains no telemetry text. Watch what the
+            agent reads on the{' '}
+            <button type="button" className="link-button" onClick={() => onNavigate('/agents')}>
+              Agents page
+            </button>
+            .
+          </div>
           <div className="tool-catalog__toolbar">
             <SearchInput
               value={query}

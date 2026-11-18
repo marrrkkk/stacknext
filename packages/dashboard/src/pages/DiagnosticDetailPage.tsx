@@ -7,6 +7,7 @@ import type {
   DiagnosticTraceContext,
 } from '@stacknext/core'
 import { api } from '../api'
+import { buildEvidencePrompt } from '../evidence'
 import { useAsync } from '../hooks'
 import {
   Badge,
@@ -275,6 +276,13 @@ export function DiagnosticDetailPage({
         actions={
           <>
             <CopyButton value={finding.id} label="Copy finding id" primary />
+            <CopyButton
+              value={buildEvidencePrompt(
+                { kind: 'diagnostic', id: finding.id },
+                { traceId: trace?.traceId },
+              )}
+              label="Copy evidence prompt"
+            />
             {trace && (
               <button
                 type="button"
