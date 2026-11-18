@@ -259,7 +259,7 @@ stacknext verify --case <case-id> --json
 | --- | --- |
 | `--trace <id>` | 32-character trace id |
 | `--route <route>` | Route path to sample |
-| `--since <ms>` | Requests at or after this timestamp (max 86,400,000) |
+| `--since <ms>` | Absolute epoch-millisecond timestamp; only requests at or after it are sampled |
 | `--max-queries <n>` / `--max-duration <ms>` | The bound to check; exactly one with `--route` |
 | `--diagnostic <id>` | Finding id (`diag-xxxxxxxx-xxxxxxxx`) |
 | `--expect-status <code\|status>` | HTTP status for `--trace`, rule status for `--diagnostic` |
@@ -270,7 +270,8 @@ The result contains `claim`, `result`, `checks` (`predicate`, `expected`,
 `observed`, `passed`, `evidence`), `revision` and `sampleSize`. At most 20
 matching requests are sampled, newest first. `verified` correlation, null query
 durations and missing evidence make a check `unverifiable`. Exit codes are `0`
-supported, `1` contradicted and `2` unverifiable or error. See
+supported, `1` contradicted and `2` unverifiable. Invalid arguments and
+collector failures exit `1` with an error message. See
 [agent workflows](/ai-agents/workflows).
 
 ## Exit codes

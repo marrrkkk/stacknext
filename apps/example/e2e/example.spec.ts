@@ -29,13 +29,16 @@ test.describe('Example runtime scenarios', () => {
       const responses = TRAFFIC_ROUTES.map((route) => page.waitForResponse(
         (response) => response.url() === new URL(route.path, page.url()).href
           && response.request().method() === route.method,
+        // Next dev compiles routes on first request; under CI load a single
+        // response can take longer than Playwright's 30 s default.
+        { timeout: 60_000 },
       ))
       await page.getByRole('button', { name: 'Generate demo traffic' }).click()
       for (const [index, response] of (await Promise.all(responses)).entries()) {
         const route = TRAFFIC_ROUTES[index]!
         expect(response.status(), route.path).toBe(EXPECTED_ERROR_IDS.has(route.id) ? 500 : 200)
       }
-      await expect(page.getByText('10/10 requests completed')).toBeVisible({ timeout: 30_000 })
+      await expect(page.getByText('10/10 requests completed')).toBeVisible({ timeout: 60_000 })
     },
   )
 
@@ -53,7 +56,7 @@ test.describe('Example runtime scenarios', () => {
       await page.getByRole('button', { name: 'Add task' }).click()
 
       const row = page.getByRole('row', { name: new RegExp(title) })
-      await expect(row).toBeVisible()
+      await expect(row).toBeVisible({ timeout: 30_000 })
       await expect(row.getByText('todo', { exact: true })).toBeVisible()
 
       await row.getByRole('button', { name: 'Move to doing' }).click()

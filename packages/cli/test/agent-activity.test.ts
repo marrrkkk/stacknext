@@ -50,6 +50,8 @@ describe('agent activity store', () => {
     ])
     expect(evidenceIdsFromPath('/api/traces')).toEqual([])
     expect(evidenceIdsFromPath('/api/traces/not-an-id')).toEqual([])
+    expect(() => evidenceIdsFromPath('/api/errors/%ZZ')).not.toThrow()
+    expect(evidenceIdsFromPath('/api/errors/%ZZ')).toEqual([])
   })
 
   it('strips control characters and caps hostile header values', () => {

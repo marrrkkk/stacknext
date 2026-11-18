@@ -118,6 +118,23 @@ describe('stacknext case commands', () => {
     }
   })
 
+  it('enforces the evidence cap before writing, leaving the event file intact', async () => {
+    const dir = await project()
+    const json = captureJson()
+    const evidence = Array.from({ length: 100 }, (_, index) =>
+      `trace:${index.toString(16).padStart(32, '0')}`,
+    )
+    await runCaseNew({ title: 'Cap case', evidence, json: true }, dir)
+    const caseId = (json() as unknown as { id: string }).id
+    const before = await rawLines(dir, caseId)
+    expect(before).toHaveLength(1)
+
+    await expect(
+      runCaseAdd(caseId, { evidence: `error:error-101` }, dir),
+    ).rejects.toThrow(/evidence cap/)
+    expect(await rawLines(dir, caseId)).toEqual(before)
+  })
+
   it('redacts free text and rejects malformed ids and evidence kinds', async () => {
     const dir = await project()
     const json = captureJson()

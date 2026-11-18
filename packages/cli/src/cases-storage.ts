@@ -82,6 +82,12 @@ export async function appendCaseEvent(
   if (events.length >= MAX_EVENTS_PER_CASE) {
     throw new Error(`Case ${id} reached the ${MAX_EVENTS_PER_CASE} event cap`)
   }
+  if (event.kind === 'evidence_added') {
+    const current = foldCaseEvents(events, id)
+    if (current && current.evidence.length >= MAX_EVIDENCE_PER_CASE) {
+      throw new Error(`Case ${id} reached the ${MAX_EVIDENCE_PER_CASE} evidence cap`)
+    }
+  }
   const handle = await open(file, 'a', 0o600)
   try {
     await handle.writeFile(`${JSON.stringify(event)}\n`, 'utf8')
@@ -91,9 +97,6 @@ export async function appendCaseEvent(
   await chmod(file, 0o600)
   const view = await loadCaseView(projectDir, id)
   if (!view) throw new Error(`Case ${id} could not be read after appending`)
-  if (view.evidence.length > MAX_EVIDENCE_PER_CASE) {
-    throw new Error(`Case ${id} reached the ${MAX_EVIDENCE_PER_CASE} evidence cap`)
-  }
   return view
 }
 

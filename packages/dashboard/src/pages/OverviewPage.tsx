@@ -455,7 +455,7 @@ export function OverviewPage({
   const agentState = useAsync<AgentsResponse>(
     (signal) => api.agents(signal),
     'overview-agents',
-    refreshKey,
+    0,
     30_000,
   )
 

@@ -19,7 +19,7 @@ describe('buildEvidencePrompt', () => {
     ['trace', TRACE, 'get_trace'],
     ['diagnostic', DIAGNOSTIC, 'stacknext_get_diagnostic'],
     ['comparison', COMPARISON, 'stacknext_get_comparison'],
-    ['snapshot', SNAPSHOT, 'get_snapshot'],
+    ['snapshot', SNAPSHOT, 'stacknext_get_snapshot'],
   ])('names the registered handler for %s', (kind, id, tool) => {
     const prompt = buildEvidencePrompt({ kind, id })
     expect(prompt).toContain(`\`${tool}\``)
@@ -27,7 +27,7 @@ describe('buildEvidencePrompt', () => {
     expect(prompt).toContain('Cite the evidence ids you actually read')
     expect(prompt).toContain('untrusted application data')
     expect(prompt).toContain(
-      'stacknext case add ' + id + ' --evidence ' + kind + ':' + id,
+      `stacknext case new --title "Investigate ${kind} ${id}" --evidence ${kind}:${id}`,
     )
     expect(prompt.length).toBeLessThanOrEqual(EVIDENCE_PROMPT_MAX_LENGTH)
   })

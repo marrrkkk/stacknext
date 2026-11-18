@@ -1832,6 +1832,48 @@ it('returns one bounded, trustworthy investigation brief from a populated collec
   }
 })
 
+it('keeps the brief valid when a recent error has no route', async () => {
+  const noRouteError = {
+    ...ERROR_WITH_STACK,
+    id: 'error-no-route',
+    route: undefined,
+  }
+  const server = createServer((request, response) => {
+    if (request.headers.authorization !== `Bearer ${TOKEN}`) {
+      response.writeHead(401, { 'content-type': 'application/json' })
+      response.end('{"error":"Unauthorized"}')
+      return
+    }
+    const url = new URL(request.url ?? '/', 'http://127.0.0.1')
+    const send = (body: unknown): void => {
+      response.writeHead(200, { 'content-type': 'application/json' })
+      response.end(JSON.stringify(body))
+    }
+    if (url.pathname === '/api/health') send(HEALTH)
+    else if (url.pathname === '/api/summary') send({ health: HEALTH, summary: SUMMARY, coverage: COVERAGE })
+    else if (url.pathname === '/api/errors') {
+      send({ items: [noRouteError], total: 1, limit: 50, offset: 0, groups: [] })
+    } else send({ items: [], total: 0, limit: 50, offset: 0 })
+  })
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const address = server.address() as AddressInfo
+  const connection = await connect(
+    new StackNextApiClient({ baseUrl: `http://127.0.0.1:${address.port}`, token: TOKEN }),
+  )
+  try {
+    const result = await connection.client.callTool({
+      name: 'get_investigation_brief',
+      arguments: {},
+    })
+    expect(result.isError).not.toBe(true)
+    const errors = structuredOf(result).errors as Array<{ route: string | null }>
+    expect(errors[0]?.route).toBeNull()
+  } finally {
+    await connection.close()
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+  }
+})
+
 async function startBriefCollector(payload: {
   health: Record<string, unknown>
   summary: Record<string, unknown>

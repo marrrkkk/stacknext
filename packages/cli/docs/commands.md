@@ -108,7 +108,8 @@ matching requests are sampled, newest first. Missing evidence, ambiguous
 correlation and null query durations produce `unverifiable`. With a predicate, `--case` saves the claim and result on the case; used alone it
 re-runs the saved claim. Both append one `verification_added` event.
 
-Exit codes: `0` supported, `1` contradicted, `2` unverifiable or error.
+Exit codes: `0` supported, `1` contradicted, `2` unverifiable. Invalid arguments
+and collector failures exit `1` with an error message.
 
 ## `stacknext coverage`
 

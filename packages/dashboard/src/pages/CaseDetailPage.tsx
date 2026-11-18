@@ -8,6 +8,7 @@ import {
   EmptyState,
   ErrorState,
   Id,
+  IdLink,
   KeyValue,
   Loading,
   PageHeader,
@@ -80,14 +81,18 @@ function VerificationBlock({
             {check.reason ? ` — ${check.reason}` : ''}
             <div className="row-secondary">
               {check.evidence.map((id) => (
-                <button
-                  type="button"
-                  className="link-button mono"
+                <IdLink
                   key={id}
-                  onClick={() => onNavigate(`/traces/${encodeURIComponent(id)}`)}
-                >
-                  <Id value={id} />
-                </button>
+                  value={id}
+                  label={check.predicate === 'diagnosticStatus' ? 'Open finding' : 'Open trace'}
+                  onClick={() => {
+                    const href = evidenceHref(
+                      check.predicate === 'diagnosticStatus' ? 'diagnostic' : 'trace',
+                      id,
+                    )
+                    if (href) onNavigate(href)
+                  }}
+                />
               ))}
             </div>
           </li>
@@ -193,13 +198,11 @@ export function CaseDetailPage({
               {
                 label: 'Agent session',
                 value: view.agentSessionId ? (
-                  <button
-                    type="button"
-                    className="link-button mono"
+                  <IdLink
+                    value={view.agentSessionId}
+                    label="Open agent session"
                     onClick={() => onNavigate(`/agents/${view.agentSessionId}`)}
-                  >
-                    <Id value={view.agentSessionId} />
-                  </button>
+                  />
                 ) : (
                   'human'
                 ),
@@ -222,13 +225,7 @@ export function CaseDetailPage({
                   <li key={`${item.kind}:${item.id}:${index}`}>
                     <Badge tone="accent">{item.kind}</Badge>{' '}
                     {href ? (
-                      <button
-                        type="button"
-                        className="link-button mono"
-                        onClick={() => onNavigate(href)}
-                      >
-                        <Id value={item.id} />
-                      </button>
+                      <IdLink value={item.id} onClick={() => onNavigate(href)} />
                     ) : (
                       <span className="mono"><Id value={item.id} /></span>
                     )}
