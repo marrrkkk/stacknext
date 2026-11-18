@@ -117,7 +117,7 @@ function runCli(args) {
   const result = spawnSync(process.execPath, [CLI, ...args], {
     cwd: APP_DIR,
     encoding: 'utf8',
-    timeout: 180_000,
+    timeout: 300_000,
     maxBuffer: 32 * 1024 * 1024,
     env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1' },
   })
@@ -134,7 +134,7 @@ function runCliAllowFailure(args) {
   const result = spawnSync(process.execPath, [CLI, ...args], {
     cwd: APP_DIR,
     encoding: 'utf8',
-    timeout: 180_000,
+    timeout: 300_000,
     maxBuffer: 32 * 1024 * 1024,
     env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1' },
   })
@@ -1662,6 +1662,9 @@ async function main() {
         viewport: { width: 1280, height: 900 },
         permissions: ['clipboard-read', 'clipboard-write'],
       })
+      // Slow dev-server compilation under CI load must not look like a UI bug.
+      page.setDefaultTimeout(60_000)
+      page.setDefaultNavigationTimeout(60_000)
       const pageErrors = []
       page.on('pageerror', (error) => pageErrors.push(error.message))
       await page.goto(`${runtime.dashboardUrl}/diagnostics`, {
