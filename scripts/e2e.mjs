@@ -678,14 +678,14 @@ async function runMcpChecks(runtime, errorId, diagnosticId, regression, snapshot
     ]) {
       assert(names.has(name), `MCP tool ${name} is missing`)
     }
-    assert(tools.tools.length === 20, `MCP exposes ${tools.tools.length} tools, expected 20`)
+    assert(tools.tools.length === 21, `MCP exposes ${tools.tools.length} tools, expected 21`)
     const notReadOnly = tools.tools.find(
       (tool) => tool.annotations?.readOnlyHint !== true,
     )
     assert(!notReadOnly, `MCP tool ${notReadOnly?.name} is not marked read-only`)
     const withoutSchema = tools.tools.find((tool) => !tool.outputSchema)
     assert(!withoutSchema, `MCP tool ${withoutSchema?.name} has no output schema`)
-    ok('MCP exposes 20 read-only tools with output schemas')
+    ok('MCP exposes 21 read-only tools with output schemas')
 
     const prompts = await session.request('prompts/list', {})
     const promptNames = new Set(prompts.prompts.map((prompt) => prompt.name))
