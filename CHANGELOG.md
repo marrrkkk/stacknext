@@ -32,6 +32,13 @@ All notable changes to StackNext are documented here. The format follows
   three errors and three slow requests plus deterministic suggested next calls.
   It is the recommended first call; no stacks, SQL or raw telemetry text are
   included.
+- Added a bounded, local-only audit of MCP agent reads. Each `stacknext mcp`
+  process uses a random session id; the collector records pathnames, sorted
+  query key names, detail ids, tool names and status/duration for at most 500
+  events and 50 sessions over 30 minutes. A new dashboard Agents page lists
+  sessions and timelines with "Read by agent" chips on evidence pages.
+  `agents.audit: false` disables it; no query values, bodies, tokens or machine
+  and user identifiers are captured.
 
 ### Changed
 

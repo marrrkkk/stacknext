@@ -1,4 +1,7 @@
 import type {
+  AgentsResponse,
+  AgentReadsResponse,
+  AgentSessionResponse,
   CombinedOverviewResponse,
   CoverageReport,
   DatabaseQueryListItem,
@@ -269,6 +272,28 @@ async function diagnosticsForTraces(
 export const api = {
   health(signal?: AbortSignal): Promise<HealthResponse> {
     return getJson<HealthResponse>('/api/health', signal)
+  },
+  agents(signal?: AbortSignal): Promise<AgentsResponse> {
+    return getJson<AgentsResponse>('/api/agents', signal)
+  },
+  agent(
+    sessionId: string,
+    query: { limit?: number; offset?: number } = {},
+    signal?: AbortSignal,
+  ): Promise<AgentSessionResponse> {
+    return getJson<AgentSessionResponse>(
+      `/api/agents/${encodeURIComponent(sessionId)}${buildQuery({
+        limit: query.limit,
+        offset: query.offset,
+      })}`,
+      signal,
+    )
+  },
+  agentReads(recordId: string, signal?: AbortSignal): Promise<AgentReadsResponse> {
+    return getJson<AgentReadsResponse>(
+      `/api/agents${buildQuery({ recordId })}`,
+      signal,
+    )
   },
   overview(signal?: AbortSignal): Promise<OverviewResponse> {
     return getJson<OverviewResponse>('/api/summary', signal)

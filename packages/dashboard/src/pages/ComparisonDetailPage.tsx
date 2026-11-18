@@ -30,6 +30,7 @@ import {
   RefreshButton,
   RelativeTime,
 } from '../components/details'
+import { ReadByAgents } from '../components/ReadByAgents'
 import { Icon } from '../components/Icon'
 import {
   formatDuration,
@@ -474,6 +475,7 @@ export function ComparisonDetailPage({
             <Badge tone={REGRESSION_SEVERITY_TONE[comparison.severity]}>
               {comparison.severity} severity
             </Badge>
+            <ReadByAgents recordId={comparison.id} onNavigate={onNavigate} />
           </>
         }
         description={

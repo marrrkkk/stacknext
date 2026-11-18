@@ -64,6 +64,8 @@ export interface RouteMatch {
     | 'comparison'
     | 'settings'
     | 'mcp'
+    | 'agents'
+    | 'agent'
     | 'redirect'
     | 'not-found'
   id?: string
@@ -151,5 +153,10 @@ export function matchRoute(path: string): RouteMatch {
   }
   if (segments[0] === 'settings') return { page: 'settings' }
   if (segments[0] === 'mcp') return { page: 'mcp' }
+  if (segments[0] === 'agents') {
+    return segments[1]
+      ? { page: 'agent', id: decodeSegment(segments[1]) }
+      : { page: 'agents' }
+  }
   return { page: 'not-found' }
 }

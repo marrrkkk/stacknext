@@ -1909,6 +1909,85 @@ it('does not fabricate findings for an empty collector', async () => {
   }
 })
 
+it('attributes every tool call and leaves --check unattributed', async () => {
+  const seen: Array<Record<string, string | undefined>> = []
+  const server = createServer((request, response) => {
+    seen.push({
+      session: request.headers['x-stacknext-agent-session'] as string | undefined,
+      client: request.headers['x-stacknext-client'] as string | undefined,
+      version: request.headers['x-stacknext-client-version'] as string | undefined,
+      tool: request.headers['x-stacknext-tool'] as string | undefined,
+    })
+    if (request.headers.authorization !== `Bearer ${TOKEN}`) {
+      response.writeHead(401, { 'content-type': 'application/json' })
+      response.end('{"error":"Unauthorized"}')
+      return
+    }
+    const url = new URL(request.url ?? '/', 'http://127.0.0.1')
+    const send = (body: unknown): void => {
+      response.writeHead(200, { 'content-type': 'application/json' })
+      response.end(JSON.stringify(body))
+    }
+    if (url.pathname === '/api/health') send(HEALTH)
+    else if (url.pathname === '/api/summary') send({ health: HEALTH, summary: SUMMARY, coverage: COVERAGE })
+    else send({ items: [], total: 0, limit: 50, offset: 0 })
+  })
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const address = server.address() as AddressInfo
+  const baseUrl = `http://127.0.0.1:${address.port}`
+  const sessionId = '44444444-5555-6666-7777-888888888888'
+  const attribution = { sessionId, clientName: 'opencode', clientVersion: '1.2.3' }
+  const connection = await connect(
+    new StackNextApiClient({ baseUrl, token: TOKEN, attribution }),
+  )
+  const calls: Array<{ name: string; args: Record<string, unknown> }> = [
+    { name: 'get_project_summary', args: {} },
+    { name: 'get_investigation_brief', args: {} },
+    { name: 'list_requests', args: {} },
+    { name: 'get_request', args: { traceId: TRACE_A } },
+    { name: 'list_traces', args: {} },
+    { name: 'get_trace', args: { traceId: TRACE_A } },
+    { name: 'list_errors', args: {} },
+    { name: 'get_error', args: { errorId: 'error-1' } },
+    { name: 'list_database_queries', args: {} },
+    { name: 'find_slow_requests', args: {} },
+    { name: 'stacknext_list_diagnostics', args: {} },
+    { name: 'stacknext_get_diagnostic', args: { diagnosticId: DIAGNOSTIC_ID } },
+    { name: 'stacknext_list_test_runs', args: {} },
+    { name: 'stacknext_get_test_run', args: { runId: RUN_ID } },
+    { name: 'stacknext_list_baselines', args: {} },
+    { name: 'stacknext_get_baseline', args: { baselineId: BASELINE_ID } },
+    { name: 'stacknext_list_comparisons', args: {} },
+    { name: 'stacknext_get_comparison', args: { comparisonId: COMPARISON_ID } },
+    { name: 'stacknext_list_snapshots', args: {} },
+    { name: 'stacknext_get_snapshot', args: { snapshotId: SNAPSHOT_ID } },
+    {
+      name: 'stacknext_get_snapshot_trace',
+      args: { snapshotId: SNAPSHOT_ID, traceId: TRACE_A },
+    },
+  ]
+  try {
+    for (const call of calls) {
+      seen.length = 0
+      await connection.client.callTool({ name: call.name, arguments: call.args })
+      const attributed = seen.filter((entry) => entry.tool === call.name)
+      expect(attributed.length, `${call.name} sent its tool header`).toBeGreaterThan(0)
+      expect(attributed[0]?.session).toBe(sessionId)
+      expect(attributed[0]?.client).toBe('opencode')
+      expect(attributed[0]?.version).toBe('1.2.3')
+    }
+    seen.length = 0
+    const check = await verifyMcpServer({ baseUrl, token: TOKEN })
+    expect(check.ok).toBe(true)
+    expect(seen.length).toBeGreaterThan(0)
+    expect(seen.every((entry) => entry.session === undefined)).toBe(true)
+    expect(seen.every((entry) => entry.tool === undefined)).toBe(true)
+  } finally {
+    await connection.close()
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+  }
+})
+
 it('caps each brief array at three even when the collector returns more', async () => {
   const errors = Array.from({ length: 4 }, (_, index) => ({
     ...ERROR_WITH_STACK,

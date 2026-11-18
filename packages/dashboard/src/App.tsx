@@ -88,6 +88,9 @@ const SettingsPage = lazy(() =>
 const McpPage = lazy(() =>
   import('./pages/McpPage').then((module) => ({ default: module.McpPage })),
 )
+const AgentsPage = lazy(() =>
+  import('./pages/AgentsPage').then((module) => ({ default: module.AgentsPage })),
+)
 const CommandPalette = lazy(() =>
   import('./components/CommandPalette').then((module) => ({
     default: module.CommandPalette,
@@ -246,6 +249,18 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    id: 'agents-nav',
+    label: 'Agents',
+    items: [
+      {
+        label: 'Agent activity',
+        path: '/agents',
+        icon: 'terminal',
+        match: (path) => path.startsWith('/agents'),
+      },
+    ],
+  },
+  {
     id: 'configure',
     label: 'Configure',
     items: [
@@ -348,7 +363,7 @@ function NotFound({ onNavigate }: { onNavigate: (path: string) => void }): React
       <h1>This view does not exist</h1>
       <p className="muted">
         The dashboard has Overview, Requests, Traces, Database, Snapshots, Errors,
-        Diagnostics, Test runs, Baselines, Comparisons, Settings and MCP server. Press{' '}
+        Diagnostics, Agent activity, Test runs, Baselines, Comparisons, Settings and MCP server. Press{' '}
         <Kbd>{shortcutLabel('K')}</Kbd> to jump to any view.
       </p>
       <button
@@ -1159,6 +1174,13 @@ export function App(): React.ReactElement {
               )}
               {pathname === 'mcp' && (
                 <McpPage refreshKey={0} onNavigate={navigate} />
+              )}
+              {(pathname === 'agents' || pathname === 'agent') && (
+                <AgentsPage
+                  refreshKey={0}
+                  {...(route.id ? { sessionId: route.id } : {})}
+                  onNavigate={navigate}
+                />
               )}
               {pathname === 'not-found' && <NotFound onNavigate={navigate} />}
             </Suspense>

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { Command } from 'commander'
 import { requireRunningState } from '../session.js'
 
@@ -37,7 +38,7 @@ export async function runMcp(
       }
       return 0
     }
-    await startMcpServer({ baseUrl, token })
+    await startMcpServer({ baseUrl, token, sessionId: randomUUID() })
   } catch (error) {
     if (!options.check) throw error
     const message = error instanceof Error ? error.message : String(error)

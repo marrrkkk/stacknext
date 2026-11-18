@@ -37,10 +37,23 @@ export class StackNextApiError extends Error {
   }
 }
 
+/**
+ * Local, redacted attribution attached to reads. Header values are treated as
+ * untrusted labels by the collector: they grant no authority and are capped.
+ */
+export interface ClientAttribution {
+  sessionId?: string
+  clientName?: string
+  clientVersion?: string
+  tool?: string | null
+}
+
 export interface StackNextApiClientOptions {
   baseUrl: string
   token: string
   timeoutMs?: number
+  /** Mutable so the MCP server can fill in SDK client info after initialize. */
+  attribution?: ClientAttribution
 }
 
 function assertLoopback(baseUrl: string): URL {
@@ -83,6 +96,7 @@ export class StackNextApiClient {
   private readonly baseUrl: string
   private readonly token: string
   private readonly timeoutMs: number
+  private readonly attribution: ClientAttribution
 
   constructor(options: StackNextApiClientOptions) {
     assertLoopback(options.baseUrl)
@@ -92,19 +106,53 @@ export class StackNextApiClient {
     this.baseUrl = options.baseUrl.replace(/\/+$/, '')
     this.token = options.token
     this.timeoutMs = options.timeoutMs ?? 5_000
+    this.attribution = options.attribution ?? {}
+  }
+
+  /**
+   * Returns a lightweight view over the same transport with one tool label.
+   * Tool callbacks use this instead of changing every client method signature.
+   */
+  forTool(tool: string): StackNextApiClient {
+    return new StackNextApiClient({
+      baseUrl: this.baseUrl,
+      token: this.token,
+      timeoutMs: this.timeoutMs,
+      attribution: {
+        sessionId: this.attribution.sessionId,
+        clientName: this.attribution.clientName,
+        clientVersion: this.attribution.clientVersion,
+        tool,
+      },
+    })
   }
 
   private async get<T>(pathname: string, params?: URLSearchParams): Promise<T> {
     const suffix = params && params.size > 0 ? `?${params.toString()}` : ''
     const url = `${this.baseUrl}${pathname}${suffix}`
+    const headers: Record<string, string> = {
+      authorization: `Bearer ${this.token}`,
+      accept: 'application/json',
+    }
+    if (this.attribution.sessionId) {
+      headers['x-stacknext-agent-session'] = this.attribution.sessionId
+    }
+    if (this.attribution.clientName) {
+      headers['x-stacknext-client'] = this.attribution.clientName
+    }
+    if (this.attribution.clientVersion) {
+      headers['x-stacknext-client-version'] = this.attribution.clientVersion
+    }
+    // Tool attribution only applies to a real agent session; --check and
+    // verifyMcpServer stay completely unattributed.
+    if (this.attribution.sessionId && this.attribution.tool) {
+      headers['x-stacknext-tool'] = this.attribution.tool
+    }
     let response: Response
     try {
       response = await fetch(url, {
         method: 'GET',
-        headers: {
-          authorization: `Bearer ${this.token}`,
-          accept: 'application/json',
-        },
+        headers,
         signal: AbortSignal.timeout(this.timeoutMs),
       })
     } catch (error) {

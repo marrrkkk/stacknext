@@ -160,6 +160,12 @@ Once connected, ask your agent:
 - The collector API is read-only. The MCP server does not expose ingestion,
   configuration changes, file access or arbitrary HTTP requests.
 - Data returned to the model is the same redacted data shown in the dashboard.
+- Each `stacknext mcp` process generates a random local session id. Reads carry
+  attribution headers (session, client name/version and tool) so the dashboard's
+  Agents page can show what was read. These are labels, not credentials: reads
+  still require the token or session cookie, header text is capped and stripped,
+  and no machine or user identity is sent. `stacknext mcp --check` sends none.
+  Set `agents.audit: false` in `stacknext.config.json` to disable the audit.
   It can still contain routes, error text, SQL fragments, span attribute values,
   timings, scenario file paths and environment facts.
 - Regression and snapshot tools only read records in the collector's configured

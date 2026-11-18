@@ -108,6 +108,13 @@ export const stackNextConfigSchema = z
         autoKeep: 10,
         maxBytes: 67_108_864,
       }),
+    /** Local-only agent read audit. Opt out with `agents.audit: false`. */
+    agents: z
+      .object({
+        audit: z.boolean().default(true),
+      })
+      .strict()
+      .default({ audit: true }),
   })
   .strict()
 

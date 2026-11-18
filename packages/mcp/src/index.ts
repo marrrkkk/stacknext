@@ -2,6 +2,7 @@ export {
   StackNextApiClient,
   StackNextApiError,
   type StackNextApiClientOptions,
+  type ClientAttribution,
 } from './client.js'
 export {
   createStackNextMcpServer,

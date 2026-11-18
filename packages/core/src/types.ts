@@ -437,6 +437,63 @@ export interface HealthResponse {
   config: StackNextConfig
 }
 
+/** Software identity supplied by an MCP client. Never a machine/user id. */
+export interface AgentClientIdentity {
+  name: string
+  version: string
+}
+
+/**
+ * One bounded local read attributed to an MCP agent session. It never contains
+ * query strings, values, bodies, tokens or non-attribution headers.
+ */
+export interface AgentReadEvent {
+  id: string
+  sessionId: string
+  client: AgentClientIdentity | null
+  tool: string | null
+  /** Pathname only, never the query string. */
+  path: string
+  /** Sorted query parameter names only; values are dropped. */
+  filterKeys: string[]
+  /** Ids extracted from known detail routes. */
+  evidenceIds: string[]
+  status: number
+  durationMs: number
+  at: number
+}
+
+export interface AgentSessionSummary {
+  sessionId: string
+  client: AgentClientIdentity | null
+  firstSeen: number
+  lastSeen: number
+  reads: number
+  toolCalls: number
+  evidenceCount: number
+  outcomes: { ok: number; notFound: number; error: number }
+}
+
+export interface AgentsResponse {
+  enabled: boolean
+  sessions: AgentSessionSummary[]
+  total: number
+  dropped: number
+}
+
+export interface AgentSessionResponse {
+  session: AgentSessionSummary | null
+  events: AgentReadEvent[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface AgentReadsResponse {
+  sessions: AgentSessionSummary[]
+  reads: AgentReadEvent[]
+}
+
 export interface OverviewResponse {
   health: HealthResponse
   summary: StoreSummary

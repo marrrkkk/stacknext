@@ -22,6 +22,11 @@ export const MCP_TOOL_GROUPS: McpToolGroup[] = [
 
 export const MCP_TOOLS: McpTool[] = [
   {
+    name: 'get_investigation_brief',
+    group: 'live',
+    purpose: 'One bounded first read: state, counts, coverage, findings and next calls.',
+  },
+  {
     name: 'get_project_summary',
     group: 'live',
     purpose: 'Project health, counts, latency, recent errors and coverage.',

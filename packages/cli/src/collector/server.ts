@@ -47,6 +47,9 @@ import {
   type SnapshotListResponse,
   type SnapshotPayload,
   type SnapshotSummary,
+  type AgentsResponse,
+  type AgentReadsResponse,
+  type AgentSessionResponse,
 } from '@stacknext/core'
 import {
   SnapshotStorageError,
@@ -86,6 +89,13 @@ import {
   type StoredRecords,
 } from '@stacknext/regression'
 import { TestRunRegistry } from './test-runs.js'
+import {
+  AgentActivityStore,
+  evidenceIdsFromPath,
+  isRecordId,
+  isSessionId,
+  sanitizeAttribution,
+} from './agent-activity.js'
 import { CLI_VERSION } from '../version.js'
 
 const VERSION = CLI_VERSION
@@ -500,6 +510,12 @@ function listen(server: Server, port: number, host: string): Promise<number> {
   })
 }
 
+/** Reads one attribution header without trusting its contents. */
+function headerValue(value: string | string[] | undefined): string | null {
+  if (value === undefined) return null
+  return sanitizeAttribution(Array.isArray(value) ? (value[0] ?? null) : value, 128)
+}
+
 export async function startCollector(options: StartCollectorOptions): Promise<CollectorHandle> {
   const host = options.host ?? '127.0.0.1'
   if (host !== '127.0.0.1' && host !== 'localhost') {
@@ -521,6 +537,8 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     )
   const startedAt = Date.now()
   const sessions = new Map<string, number>()
+  const agentActivity = new AgentActivityStore()
+  const agentsEnabled = options.config.agents.audit
   const connections = new Map<string, ConnectionRecord>()
   const sseClients = new Set<SseClient>()
   const serverStats = {
@@ -1533,6 +1551,63 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
       sendJson(response, 200, payload)
       return
     }
+    if (pathname === '/api/agents') {
+      if (!agentsEnabled) {
+        sendJson(response, 200, {
+          enabled: false,
+          sessions: [],
+          total: 0,
+          dropped: 0,
+        } satisfies AgentsResponse)
+        return
+      }
+      const recordId = url.searchParams.get('recordId')
+      if (recordId !== null) {
+        if (!isRecordId(recordId)) {
+          sendError(response, 400, 'Invalid recordId')
+          return
+        }
+        const reads = agentActivity.byRecord(recordId, 50)
+        const sessionIds = [...new Set(reads.map((read) => read.sessionId))]
+        const sessions = agentActivity
+          .sessions()
+          .filter((session) => sessionIds.includes(session.sessionId))
+        sendJson(response, 200, { sessions, reads } satisfies AgentReadsResponse)
+        return
+      }
+      const sessions = agentActivity.sessions()
+      sendJson(response, 200, {
+        enabled: true,
+        sessions,
+        total: sessions.length,
+        dropped: agentActivity.droppedCount,
+      } satisfies AgentsResponse)
+      return
+    }
+    const agentMatch = pathname.match(/^\/api\/agents\/([^/]+)$/)
+    if (agentMatch) {
+      const sessionId = agentMatch[1] ?? ''
+      if (!agentsEnabled || !isSessionId(sessionId)) {
+        sendError(response, 404, 'Agent session not found')
+        return
+      }
+      const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit') ?? 50)))
+      const offset = Math.max(0, Number(url.searchParams.get('offset') ?? 0))
+      const page = agentActivity.eventsFor(sessionId, limit, offset)
+      const session = agentActivity.session(sessionId)
+      if (!session) {
+        sendError(response, 404, 'Agent session not found')
+        return
+      }
+      sendJson(response, 200, {
+        session,
+        events: page.events,
+        total: page.total,
+        limit,
+        offset,
+      } satisfies AgentSessionResponse)
+      return
+    }
     if (pathname === '/api/coverage') {
       sendJson(response, 200, getCoverage())
       return
@@ -1883,7 +1958,26 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
           sendError(response, 405, 'Method not allowed')
           return
         }
+        const readStartedAt = Date.now()
         await handleApi(request, response, url)
+        if (agentsEnabled) {
+          const sessionHeader = request.headers['x-stacknext-agent-session']
+          const sessionId = Array.isArray(sessionHeader) ? sessionHeader[0] : sessionHeader
+          if (sessionId && isSessionId(sessionId)) {
+            agentActivity.record({
+              sessionId,
+              clientName: headerValue(request.headers['x-stacknext-client']),
+              clientVersion: headerValue(request.headers['x-stacknext-client-version']),
+              tool: headerValue(request.headers['x-stacknext-tool']),
+              pathname: url.pathname,
+              filterKeys: [...url.searchParams.keys()],
+              evidenceIds: evidenceIdsFromPath(url.pathname),
+              status: response.statusCode,
+              durationMs: Date.now() - readStartedAt,
+              at: Date.now(),
+            })
+          }
+        }
         if (request.method === 'HEAD') request.resume()
         return
       }

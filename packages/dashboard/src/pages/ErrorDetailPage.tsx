@@ -28,6 +28,7 @@ import {
   RelativeTime,
   StackTrace,
 } from '../components/details'
+import { ReadByAgents } from '../components/ReadByAgents'
 import { Icon } from '../components/Icon'
 import {
   formatAbsolute,
@@ -156,6 +157,7 @@ export function ErrorDetailPage({
             <Badge tone="bad">error</Badge>
             {error.route && <Badge tone="muted">{error.route}</Badge>}
             {error.method && <Badge tone="muted">{error.method}</Badge>}
+            {!snapshotId && <ReadByAgents recordId={error.id} onNavigate={onNavigate} />}
           </>
         }
         description={

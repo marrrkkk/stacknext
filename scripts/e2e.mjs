@@ -655,6 +655,7 @@ async function runMcpChecks(runtime, errorId, diagnosticId, regression, snapshot
     const tools = await session.request('tools/list', {})
     const names = new Set(tools.tools.map((tool) => tool.name))
     for (const name of [
+      'get_investigation_brief',
       'get_project_summary',
       'list_requests',
       'get_request',
@@ -950,6 +951,36 @@ async function runMcpChecks(runtime, errorId, diagnosticId, regression, snapshot
       )
       ok('MCP list_errors omits stacks and get_error returns one')
     }
+
+    const brief = await session.request('tools/call', {
+      name: 'get_investigation_brief',
+      arguments: {},
+    })
+    assert(brief.structuredContent?.meta?.trust === 'untrusted-application-data', 'MCP brief is missing the trust marker')
+    assert(typeof brief.structuredContent?.meta?.revision === 'number', 'MCP brief is missing the revision')
+    assert(brief.structuredContent?.suggestedCalls?.length > 0, 'MCP brief has no suggested calls')
+    ok('MCP investigation brief is bounded and labelled')
+
+    const agentState = await fetchJson(`${runtime.collectorUrl}/api/agents`, runtime.token)
+    assert(agentState.enabled === true, 'agent audit is not enabled by default')
+    assert(agentState.sessions.length > 0, 'MCP reads were not attributed to a session')
+    assert(
+      agentState.sessions.some((session0) => session0.toolCalls > 0),
+      'no attributed tool call was recorded',
+    )
+    const serializedAgents = JSON.stringify(agentState)
+    for (const secret of [
+      'demo-url-secret',
+      'super-secret-demo-token',
+      'hunter2',
+      'action-attribute-secret',
+      'custom-attribute-secret',
+      'custom-url-secret',
+      'e2e-url-secret',
+    ]) {
+      assert(!serializedAgents.includes(secret), `secret ${secret} leaked into the agent audit`)
+    }
+    ok('MCP reads are attributed without capturing query values or secrets')
   } finally {
     await session.close()
   }
@@ -1579,6 +1610,7 @@ async function main() {
       ['snapshot database', `/snapshots/${snapshot.snapshotId}/database`],
       ['settings', '/settings'],
       ['mcp', '/mcp'],
+      ['agents', '/agents'],
     ]) {
       const page = await fetch(`${runtime.dashboardUrl}${pathname}`)
       assert(page.ok, `${label} dashboard route responded ${page.status}`)

@@ -177,6 +177,7 @@ export async function runInit(options: InitOptions, cwd = process.cwd()): Promis
       },
       database: { drizzle: project.hasDrizzle, prisma: project.hasPrisma },
       slowRequestMs: 500,
+      agents: { audit: true },
     }
     await writeFile(configFile, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 })
     printCheck('pass', `Created ${CONFIG_FILE_NAME}`)

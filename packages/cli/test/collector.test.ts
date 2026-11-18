@@ -5,6 +5,8 @@ import path from 'node:path'
 import { request as httpRequest } from 'node:http'
 import {
   parseStackNextConfig,
+  type AgentsResponse,
+  type AgentSessionResponse,
   type DiagnosticDetailResponse,
   type DiagnosticListResponse,
   type ExportResponse,
@@ -222,6 +224,81 @@ describe('local collector', () => {
       })
     ).json()) as { health: HealthResponse }
     expect(summary.health.store.revision).toBe(after.store.revision)
+  })
+
+  it('records attributed reads with only pathnames, keys and ids, and redacts hostile headers', async () => {
+    const session = '11111111-2222-3333-4444-555555555555'
+    const read = async (path: string): Promise<Response> =>
+      fetch(`${collector.url}${path}`, {
+        headers: {
+          authorization: `Bearer ${TOKEN}`,
+          'x-stacknext-agent-session': session,
+          'x-stacknext-client': 'opencode-agent',
+          'x-stacknext-client-version': '1.2.3',
+          'x-stacknext-tool': 'get_trace',
+        },
+      })
+
+    const ingest = await fetch(`${collector.url}/__stacknext/v1/ingest`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(envelope()),
+    })
+    expect(ingest.status).toBe(202)
+    const detail = await read(`/api/errors/${TRACE}`)
+    expect(detail.status).toBe(404)
+    const traced = await read(`/api/traces/${TRACE}?q=demo-url-secret&limit=5`)
+    expect(traced.status).toBe(200)
+    const listeners = await read('/api/agents?recordId=' + TRACE)
+    expect(listeners.status).toBe(200)
+
+    const agents = (await (
+      await fetch(`${collector.url}/api/agents`, {
+        headers: { authorization: `Bearer ${TOKEN}` },
+      })
+    ).json()) as AgentsResponse
+    expect(agents.enabled).toBe(true)
+    expect(agents.sessions).toHaveLength(1)
+    expect(agents.sessions[0]?.client?.name).toBe('opencode-agent')
+    expect(agents.sessions[0]?.toolCalls).toBeGreaterThan(0)
+
+    const timeline = (await (
+      await fetch(`${collector.url}/api/agents/${session}`, {
+        headers: { authorization: `Bearer ${TOKEN}` },
+      })
+    ).json()) as AgentSessionResponse
+    expect(timeline.events.length).toBeGreaterThanOrEqual(2)
+    const traceRead = timeline.events.find((event) => event.path === `/api/traces/${TRACE}`)
+    expect(traceRead?.filterKeys).toEqual(['limit', 'q'])
+    expect(traceRead?.evidenceIds).toEqual([TRACE])
+    expect(traceRead?.tool).toBe('get_trace')
+
+    const serialized = JSON.stringify({ agents, timeline })
+    for (const secret of [
+      'demo-url-secret',
+      'super-secret-demo-token',
+      'hunter2',
+      'action-attribute-secret',
+      'custom-attribute-secret',
+      'custom-url-secret',
+      'e2e-url-secret',
+    ]) {
+      expect(serialized).not.toContain(secret)
+    }
+    expect(serialized).not.toContain('?q=')
+    expect(serialized).not.toContain(TOKEN)
+  })
+
+  it('requires read authorization for every agent endpoint', async () => {
+    const session = '22222222-3333-4444-5555-666666666666'
+    for (const path of ['/api/agents', `/api/agents/${session}`, '/api/agents?recordId=abc']) {
+      const response = await fetch(`${collector.url}${path}`)
+      expect(response.status, path).toBe(401)
+    }
+    const authenticated = await fetch(`${collector.url}/api/agents`, {
+      headers: { authorization: `Bearer ${TOKEN}` },
+    })
+    expect(authenticated.status).toBe(200)
   })
 
   it('serves one authenticated combined overview read', async () => {
@@ -903,5 +980,44 @@ describe('local collector', () => {
     await expect(
       fetch(`${collector.url}/api/ping`).then((response) => response.status),
     ).rejects.toThrow()
+  })
+})
+
+describe('agent audit opt-out', () => {
+  it('returns enabled: false and records nothing when agents.audit is false', async () => {
+    const dashboardDir = await createDashboardFixture()
+    const disabled = await startCollector({
+      port: 0,
+      autoPort: false,
+      token: TOKEN,
+      projectName: 'collector-test',
+      dashboardDir,
+      config: parseStackNextConfig({ agents: { audit: false } }),
+      log: () => undefined,
+    })
+    try {
+      const session = '33333333-4444-5555-6666-777777777777'
+      const response = await fetch(`${disabled.url}/api/requests`, {
+        headers: {
+          authorization: `Bearer ${TOKEN}`,
+          'x-stacknext-agent-session': session,
+          'x-stacknext-tool': 'list_requests',
+        },
+      })
+      expect(response.status).toBe(200)
+      const agents = (await (
+        await fetch(`${disabled.url}/api/agents`, {
+          headers: { authorization: `Bearer ${TOKEN}` },
+        })
+      ).json()) as AgentsResponse
+      expect(agents).toMatchObject({ enabled: false, sessions: [], total: 0, dropped: 0 })
+      const detail = await fetch(`${disabled.url}/api/agents/${session}`, {
+        headers: { authorization: `Bearer ${TOKEN}` },
+      })
+      expect(detail.status).toBe(404)
+    } finally {
+      await disabled.close()
+      await rm(dashboardDir, { recursive: true, force: true })
+    }
   })
 })
