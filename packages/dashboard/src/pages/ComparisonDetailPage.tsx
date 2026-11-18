@@ -5,6 +5,7 @@ import type {
   ScenarioComparison,
 } from '@stacknext/regression'
 import { api } from '../api'
+import { buildEvidencePrompt } from '../evidence'
 import { useAsync } from '../hooks'
 import {
   Badge,
@@ -500,6 +501,10 @@ export function ComparisonDetailPage({
         actions={
           <>
             <CopyButton value={comparison.id} label="Copy comparison id" primary />
+            <CopyButton
+              value={buildEvidencePrompt({ kind: 'comparison', id: comparison.id })}
+              label="Copy evidence prompt"
+            />
             <button
               type="button"
               className="button button--secondary"

@@ -18,7 +18,7 @@
 | 1 | Trust foundation | S | Done | `68abef9` | 2026-11-18 | 2026-11-18 |
 | 2 | Investigation brief | S | Done | `f646466` | 2026-11-18 | 2026-11-18 |
 | 3 | Agent sessions and audit | M | Done | `ec595c9` | 2026-11-18 | 2026-11-19 |
-| 4 | Evidence hand-off | S | Not started | — | — | — |
+| 4 | Evidence hand-off | S | Done | `346b9f6` | 2026-11-19 | 2026-11-19 |
 | 5 | Investigation cases | L | Not started | — | — | — |
 | 6 | Verification | M/L | Not started | — | — | — |
 
@@ -54,11 +54,11 @@
 
 ## Step 4 — Evidence hand-off
 
-- [ ] `packages/dashboard/src/evidence.ts` generator, ids only
-- [ ] Copy buttons on five detail pages with untrusted-data warning
-- [ ] Case command hint added after step 5
-- [ ] Docs and `CHANGELOG.md`
-- [ ] Full gate + `test:packages` + `test:e2e` run and logged
+- [x] `packages/dashboard/src/evidence.ts` generator, ids only
+- [x] Copy buttons on five detail pages with untrusted-data warning
+- [x] Case command hint added after step 5
+- [x] Docs and `CHANGELOG.md`
+- [x] Full gate + `test:packages` + `test:e2e` run and logged
 
 ## Step 5 — Investigation cases
 
@@ -114,6 +114,15 @@ Add one row per command run. Record the exact command and result. Include
 | 2026-11-19 | 3 | Port check after e2e | pass | No listeners on 4400-4429; no `apps/example/.stacknext/run.json` left behind. |
 | 2026-11-19 | 3 | `pnpm benchmark:dashboard -- --enforce` | pass | Initial JS 118.7 KiB gzip (budget 121), all enforced budgets passed. |
 | 2026-11-19 | 3 | Redaction verification (seven secret strings) | pass | Collector secret-leak test injected `q=demo-url-secret` plus Bearer token and asserted all seven strings absent from `/api/agents`; e2e asserts all seven absent from the live agent audit. |
+| 2026-11-19 | 4 | `pnpm exec vitest run packages/dashboard/test/evidence.test.ts` | pass | 8 tests covering all five kinds, id rejection, bound and secret strings. |
+| 2026-11-19 | 4 | `pnpm lint` | pass | Clean. |
+| 2026-11-19 | 4 | `pnpm typecheck` | pass | All 13 workspace projects. |
+| 2026-11-19 | 4 | `pnpm test` | pass | 47 files, 389 tests. |
+| 2026-11-19 | 4 | `pnpm build` | pass | All packages and apps. |
+| 2026-11-19 | 4 | `pnpm check:docs` | pass | 141 Markdown files, 502 text files. |
+| 2026-11-19 | 4 | `pnpm test:packages` | pass | All 10 archives valid. |
+| 2026-11-19 | 4 | `pnpm test:e2e` | pass | 46 checks including browser clipboard assertion that the copied prompt names `stacknext_get_diagnostic`, the finding id and the untrusted-data warning with no client error. |
+| 2026-11-19 | 4 | Port check after e2e | pass | No listeners on 4400-4429. |
 
 ## Decisions log
 

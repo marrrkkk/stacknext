@@ -1552,7 +1552,10 @@ async function main() {
 
     const browser = await chromium.launch({ headless: true })
     try {
-      const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+      const page = await browser.newPage({
+        viewport: { width: 1280, height: 900 },
+        permissions: ['clipboard-read', 'clipboard-write'],
+      })
       const pageErrors = []
       page.on('pageerror', (error) => pageErrors.push(error.message))
       await page.goto(`${runtime.dashboardUrl}/diagnostics`, {
@@ -1580,6 +1583,26 @@ async function main() {
       )
       assert(pageErrors.length === 0, `diagnostic detail threw: ${pageErrors.join('; ')}`)
       ok('diagnostics dashboard renders findings and detail without client errors')
+
+      const evidenceButton = page.getByRole('button', { name: 'Copy evidence prompt' })
+      assert((await evidenceButton.count()) === 1, 'diagnostic detail has no evidence prompt button')
+      const beforeClipboardRequests = pageErrors.length
+      await evidenceButton.click()
+      const clipboardText = await page.evaluate(() => navigator.clipboard.readText())
+      assert(
+        clipboardText.includes('stacknext_get_diagnostic'),
+        'copied evidence prompt is missing the tool name',
+      )
+      assert(
+        clipboardText.includes(nPlusOneFinding.id),
+        'copied evidence prompt is missing the finding id',
+      )
+      assert(
+        clipboardText.includes('untrusted application data'),
+        'copied evidence prompt is missing the untrusted-data warning',
+      )
+      assert(pageErrors.length === beforeClipboardRequests, 'copying the prompt threw a client error')
+      ok('diagnostic detail copies a bounded evidence prompt with no new API call')
     } finally {
       await browser.close()
     }

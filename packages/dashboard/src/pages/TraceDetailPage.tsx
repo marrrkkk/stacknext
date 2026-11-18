@@ -6,6 +6,7 @@ import type {
   TraceDetail,
 } from '@stacknext/core'
 import { api } from '../api'
+import { buildEvidencePrompt } from '../evidence'
 import { useAsync } from '../hooks'
 import {
   Badge,
@@ -420,6 +421,10 @@ export function TraceDetailPage({
         actions={
           <>
             <CopyButton value={traceId} label="Copy trace id" primary />
+            <CopyButton
+              value={buildEvidencePrompt({ kind: 'trace', id: traceId })}
+              label="Copy evidence prompt"
+            />
             <button
               type="button"
               className="button button--secondary"
