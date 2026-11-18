@@ -15,12 +15,12 @@
 
 | Step | Title | Size | Status | PR / commit | Started | Completed |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Trust foundation | S | Done | `68abef9` | 2026-11-18 | 2026-11-18 |
-| 2 | Investigation brief | S | Done | `f646466` | 2026-11-18 | 2026-11-18 |
-| 3 | Agent sessions and audit | M | Done | `ec595c9` | 2026-11-18 | 2026-11-19 |
-| 4 | Evidence hand-off | S | Done | `346b9f6` | 2026-11-19 | 2026-11-19 |
-| 5 | Investigation cases | L | Done | `fd4dc7c` | 2026-11-19 | 2026-11-19 |
-| 6 | Verification | M/L | Done | `7c6d6e7` | 2026-11-19 | 2026-11-19 |
+| 1 | Trust foundation | S | Done | `6742052` | 2026-11-18 | 2026-11-18 |
+| 2 | Investigation brief | S | Done | `9eac026` | 2026-11-18 | 2026-11-18 |
+| 3 | Agent sessions and audit | M | Done | `7137991` | 2026-11-18 | 2026-11-19 |
+| 4 | Evidence hand-off | S | Done | `6101d69` | 2026-11-19 | 2026-11-19 |
+| 5 | Investigation cases | L | Done | `40582ae` | 2026-11-19 | 2026-11-19 |
+| 6 | Verification | M/L | Done | `b628837` | 2026-11-19 | 2026-11-19 |
 
 ## Step 1 — Trust foundation
 
