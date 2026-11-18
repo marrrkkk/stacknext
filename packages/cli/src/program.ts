@@ -15,6 +15,7 @@ import { registerBaselineCommand } from './commands/baseline.js'
 import { registerCompareCommand } from './commands/compare.js'
 import { registerSnapshotCommand } from './commands/snapshot.js'
 import { registerCaseCommand } from './commands/case.js'
+import { registerVerifyCommand } from './commands/verify.js'
 import { registerUninstallCommand } from './commands/uninstall.js'
 import { CLI_VERSION } from './version.js'
 
@@ -44,6 +45,7 @@ export function createProgram(cwd = process.cwd()): Command {
   registerCompareCommand(program, cwd)
   registerSnapshotCommand(program, cwd)
   registerCaseCommand(program, cwd)
+  registerVerifyCommand(program, cwd)
   registerMcpCommand(program, cwd)
   registerSkillCommand(program, cwd)
   registerUninstallCommand(program, cwd)

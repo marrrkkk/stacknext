@@ -66,9 +66,12 @@ The collector also serves read APIs used by the dashboard, CLI and MCP:
 `/api/test-runs`, `/api/baselines`, `/api/comparisons` and `/api/snapshots`.
 
 Investigation cases add two read-only views: `/cases` lists local append-only
-cases and `/cases/:caseId` shows the hypothesis, evidence links, session link
-and folded event timeline. Cases are created from the CLI with
-`stacknext case`; there is no dashboard write surface.
+cases and `/cases/:caseId` shows the hypothesis, evidence links, session link,
+folded event timeline and the latest verification result. A case result shows
+the claim, each check's expected/observed/passed value, evidence links, sample
+size and revision; `unverifiable` is shown as a warning, never a pass. Cases
+are created from the CLI with `stacknext case` and checked with
+`stacknext verify`; there is no dashboard write surface.
 
 Agent read APIs also include `/api/agents`, `/api/agents/:sessionId`,
 `/api/agents?recordId=<id>`, `/api/cases` and `/api/cases/:id`. All require the

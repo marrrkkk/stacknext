@@ -214,6 +214,62 @@ invalid. It is a protocol check, not a model-driven client test.
 local edits. Without `--yes` it only prints the plan. See
 [agent setup](/ai-agents/setup).
 
+### `stacknext case`
+
+Create and extend local, append-only investigation cases under
+`.stacknext/cases`. Every command appends one event; no file is rewritten or
+truncated. Titles and notes are length-capped and redacted. Directories are
+`0700` and event files `0600`, with caps of 200 cases, 500 events per case and
+100 evidence ids per case. Cases are never uploaded or auto-deleted.
+
+| Command | Options | Purpose |
+| --- | --- | --- |
+| `case new` | `--title <text>` (required), `--hypothesis <text>`, `--evidence <kind>:<id>` (repeatable), `--session <id>`, `--json` | Create a case |
+| `case add <id>` | `--evidence <kind>:<id>` (required), `--note <text>`, `--session <id>`, `--json` | Append evidence and an optional note |
+| `case note <id>` | `--text <text>` (required), `--session <id>`, `--json` | Append a redacted note |
+| `case close <id>` | `--status verified\|refuted\|abandoned`, `--session <id>`, `--json` | Append a terminal status |
+| `case list` | `--json` | List cases newest first |
+| `case show <id>` | `--json` | Show one folded case view |
+
+Evidence kinds are `trace`, `error`, `diagnostic`, `comparison` and `snapshot`.
+The collector reads cases at `GET /api/cases` and `GET /api/cases/:id`; MCP adds
+read-only `list_cases` and `get_case` tools. The dashboard's `/cases` pages are
+read-only.
+
+### `stacknext verify`
+
+Check one falsifiable claim against bounded captured evidence. No LLM, source
+edit, SQL/EXPLAIN or time-window correlation is used; `unverifiable` is never a
+pass.
+
+```bash
+stacknext verify --trace <id> --expect-status <code> [--json]
+stacknext verify --route <route> --since <ms> --max-queries <n> [--json]
+stacknext verify --route <route> --since <ms> --max-duration <ms> [--json]
+stacknext verify --diagnostic <id> --expect-status <status> [--json]
+stacknext verify --trace <id> --expect-status <code> --case <case-id> [--json]
+stacknext verify --case <case-id> --json
+```
+
+| Option | Meaning |
+| --- | --- |
+| `--trace <id>` | 32-character trace id |
+| `--route <route>` | Route path to sample |
+| `--since <ms>` | Absolute epoch-millisecond timestamp; only requests at or after it are sampled |
+| `--max-queries <n>` / `--max-duration <ms>` | The bound to check; exactly one with `--route` |
+| `--diagnostic <id>` | Finding id (`diag-xxxxxxxx-xxxxxxxx`) |
+| `--expect-status <code\|status>` | HTTP status for `--trace`, rule status for `--diagnostic` |
+| `--case <id>` | With a predicate, save the claim and result on a case; alone, re-run the saved claim |
+| `--json` | Machine-readable result |
+
+The result contains `claim`, `result`, `checks` (`predicate`, `expected`,
+`observed`, `passed`, `evidence`), `revision` and `sampleSize`. At most 20
+matching requests are sampled, newest first. `verified` correlation, null query
+durations and missing evidence make a check `unverifiable`. Exit codes are `0`
+supported, `1` contradicted and `2` unverifiable. Invalid arguments and
+collector failures exit `1` with an error message. See
+[agent workflows](/ai-agents/workflows).
+
 ## Exit codes
 
 | Code | Meaning |

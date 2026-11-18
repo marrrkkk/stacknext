@@ -119,6 +119,16 @@ export function foldCaseEvents(
   const verificationEvent = [...ordered]
     .reverse()
     .find((event) => event.kind === 'verification_added')
+  const rawVerification =
+    verificationEvent && verificationEvent.kind === 'verification_added'
+      ? verificationEvent.verification
+      : null
+  const wrappedVerification =
+    rawVerification !== null &&
+    typeof rawVerification === 'object' &&
+    'verification' in rawVerification
+      ? (rawVerification as { verification: unknown }).verification
+      : rawVerification
 
   return {
     version: CASE_FORMAT_VERSION,
@@ -128,10 +138,7 @@ export function foldCaseEvents(
     hypothesis: created.hypothesis ?? null,
     evidence,
     agentSessionId: created.agentSessionId ?? null,
-    verification:
-      verificationEvent && verificationEvent.kind === 'verification_added'
-        ? (verificationEvent.verification ?? null)
-        : null,
+    verification: wrappedVerification ?? null,
     createdAt: created.at,
     updatedAt: ordered.length > 0 ? (ordered[ordered.length - 1]?.at ?? created.at) : created.at,
     events: ordered,

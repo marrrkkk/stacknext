@@ -161,6 +161,9 @@ Once connected, ask your agent:
 - The collector API is read-only. The MCP server does not expose ingestion,
   configuration changes, file access or arbitrary HTTP requests.
 - Data returned to the model is the same redacted data shown in the dashboard.
+- Verification stays in the CLI: `stacknext verify` checks deterministic
+  predicates over captured evidence. The MCP surface remains read-only and has
+  no `verify_claim` tool.
 - Each `stacknext mcp` process generates a random local session id. Reads carry
   attribution headers (session, client name/version and tool) so the dashboard's
   Agents page can show what was read. These are labels, not credentials: reads

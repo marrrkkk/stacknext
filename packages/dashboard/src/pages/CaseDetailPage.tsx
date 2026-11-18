@@ -1,9 +1,10 @@
-import type { CaseEvent, CaseView } from '@stacknext/core'
+import type { CaseEvent, CaseView, VerificationResult } from '@stacknext/core'
 import { api } from '../api'
 import { useAsync } from '../hooks'
 import {
   Badge,
   Card,
+  CopyButton,
   EmptyState,
   ErrorState,
   Id,
@@ -34,6 +35,66 @@ function evidenceHref(kind: string, id: string): string | null {
   }
   const route = routes[kind]
   return route ? `/${route}/${encodeURIComponent(id)}` : null
+}
+
+const VERIFICATION_TONE: Record<VerificationResult['result'], Tone> = {
+  supported: 'good',
+  contradicted: 'bad',
+  unverifiable: 'warn',
+}
+
+function VerificationBlock({
+  result,
+  caseId,
+  onNavigate,
+}: {
+  result: VerificationResult
+  caseId: string
+  onNavigate: (path: string) => void
+}): React.ReactElement {
+  return (
+    <div className="case-verification">
+      <div className="button-row">
+        <Badge tone={VERIFICATION_TONE[result.result]}>{result.result}</Badge>
+        <CopyButton
+          value={`stacknext verify --case ${caseId} --json`}
+          label="Copy verify command"
+          small
+        />
+      </div>
+      <p>{result.claim}</p>
+      <p className="muted">
+        Sample {formatNumber(result.sampleSize)} · revision {result.revision}
+      </p>
+      {result.result === 'unverifiable' && (
+        <p className="muted">Unverifiable is not a pass. Check the reason on each failing check.</p>
+      )}
+      <ul className="case-checks">
+        {result.checks.map((check, index) => (
+          <li key={`${check.predicate}:${index}`}>
+            <Badge tone={check.passed ? 'good' : check.reason ? 'warn' : 'bad'}>
+              {check.passed ? 'passed' : check.reason ? 'unverifiable' : 'failed'}
+            </Badge>{' '}
+            {check.predicate}: expected {JSON.stringify(check.expected)}, observed{' '}
+            {JSON.stringify(check.observed)}
+            {check.reason ? ` — ${check.reason}` : ''}
+            <div className="row-secondary">
+              {check.evidence.map((id) => (
+                <button
+                  type="button"
+                  className="link-button mono"
+                  key={id}
+                  onClick={() => onNavigate(`/traces/${encodeURIComponent(id)}`)}
+                >
+                  <Id value={id} />
+                </button>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }
 
 function eventLabel(event: CaseEvent): string {
@@ -181,13 +242,17 @@ export function CaseDetailPage({
 
       <Card title="Verification" subtitle="Deterministic check, not a confirmed root cause">
         <div className="card__inner">
-          {view.verification ? (
-            <p className="muted">A verification result is recorded on this case.</p>
-          ) : (
+          {!view.verification ? (
             <p className="muted">
               No verification recorded. A case without a verification result is
               not a proven conclusion.
             </p>
+          ) : (
+            <VerificationBlock
+              result={view.verification as VerificationResult}
+              caseId={view.id}
+              onNavigate={onNavigate}
+            />
           )}
         </div>
       </Card>

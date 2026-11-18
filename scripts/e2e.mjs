@@ -130,6 +130,18 @@ function runCli(args) {
   return result.stdout
 }
 
+function runCliAllowFailure(args) {
+  const result = spawnSync(process.execPath, [CLI, ...args], {
+    cwd: APP_DIR,
+    encoding: 'utf8',
+    timeout: 180_000,
+    maxBuffer: 32 * 1024 * 1024,
+    env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1' },
+  })
+  if (result.error) throw result.error
+  return result
+}
+
 function killDevProcess(signal) {
   if (!devProcess || devProcess.exitCode !== null) return
   if (process.platform !== 'win32' && devProcess.pid) {
@@ -1584,6 +1596,26 @@ async function main() {
       assert(!JSON.stringify(apiCase).includes(secret), `secret ${secret} leaked into a case`)
     }
     ok('CLI case round-trip writes append-only evidence and the collector reads it')
+
+    const verified = JSON.parse(
+      runCli(['verify', '--trace', slow.traceId, '--expect-status', '200', '--json']),
+    )
+    assert(verified.result === 'supported', `verify returned ${verified.result}, expected supported`)
+    assert(verified.checks[0]?.predicate === 'requestStatus', 'verify has no requestStatus check')
+    assert(typeof verified.revision === 'number', 'verify result has no revision')
+    const contradictedRun = runCliAllowFailure([
+      'verify', '--trace', slow.traceId, '--expect-status', '500', '--json',
+    ])
+    assert(contradictedRun.status === 1, `contradicted verify exited ${contradictedRun.status}`)
+    const contradicted = JSON.parse(contradictedRun.stdout)
+    assert(contradicted.result === 'contradicted', 'wrong expected status was not contradicted')
+    const unverifiableRun = runCliAllowFailure([
+      'verify', '--diagnostic', 'diag-00000000-00000000', '--expect-status', 'observed', '--json',
+    ])
+    assert(unverifiableRun.status === 2, `unverifiable verify exited ${unverifiableRun.status}`)
+    const unverifiable = JSON.parse(unverifiableRun.stdout)
+    assert(unverifiable.result === 'unverifiable', 'missing evidence was not unverifiable')
+    ok('stacknext verify returns supported, contradicted and unverifiable with bounded checks')
 
     await runMcpChecks(
       runtime,
