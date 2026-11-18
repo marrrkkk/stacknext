@@ -14,6 +14,7 @@ import {
   EmptyState,
   ErrorState,
   Id,
+  IdLink,
   ListTableSkeleton,
   PageHeader,
   PageLayout,
@@ -152,15 +153,7 @@ function SessionTimeline({
                     {event.evidenceIds.map((id) => {
                       const href = evidenceHref(event, id)
                       return href ? (
-                        <button
-                          type="button"
-                          className="link-button mono"
-                          key={id}
-                          onClick={() => onNavigate(href)}
-                          title={`Open ${id}`}
-                        >
-                          <Id value={id} />
-                        </button>
+                        <IdLink key={id} value={id} onClick={() => onNavigate(href)} />
                       ) : (
                         <Id key={id} value={id} />
                       )
