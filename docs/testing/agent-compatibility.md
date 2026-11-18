@@ -4,17 +4,23 @@ This page records client and protocol checks for the MCP server and Agent
 Skill. It is a point-in-time record, not a guarantee that every model or client
 release will behave the same way.
 
-The current release is 0.16.0. The model-driven record below covers 0.4 and the
-protocol-level record covers 0.6.1. The current e2e suite covers the MCP,
-regression and snapshot surface, and 0.12 adds `stacknext mcp --check` as a
-repeatable in-memory protocol check. New model-driven client scenarios have not
-been recorded. Re-run the relevant client workflow and update this page before
-claiming current support.
+The historical records below cover 0.4 (model-driven) and 0.6.1 (protocol
+level). The current release is **0.17.0**: its e2e and consumer smoke checks
+pass at the protocol level with 23 read-only MCP tools, five prompts, the
+`get_investigation_brief`, `list_cases` and `get_case` tools, and the CLI agent
+audit, case and verify flows. `stacknext mcp --check` is a repeatable in-memory
+protocol check. No new model-driven client scenario has been recorded for 0.17.0.
+Re-run the relevant client workflow and update this page before claiming current
+model-driven support.
+StackNext 0.17.0 adds untrusted-data labelling and store revisions on every MCP
+result, a bounded local audit of MCP reads, an ids-only evidence hand-off,
+append-only investigation cases and deterministic CLI verification. MCP remains
+read-only; all writes live in the CLI.
 
-StackNext 0.12 includes deterministic diagnostic findings, 20 read-only MCP
-tools, five guided prompts, six read-only regression tools, three read-only
-snapshot tools and the Agent Skill workflows. It also adds an npm-native MCP
-command form and a dry-run-first `stacknext skill uninstall`.
+Historically, StackNext 0.12 included deterministic diagnostic findings, 20
+read-only MCP tools, five guided prompts, six read-only regression tools, three
+read-only snapshot tools and the Agent Skill workflows. It also added an
+npm-native MCP command form and a dry-run-first `stacknext skill uninstall`.
 
 The regression tools were verified at the protocol level and in the real e2e
 stack; they were **not** run through new model-driven client scenarios. Do not

@@ -98,6 +98,8 @@ Read API groups:
 | Health and state | `/api/health`, `/api/ping`, `/api/summary`, `/api/overview`, `/api/config`, `/api/coverage`, `/api/stream` |
 | Telemetry | `/api/requests`, `/api/traces`, `/api/database`, `/api/errors`, `/api/export` |
 | Diagnostics | `/api/diagnostics`, `/api/diagnostics/:id` |
+| Agent activity | `/api/agents`, `/api/agents/:sessionId`, `/api/agents?recordId=<id>` |
+| Cases | `/api/cases`, `/api/cases/:id` |
 | Regression | `/api/test-runs`, `/api/test-runs/:id`, `/api/baselines`, `/api/baselines/:id`, `/api/comparisons`, `/api/comparisons/:id` |
 | Snapshots | `/api/snapshots`, `/api/snapshots/:id`, `/api/snapshots/import` |
 

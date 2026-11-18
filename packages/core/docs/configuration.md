@@ -70,7 +70,8 @@ const config = await loadConfig(process.cwd())
     "autoOnError": true,
     "autoKeep": 10,
     "maxBytes": 67108864
-  }
+  },
+  "agents": { "audit": true }
 }
 ```
 
@@ -102,6 +103,7 @@ const config = await loadConfig(process.cwd())
 | `snapshots.autoOnError` | boolean, default true | Save a snapshot on the first error, with a 60-second cooldown. |
 | `snapshots.autoKeep` | integer, 1–100, default 10 | Automatic exit/error snapshots to keep. Manual/imported are never rotated. |
 | `snapshots.maxBytes` | integer, 1 MiB–256 MiB, default 64 MiB | Per-snapshot cap. Oversized saves fail instead of truncating. |
+| `agents.audit` | boolean, default true | Enables the bounded, local-only audit of MCP agent reads. Set to `false` to record nothing; the read API then reports `enabled: false`. |
 
 ## Validation behavior
 

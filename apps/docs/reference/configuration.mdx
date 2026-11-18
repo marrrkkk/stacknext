@@ -48,7 +48,8 @@ missing. The file is optional: a project without it uses the defaults.
     "autoOnError": true,
     "autoKeep": 10,
     "maxBytes": 67108864
-  }
+  },
+  "agents": { "audit": true }
 }
 ```
 
@@ -85,6 +86,14 @@ missing. The file is optional: a project without it uses the defaults.
 | `snapshots.autoOnError` | `true` | Save a snapshot on the first error, with a 60-second cooldown |
 | `snapshots.autoKeep` | `10` | Number of automatic exit/error snapshots to keep (1–100) |
 | `snapshots.maxBytes` | `67108864` | Per-snapshot size cap (1 MiB–256 MiB). Oversized saves fail rather than truncate |
+| `agents.audit` | `true` | Records a bounded, redacted, local-only audit of reads made by `stacknext mcp` clients |
+
+Set `agents.audit` to `false` to disable the audit entirely: no events are
+recorded and the Agents API reports `enabled: false`. The audit stores only a
+random session id, optional client name/version, tool name, pathname, sorted
+query parameter **names**, ids extracted from detail routes and timing. It never
+stores query values, bodies, tokens or machine/user identifiers. See
+[agent activity](/ai-agents/index) and [privacy](/privacy).
 
 The config is validated with Zod. Invalid values and unknown fields are rejected
 at startup.

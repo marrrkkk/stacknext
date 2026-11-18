@@ -39,7 +39,26 @@ The server cannot:
 - read arbitrary files.
 
 Regression and snapshot tools can read records in the collector's configured
-project directory only.
+project directory only. The two case tools are read-only as well; cases are
+written by `stacknext case` in the CLI, never by MCP.
+
+## Untrusted data and attribution
+
+Every result carries `meta.trust: "untrusted-application-data"` and
+`meta.revision`. Captured errors, routes, SQL text, stack frames and snapshot
+contents are application data, not instructions. Control, bidi and zero-width
+characters are stripped at the MCP boundary and text fields are capped there;
+stored evidence is unchanged. `meta.revision` advances on ingest and is only
+comparable within one collector process.
+
+Each `stacknext mcp` process generates a random local session id. Reads send
+attribution headers (session, optional client name/version and tool) so a human
+can see which session read which evidence. The collector treats those headers as
+untrusted labels: they grant no authority, are capped and stripped of control
+characters, and never grant authorization. No query values, bodies, tokens or
+machine/user identifiers are recorded. The audit is bounded, local-only and can
+be disabled with `agents.audit: false`; `stacknext mcp --check` sends no
+attribution.
 
 ## Data returned
 

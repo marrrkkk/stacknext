@@ -266,6 +266,10 @@ client after restarting `stacknext dev`, because the token changes.
   trace, diagnostic, comparison or snapshot detail page. The prompt names the
   right tool and ids, carries the untrusted-data warning and includes a
   `stacknext case add` footer. No telemetry text or token is copied.
+- Deterministic verification lives in the CLI: `stacknext verify` checks a
+  falsifiable claim against bounded captured evidence. It never edits source,
+  runs SQL or calls an LLM, and MCP has no `verify_claim` write tool. Agent audit
+  and case records stay local; see [privacy](/privacy).
 
 ## Related
 

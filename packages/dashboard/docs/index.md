@@ -37,7 +37,11 @@ The dashboard includes:
 - Diagnostics list and detail;
 - Runs, baselines and comparisons, including deep links;
 - Snapshots;
-- Settings.
+- Agent activity: local MCP sessions and their bounded read timelines, with
+  "read by agent" chips on evidence pages;
+- Investigation cases: read-only case list and detail with evidence links,
+  session link and verification result;
+- Settings and MCP server setup.
 
 It also provides a command menu and responsive layouts. The exact routes are in
 [Routes](routes.md).

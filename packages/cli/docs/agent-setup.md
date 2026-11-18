@@ -103,7 +103,22 @@ Configure the client to start the command from the app directory. See
 [commands](commands.md) for `stacknext mcp` and
 [troubleshooting](troubleshooting.md) for client connection issues.
 
+Each `stacknext mcp` process uses a random local session id. Its reads are
+attributed in a bounded audit that a human can review on the dashboard's Agents
+page. Set `agents.audit: false` in `stacknext.config.json` to disable it; no
+query values, bodies, tokens or machine/user identifiers are captured.
+
 <!-- /coderabbit-ai-generated:v1 -->
+
+## Evidence hand-off and verification
+
+Copy **Copy evidence prompt** from an error, trace, diagnostic, comparison or
+snapshot detail page to give an agent exact tool names and ids without telemetry
+text or a token. **Copy case command** creates an append-only local case with
+`stacknext case new`. Run `stacknext verify --json` to check a falsifiable claim,
+or `stacknext verify --case <id> --json` to re-run a saved claim and append the
+result. MCP has no write tool and no `verify_claim`; all writes live in the CLI.
+See [commands](commands.md) for flags and exit codes.
 
 ## Recommended order
 
