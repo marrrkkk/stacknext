@@ -195,6 +195,35 @@ describe('local collector', () => {
     expect(errors.items[0]?.message).not.toContain('hunter2')
   })
 
+  it('exposes a bounded store revision that advances on ingest', async () => {
+    const readHealth = async (): Promise<HealthResponse> => {
+      const response = await fetch(`${collector.url}/api/health`, {
+        headers: { authorization: `Bearer ${TOKEN}` },
+      })
+      return (await response.json()) as HealthResponse
+    }
+    const before = await readHealth()
+    expect(Number.isInteger(before.store.revision)).toBe(true)
+    expect(before.store.revision).toBeGreaterThanOrEqual(0)
+    expect(before.startedAt).toBeGreaterThan(0)
+
+    const ingest = await fetch(`${collector.url}/__stacknext/v1/ingest`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(envelope()),
+    })
+    expect(ingest.status).toBe(202)
+
+    const after = await readHealth()
+    expect(after.store.revision).toBeGreaterThan(before.store.revision)
+    const summary = (await (
+      await fetch(`${collector.url}/api/summary`, {
+        headers: { authorization: `Bearer ${TOKEN}` },
+      })
+    ).json()) as { health: HealthResponse }
+    expect(summary.health.store.revision).toBe(after.store.revision)
+  })
+
   it('serves one authenticated combined overview read', async () => {
     const ingest = await fetch(`${collector.url}/__stacknext/v1/ingest`, {
       method: 'POST',

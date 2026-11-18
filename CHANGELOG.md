@@ -19,8 +19,20 @@ All notable changes to StackNext are documented here. The format follows
 - Added `GET /api/overview`, an authenticated combined read that returns the
   summary payload and the recent request page so the dashboard refreshes every
   overview panel with one request.
+- Every MCP tool result now carries `meta.trust: "untrusted-application-data"`
+  and an integer `meta.revision`, so agents can treat captured telemetry as
+  evidence and re-check narrow queries when the store changes. A revision is
+  comparable only within one collector process.
+- `stacknext doctor` now reports an `Agents` group covering MCP server
+  readiness, the installed Agent Skill, the managed `AGENTS.md` block, local
+  package docs and runtime token file permissions. All checks are warnings by
+  default and the token is never printed.
 
 ### Changed
+
+- Captured text is sanitized at the MCP boundary: invisible control, bidi and
+  zero-width characters are removed and a single text field is capped at 64,000
+  characters. Stored evidence is unchanged.
 
 - Dashboard trace and database lists now coalesce live refreshes every two
   seconds and use span/query-specific refresh keys; trace rows are memoized.

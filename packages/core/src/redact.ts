@@ -55,6 +55,34 @@ export function redactText(value: string, maxLength = MAX_STRING_LENGTH): string
 }
 
 /**
+ * C0/C1 control characters (except tab and newline), bidi overrides/isolates,
+ * zero-width characters and the byte-order mark. Stripping them stops captured
+ * text from hiding instructions or changing the direction of displayed evidence.
+ */
+const UNTRUSTED_CONTROL_PATTERN =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g
+
+/** Upper bound applied to a single captured text field at the MCP boundary. */
+export const UNTRUSTED_TEXT_MAX_LENGTH = 64_000
+
+/**
+ * Boundary-only sanitizer for captured text that an agent reads as evidence.
+ * It removes invisible control/formatting characters and caps length without
+ * rewriting words, punctuation or the meaning of the evidence. Stored evidence
+ * is untouched; callers apply this only when serializing a tool response.
+ */
+export function sanitizeUntrustedText(
+  value: string,
+  maxLength = UNTRUSTED_TEXT_MAX_LENGTH,
+): string {
+  if (typeof value !== 'string') return ''
+  const stripped = value.replace(UNTRUSTED_CONTROL_PATTERN, '')
+  return stripped.length > maxLength
+    ? `${stripped.slice(0, maxLength)}… [truncated]`
+    : stripped
+}
+
+/**
  * Removes credentials, query strings and fragments from a URL while preserving
  * enough information to identify the resource. Works with absolute and relative URLs.
  */

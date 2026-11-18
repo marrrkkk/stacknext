@@ -266,6 +266,10 @@ client after restarting `stacknext dev`, because the token changes.
   hosted model with project telemetry.
 - A client is listed as supported only after a recorded end-to-end check. See
   [agent compatibility testing](https://github.com/marrrkkk/stacknext/blob/main/docs/testing/agent-compatibility.md).
+- Run `stacknext doctor` to check agent readiness. Its `Agents` group reports
+  the MCP server, installed skill, managed `AGENTS.md` block, local package docs
+  and runtime file permissions as warnings; agent setup is optional. It never
+  prints the collector token.
 
 ## Related
 
