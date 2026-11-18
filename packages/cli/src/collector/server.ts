@@ -591,7 +591,7 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
         lastEventTime: summary.lastEventTime,
         retentionMs: store.retentionMs,
       },
-      store: storeStats,
+      store: { ...storeStats, revision: store.storeRevision },
       server: {
         ...serverStats,
         sseClients: sseClients.size,

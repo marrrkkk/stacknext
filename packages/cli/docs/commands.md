@@ -49,6 +49,15 @@ dashboard build, runtime file permissions, collector health and first-request
 capture. An existing OpenTelemetry provider that owns tracing is a failure,
 because StackNext is yielding to it and request spans are not captured.
 
+An `Agents` group also reports optional agent readiness: whether the MCP server
+responds, whether an Agent Skill is installed for a detected client, whether the
+managed `AGENTS.md` block is present and current, whether version-matched local
+package docs resolve, and whether `.stacknext/run.json` exists with mode `0600`.
+All five checks are warnings by default because agent setup is optional; the
+runtime token is never printed. `--json` keeps the existing
+`{ projectName, checks, failures, warnings }` shape and adds the new group to
+`checks`.
+
 | Option | Meaning |
 | --- | --- |
 | `--json` | Machine-readable result with `checks`, `failures`, `warnings`. |

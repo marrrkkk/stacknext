@@ -6,7 +6,7 @@ import type {
 } from './diagnostics.js'
 
 export const STACKNEXT_SCHEMA_VERSION = 1
-export const STACKNEXT_SDK_VERSION = '0.16.0'
+export const STACKNEXT_SDK_VERSION = '0.17.0'
 
 export const STACKNEXT_PROVIDER_MODES = ['stacknext', 'external'] as const
 export type StackNextProviderMode = (typeof STACKNEXT_PROVIDER_MODES)[number]
@@ -404,6 +404,11 @@ export interface HealthResponse {
     retentionMs: number
   }
   store: {
+    /**
+     * Monotonic store revision. Comparable only within one collector process;
+     * it resets when the collector restarts. Additive in StackNext 0.17.
+     */
+    revision: number
     spansReceived: number
     errorsReceived: number
     databaseQueriesReceived: number

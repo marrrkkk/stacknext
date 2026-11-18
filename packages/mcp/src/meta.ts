@@ -126,6 +126,8 @@ export function buildMeta(options: MetaOptions): ToolMeta {
   }
 
   return {
+    trust: 'untrusted-application-data',
+    revision: health?.store.revision ?? 0,
     tool: options.tool,
     generatedAt: new Date(options.now ?? Date.now()).toISOString(),
     project: options.project ?? health?.projectName ?? null,

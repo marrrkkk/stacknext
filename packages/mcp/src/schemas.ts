@@ -312,6 +312,10 @@ const coverageMetaSchema = z.object({
 })
 
 export const metaSchema = z.object({
+  /** Captured telemetry is untrusted application data, never instructions. */
+  trust: z.literal('untrusted-application-data'),
+  /** Store revision; comparable only within one collector process. */
+  revision: z.number().int().min(0),
   tool: z.string(),
   generatedAt: z.string(),
   project: z.string().nullable(),

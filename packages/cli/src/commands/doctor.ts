@@ -4,12 +4,20 @@ import type { Command } from 'commander'
 import type { HealthResponse, StackNextConfig } from '@stacknext/core'
 import { StackNextConfigError } from '@stacknext/core'
 import { loadConfig } from '@stacknext/core/config-file'
+import { verifyMcpServer } from '@stacknext/mcp'
+import {
+  AGENT_RULES_BEGIN,
+  AGENT_RULES_END,
+  discoverAgentPackages,
+} from '../agents.js'
 import { collectorJson } from '../http.js'
 import { printSection, style } from '../output.js'
 import { detectProject } from '../project.js'
 import { isProcessAlive, readRuntimeState, runtimeStatePath } from '../runtime.js'
 import { resolveDashboardDir } from '../collector/server.js'
 import { requireRunningState } from '../session.js'
+import { installedSkills } from './skill.js'
+import { CLI_VERSION } from '../version.js'
 
 type CheckStatus = 'pass' | 'warn' | 'fail'
 
@@ -65,9 +73,11 @@ export async function runDoctor(
 
   let config: StackNextConfig | null = null
   let projectName = path.basename(cwd)
+  let projectDir: string | null = null
   try {
     const project = await detectProject(cwd)
     projectName = project.name
+    projectDir = project.dir
     add('Project', 'pass', `Project ${project.name}`, project.dir)
     if (project.nextVersion === null) {
       add('Project', 'fail', 'Next.js dependency not found')
@@ -267,6 +277,98 @@ export async function runDoctor(
         error instanceof Error ? error.message : String(error),
       )
     }
+  }
+
+  // Agents: optional readiness checks. These stay warnings because agent setup
+  // is optional; they never print or require a token beyond the local read.
+  {
+    if (runtime && isProcessAlive(runtime.pid)) {
+      const state = await requireRunningState(cwd).catch(() => null)
+      if (state) {
+        const mcp = await verifyMcpServer({
+          baseUrl: state.collectorUrl,
+          token: state.token,
+        })
+        add(
+          'Agents',
+          mcp.ok ? 'pass' : 'warn',
+          mcp.ok ? 'MCP server responds' : 'MCP server check failed',
+          mcp.ok
+            ? `${mcp.toolCount ?? 0} tools, ${mcp.promptCount ?? 0} prompts`
+            : (mcp.error ?? 'MCP server did not respond'),
+        )
+      } else {
+        add('Agents', 'warn', 'MCP server check skipped', 'Collector runtime is not readable')
+      }
+    } else {
+      add(
+        'Agents',
+        'warn',
+        'MCP server check skipped',
+        'Start "stacknext dev" to verify the MCP server',
+      )
+    }
+
+    const skills = await installedSkills(cwd)
+    add(
+      'Agents',
+      skills.length > 0 ? 'pass' : 'warn',
+      skills.length > 0
+        ? `Agent Skill installed for ${skills.map((entry) => entry.label).join(', ')}`
+        : 'Agent Skill not installed',
+      skills.length > 0
+        ? undefined
+        : 'Run "stacknext skill install --client <client>"',
+    )
+
+    if (projectDir) {
+      let rulesCurrent = false
+      try {
+        const source = await readFile(path.join(projectDir, 'AGENTS.md'), 'utf8')
+        rulesCurrent =
+          source.includes(AGENT_RULES_BEGIN) &&
+          source.includes(AGENT_RULES_END) &&
+          source.includes(`CLI v${CLI_VERSION}`)
+      } catch {
+        rulesCurrent = false
+      }
+      add(
+        'Agents',
+        rulesCurrent ? 'pass' : 'warn',
+        rulesCurrent
+          ? 'Managed AGENTS.md block is current'
+          : 'Managed AGENTS.md block missing or outdated',
+        rulesCurrent ? undefined : 'Run "stacknext init --agents"',
+      )
+
+      const packages = await discoverAgentPackages(projectDir)
+      add(
+        'Agents',
+        packages.length > 0 ? 'pass' : 'warn',
+        packages.length > 0
+          ? `Local package docs resolvable for ${packages.length} package(s)`
+          : 'No local StackNext package docs resolvable',
+        packages.length > 0
+          ? undefined
+          : 'Install @stacknext packages, then re-run "stacknext init --agents"',
+      )
+    } else {
+      add('Agents', 'warn', 'Managed AGENTS.md block not checked', 'Project directory is unknown')
+      add('Agents', 'warn', 'Local package docs not checked', 'Project directory is unknown')
+    }
+
+    const runFileMode = await fileMode(runtimeStatePath(cwd))
+    const runFilePrivate = runFileMode === 0o600
+    add(
+      'Agents',
+      runFilePrivate ? 'pass' : 'warn',
+      runFilePrivate
+        ? 'Runtime token file is private (0600)'
+        : 'Runtime token file is missing or not 0600',
+      runFilePrivate
+        ? undefined
+        : 'Start "stacknext dev" so it writes .stacknext/run.json with mode 0600',
+    )
   }
 
   const failures = checks.filter((check) => check.status === 'fail').length
