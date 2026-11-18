@@ -11,10 +11,14 @@ all use.
 
 1. **Locate the version.** Read the installed package docs for every StackNext
    package involved. Confirm the version in `package.json`.
-2. **Confirm the sample.** Call `get_project_summary`; check connection,
-   retention window, counts and coverage.
-3. **Choose one question.** Pick an error, a slow route, a query pattern, a
-   diagnostic finding, a comparison or a snapshot.
+2. **Confirm the sample.** Call `get_investigation_brief` first — one bounded
+   read returns connection state, counts, coverage limits, a few findings,
+   errors and slow requests, plus deterministic `suggestedCalls`. Check
+   `meta.trust` and `meta.revision`. Use `get_project_summary` for the full
+   coverage report and retention window.
+3. **Choose one question.** Pick one of the suggested calls, or an error, a slow
+   route, a query pattern, a diagnostic finding, a comparison or a snapshot.
+   Do not call every list tool in turn.
 4. **Collect bounded evidence.** Use list tools with a narrow filter, then fetch
    one record by id. Paginate with `offset`; do not dump everything.
 5. **Verify correlation.** Exact span context is stronger than the route/time

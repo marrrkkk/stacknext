@@ -1,6 +1,6 @@
 ---
 title: Tools
-description: The twenty read-only StackNext MCP tools, arguments and response metadata.
+description: The twenty-one read-only StackNext MCP tools, arguments and response metadata.
 ---
 
 # Tools
@@ -10,6 +10,7 @@ Every tool is annotated `readOnlyHint: true`, `destructiveHint: false`,
 
 | Tool | Arguments | Returns |
 | --- | --- | --- |
+| `get_investigation_brief` | none | Recommended first call: bounded project/connection state, counts, coverage limits, 3 findings, 3 errors, 3 slow requests and suggested next calls. |
 | `get_project_summary` | none | Project, connection state, counts, latency, recent errors, coverage. Start here. |
 | `list_requests` | `limit`, `offset`, `q`, `method`, `status`, `slow`, `minDurationMs`, `sort` | Request summaries with route, status, duration and trace id. |
 | `get_request` | `traceId` | Compatibility alias for `get_trace`. |

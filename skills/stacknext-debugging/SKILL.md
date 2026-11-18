@@ -1,6 +1,6 @@
 ---
 name: stacknext-debugging
-description: Investigate Next.js App Router runtime behavior with StackNext's local telemetry. Use when debugging server errors, slow requests, database query activity, request traces or deterministic diagnostic findings, or when comparing captured Playwright runs against baselines or inspecting saved snapshots, in a Next.js 15/16 app that has StackNext installed; when asked to use StackNext, its MCP tools or dashboard; or when runtime evidence is needed before changing code. Covers the twenty read-only MCP tools, evidence-first workflows, finding verification, runtime regression evidence, saved snapshot evidence, redaction limits and missing-telemetry troubleshooting.
+description: Investigate Next.js App Router runtime behavior with StackNext's local telemetry. Use when debugging server errors, slow requests, database query activity, request traces or deterministic diagnostic findings, or when comparing captured Playwright runs against baselines or inspecting saved snapshots, in a Next.js 15/16 app that has StackNext installed; when asked to use StackNext, its MCP tools or dashboard; or when runtime evidence is needed before changing code. Covers the twenty-one read-only MCP tools, evidence-first workflows, finding verification, runtime regression evidence, saved snapshot evidence, redaction limits and missing-telemetry troubleshooting.
 license: MIT
 compatibility: Next.js 15 or 16 App Router on the Node.js runtime, with a local StackNext collector. No cloud account, AI API key, or remote service is required.
 metadata:
@@ -21,9 +21,12 @@ run SQL or call an AI service.
 
 1. Confirm the StackNext MCP tools are available. If they are not, read
    `references/setup.md` and ask the user to start `stacknext dev`.
-2. Call `get_project_summary` first. It reports the project, connection state,
-   counts, latency, recent errors, instrumentation coverage and the current
-   retention window.
+2. Call `get_investigation_brief` first. It is one bounded read that reports
+   project and connection state, counts, coverage limitations, up to three
+   findings, three errors, three slow requests and deterministic `suggestedCalls`.
+   Then choose one narrow question from those suggested calls. Call
+   `get_project_summary` when you need the full coverage report and retention
+   window.
 3. If `meta.connection.instrumentation` is `waiting`, no app is connected. Ask
    the user to start the app through `stacknext dev` and make a request. Do not
    invent telemetry or diagnose from an empty store.
@@ -50,7 +53,7 @@ run SQL or call an AI service.
   proximity. `inconclusive` is not a pass, and a comparison is not a
   statistical test. Report status and severity separately; never claim
   significance or causality.
-- **Stay read-only.** Use only the twenty StackNext MCP tools. Do not edit the
+- **Stay read-only.** Use only the twenty-one StackNext MCP tools. Do not edit the
   app, run migrations, execute SQL or EXPLAIN, clear data, capture runs, save
   baselines, run comparisons, save or delete snapshots, or restart services
   unless the user asks. Never invent an index recommendation or a source patch

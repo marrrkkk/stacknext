@@ -27,6 +27,11 @@ All notable changes to StackNext are documented here. The format follows
   readiness, the installed Agent Skill, the managed `AGENTS.md` block, local
   package docs and runtime token file permissions. All checks are warnings by
   default and the token is never printed.
+- Added `get_investigation_brief`, a bounded read-only MCP tool that returns
+  project and connection state, counts, coverage limits, up to three findings,
+  three errors and three slow requests plus deterministic suggested next calls.
+  It is the recommended first call; no stacks, SQL or raw telemetry text are
+  included.
 
 ### Changed
 

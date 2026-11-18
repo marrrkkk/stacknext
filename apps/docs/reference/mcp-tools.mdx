@@ -1,6 +1,6 @@
 ---
 title: MCP tools
-description: The twenty read-only tools, five prompts and response metadata the StackNext MCP server exposes to AI coding agents.
+description: The twenty-one read-only tools, five prompts and response metadata the StackNext MCP server exposes to AI coding agents.
 keywords: ["mcp tools","mcp prompts","tool output schemas","structured content"]
 ---
 
@@ -12,6 +12,7 @@ The StackNext MCP server is read-only. Every tool is annotated
 
 | Tool | Arguments | Returns |
 | --- | --- | --- |
+| `get_investigation_brief` | none | Recommended first call: one bounded summary with connection state, counts, coverage limits, up to three findings, three errors, three slow requests and deterministic suggested next calls |
 | `get_project_summary` | none | Project name, connection state, counts, latency summary, recent errors and instrumentation coverage. Start here |
 | `list_requests` | `limit`, `offset`, `q`, `method`, `status`, `slow`, `minDurationMs`, `sort` | Request summaries with route, status, duration, span/error/query counts and trace id |
 | `get_request` | `traceId` | Compatibility alias for `get_trace`: request summary, full span timeline, errors and database queries |

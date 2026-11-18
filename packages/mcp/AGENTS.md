@@ -12,7 +12,7 @@ protocol messages; logs go to stderr.
 
 ## Compatibility surface
 
-- Keep the twenty tool names, argument schemas and `readOnlyHint: true`
+- Keep the twenty-one tool names, argument schemas and `readOnlyHint: true`
   annotations stable. Response metadata and output fields may be added.
 - Keep the five guided prompts and the Agent Skill aligned with the same
   evidence-first workflows. Prompts cannot add capabilities or bypass

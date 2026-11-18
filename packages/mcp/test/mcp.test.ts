@@ -4,6 +4,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildMeta } from '../src/meta.js'
+import { investigationBriefOutputSchema } from '../src/schemas.js'
 import { StackNextApiClient } from '../src/client.js'
 import { createStackNextMcpServer } from '../src/server.js'
 import { verifyMcpServer } from '../src/verify.js'
@@ -1015,6 +1016,7 @@ describe('read-only MCP server', () => {
     expect(names).toEqual([
       'find_slow_requests',
       'get_error',
+      'get_investigation_brief',
       'get_project_summary',
       'get_request',
       'get_trace',
@@ -1043,6 +1045,7 @@ describe('read-only MCP server', () => {
   })
 
   it('publishes server instructions and guided prompts', async () => {
+    expect(client.getInstructions()).toContain('get_investigation_brief')
     expect(client.getInstructions()).toContain('get_project_summary')
     expect(client.getInstructions()).toContain('stacknext_list_diagnostics')
     expect(client.getInstructions()).toContain('stacknext_get_diagnostic')
@@ -1554,7 +1557,7 @@ it('verifies the MCP surface without an LLM client', async () => {
       token: TOKEN,
     })
     expect(result.ok).toBe(true)
-    expect(result.toolCount).toBe(20)
+    expect(result.toolCount).toBe(21)
     expect(result.promptCount).toBe(5)
     expect(result.connection).toBeDefined()
     expect(result.requests).toBeGreaterThan(0)
@@ -1587,6 +1590,7 @@ it('labels every tool result, including detail and error results, with trust and
   try {
     const calls: Array<{ name: string; args: Record<string, unknown> }> = [
       { name: 'get_project_summary', args: {} },
+      { name: 'get_investigation_brief', args: {} },
       { name: 'list_requests', args: {} },
       { name: 'get_request', args: { traceId: TRACE_A } },
       { name: 'list_traces', args: {} },
@@ -1610,7 +1614,7 @@ it('labels every tool result, including detail and error results, with trust and
         args: { snapshotId: SNAPSHOT_ID, traceId: TRACE_A },
       },
     ]
-    expect(calls).toHaveLength(20)
+    expect(calls).toHaveLength(21)
     for (const call of calls) {
       const result = await connection.client.callTool({
         name: call.name,
@@ -1713,4 +1717,235 @@ it('surfaces store revision in buildMeta', () => {
   expect(meta.trust).toBe('untrusted-application-data')
   expect(meta.revision).toBe(0)
   expect(buildMeta({ ...base, health: HEALTH as never }).revision).toBe(7)
+})
+
+it('returns one bounded, trustworthy investigation brief from a populated collector', async () => {
+  const collector = await startMockCollector()
+  const connection = await connect(
+    new StackNextApiClient({ baseUrl: collector.url, token: TOKEN }),
+  )
+  try {
+    const result = await connection.client.callTool({
+      name: 'get_investigation_brief',
+      arguments: {},
+    })
+    expect(result.isError).not.toBe(true)
+    const data = structuredOf(result)
+    expect(investigationBriefOutputSchema.safeParse(data).success).toBe(true)
+    expect(data.project).toBe('mcp-demo')
+    expect(data.connection).toEqual({ instrumentation: 'connected', instances: 1 })
+    expect(data.counts).toMatchObject({ requests: 2, failedRequests: 1, errors: 1 })
+    expect((data.coverage as { statusCounts: unknown }).statusCounts).toBeTruthy()
+    expect((data.coverage as { limitations: string[] }).limitations).toBeDefined()
+
+    const diagnostics = data.diagnostics as Array<Record<string, unknown>>
+    const errors = data.errors as Array<Record<string, unknown>>
+    const slowRequests = data.slowRequests as Array<Record<string, unknown>>
+    expect(diagnostics.length).toBeLessThanOrEqual(3)
+    expect(errors.length).toBeLessThanOrEqual(3)
+    expect(slowRequests.length).toBeLessThanOrEqual(3)
+    expect(diagnostics[0]).toMatchObject({ id: DIAGNOSTIC_ID, ruleId: 'slow-span' })
+    expect(Object.keys(diagnostics[0] ?? {}).sort()).toEqual([
+      'id',
+      'ruleId',
+      'severity',
+      'status',
+      'title',
+    ])
+    expect(errors[0]).toMatchObject({ id: 'error-1', fingerprint: 'fingerprint-1' })
+    expect(Object.keys(errors[0] ?? {}).sort()).toEqual([
+      'fingerprint',
+      'id',
+      'name',
+      'route',
+      'timestamp',
+    ])
+    expect(Object.keys(slowRequests[0] ?? {}).sort()).toEqual([
+      'durationMs',
+      'route',
+      'statusCode',
+      'traceId',
+    ])
+    expect(JSON.stringify(data)).not.toContain('"stack"')
+    expect(JSON.stringify(data)).not.toContain('"sql"')
+
+    const meta = data.meta as Record<string, unknown>
+    expect(meta.trust).toBe('untrusted-application-data')
+    expect(meta.revision).toBe(7)
+    expect(meta.completeness).toBeTruthy()
+    expect((meta.notes as string[]).join(' ')).toContain('capped at three')
+    const suggested = data.suggestedCalls as Array<{ tool: string; args: Record<string, unknown> }>
+    expect(suggested.map((call) => call.tool)).toEqual([
+      'stacknext_get_diagnostic',
+      'get_error',
+      'get_request',
+    ])
+    expect(suggested.length).toBeLessThanOrEqual(4)
+
+    for (const secret of [
+      'demo-url-secret',
+      'super-secret-demo-token',
+      'hunter2',
+      'action-attribute-secret',
+      'custom-attribute-secret',
+      'custom-url-secret',
+      'e2e-url-secret',
+    ]) {
+      expect(textOf(result)).not.toContain(secret)
+    }
+  } finally {
+    await connection.close()
+    await collector.close()
+  }
+})
+
+async function startBriefCollector(payload: {
+  health: Record<string, unknown>
+  summary: Record<string, unknown>
+  diagnostics?: unknown[]
+  errors?: unknown[]
+  requests?: unknown[]
+  coverage?: unknown
+}): Promise<{ url: string; close: () => Promise<void> }> {
+  const server = createServer((request, response) => {
+    if (request.headers.authorization !== `Bearer ${TOKEN}`) {
+      response.writeHead(401, { 'content-type': 'application/json' })
+      response.end('{"error":"Unauthorized"}')
+      return
+    }
+    const send = (body: unknown): void => {
+      response.writeHead(200, { 'content-type': 'application/json' })
+      response.end(JSON.stringify(body))
+    }
+    const url = new URL(request.url ?? '/', 'http://127.0.0.1')
+    const list = (items: unknown[]): Record<string, unknown> => ({
+      items,
+      total: items.length,
+      limit: 50,
+      offset: 0,
+    })
+    if (url.pathname === '/api/health') send(payload.health)
+    else if (url.pathname === '/api/summary') {
+      send({
+        health: payload.health,
+        summary: payload.summary,
+        ...(payload.coverage ? { coverage: payload.coverage } : {}),
+      })
+    } else if (url.pathname === '/api/diagnostics') {
+      send({ ...DIAGNOSTICS, ...list(payload.diagnostics ?? []) })
+    } else if (url.pathname === '/api/errors') {
+      send({ ...list(payload.errors ?? []), groups: [] })
+    } else if (url.pathname === '/api/requests') {
+      send(list(payload.requests ?? []))
+    } else send(list([]))
+  })
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const address = server.address() as AddressInfo
+  return {
+    url: `http://127.0.0.1:${address.port}`,
+    close: () => new Promise((resolve) => server.close(() => resolve())),
+  }
+}
+
+it('does not fabricate findings for an empty collector', async () => {
+  const emptyHealth = {
+    ...HEALTH,
+    connected: false,
+    connections: [],
+    store: { ...HEALTH.store, revision: 0 },
+    counts: {
+      requests: 0,
+      failedRequests: 0,
+      slowRequests: 0,
+      spans: 0,
+      errors: 0,
+      databaseQueries: 0,
+    },
+  }
+  const collector = await startBriefCollector({
+    health: emptyHealth,
+    summary: {
+      ...SUMMARY,
+      totalRequests: 0,
+      failedRequests: 0,
+      slowRequests: 0,
+      errorCount: 0,
+      databaseQueryCount: 0,
+      slowestRequests: [],
+      recentErrors: [],
+      firstEventTime: null,
+      lastEventTime: null,
+    },
+  })
+  const connection = await connect(
+    new StackNextApiClient({ baseUrl: collector.url, token: TOKEN }),
+  )
+  try {
+    const result = await connection.client.callTool({
+      name: 'get_investigation_brief',
+      arguments: {},
+    })
+    expect(result.isError).not.toBe(true)
+    const data = structuredOf(result)
+    expect(investigationBriefOutputSchema.safeParse(data).success).toBe(true)
+    expect(data.diagnostics).toEqual([])
+    expect(data.errors).toEqual([])
+    expect(data.slowRequests).toEqual([])
+    expect((data.coverage as { statusCounts: unknown }).statusCounts).toBeNull()
+    const notes = data.notes as string[]
+    expect(notes.join(' ')).toContain('No diagnostic findings')
+    expect(notes.join(' ')).toContain('No errors')
+    expect(notes.join(' ')).toContain('No requests')
+    expect(notes.join(' ')).toContain('coverage is unavailable')
+    expect((data.meta as Record<string, unknown>).trust).toBe('untrusted-application-data')
+    const suggested = data.suggestedCalls as Array<{ tool: string }>
+    expect(suggested.map((call) => call.tool)).toEqual([
+      'get_project_summary',
+      'list_requests',
+    ])
+  } finally {
+    await connection.close()
+    await collector.close()
+  }
+})
+
+it('caps each brief array at three even when the collector returns more', async () => {
+  const errors = Array.from({ length: 4 }, (_, index) => ({
+    ...ERROR_WITH_STACK,
+    id: `error-${index}`,
+  }))
+  const diagnostics = Array.from({ length: 4 }, (_, index) => ({
+    ...DIAGNOSTIC_FINDING,
+    id: `diag-0000000${index}-5678ef90`,
+  }))
+  const requests = Array.from({ length: 4 }, (_, index) => ({
+    ...REQUEST_A,
+    traceId: `${index}`.repeat(32),
+  }))
+  const collector = await startBriefCollector({
+    health: HEALTH,
+    summary: SUMMARY,
+    coverage: COVERAGE,
+    errors,
+    diagnostics,
+    requests,
+  })
+  const connection = await connect(
+    new StackNextApiClient({ baseUrl: collector.url, token: TOKEN }),
+  )
+  try {
+    const result = await connection.client.callTool({
+      name: 'get_investigation_brief',
+      arguments: {},
+    })
+    expect(result.isError).not.toBe(true)
+    const data = structuredOf(result)
+    expect((data.diagnostics as unknown[]).length).toBe(3)
+    expect((data.errors as unknown[]).length).toBe(3)
+    expect((data.slowRequests as unknown[]).length).toBe(3)
+    expect(investigationBriefOutputSchema.safeParse(data).success).toBe(true)
+  } finally {
+    await connection.close()
+    await collector.close()
+  }
 })
