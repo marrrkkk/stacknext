@@ -61,7 +61,7 @@ of starting the stdio protocol server.
 
 ## Documentation map
 
-- [Tools](tools.md) — all twenty read-only tools and arguments.
+- [Tools](tools.md) — all twenty-one read-only tools and arguments.
 - [Prompts](prompts.md) — the five guided prompts.
 - [Security](security.md) — loopback, redaction and read-only guarantees.
 

@@ -1,6 +1,9 @@
 # StackNext MCP tool reference
 
-All twenty tools are read-only, idempotent and restricted to the local
+Call `get_investigation_brief` first for a bounded starting brief, then use one
+narrow tool to answer a single question. Do not call every list tool in turn.
+
+All twenty-one tools are read-only, idempotent and restricted to the local
 collector. Tool text content is pretty-printed JSON; clients that support
 structured content also receive the same object in `structuredContent`. The
 object always contains the tool payload plus a top-level `meta` object.

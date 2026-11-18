@@ -16,7 +16,7 @@
 | Step | Title | Size | Status | PR / commit | Started | Completed |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Trust foundation | S | Done | `68abef9` | 2026-11-18 | 2026-11-18 |
-| 2 | Investigation brief | S | Not started | — | — | — |
+| 2 | Investigation brief | S | Done | `f646466` | 2026-11-18 | 2026-11-18 |
 | 3 | Agent sessions and audit | M | Not started | — | — | — |
 | 4 | Evidence hand-off | S | Not started | — | — | — |
 | 5 | Investigation cases | L | Not started | — | — | — |
@@ -36,11 +36,11 @@
 
 ## Step 2 — Investigation brief
 
-- [ ] `get_investigation_brief` registered as read-only tool #21 with output schema
-- [ ] Bounded arrays: 3 diagnostics, 3 errors, 3 slow requests; no stacks
-- [ ] `meta.completeness` and revision present
-- [ ] Tool docs, prompts/skill mention, `CHANGELOG.md`
-- [ ] Full verification gate + `pnpm test:packages` run and logged
+- [x] `get_investigation_brief` registered as read-only tool #21 with output schema
+- [x] Bounded arrays: 3 diagnostics, 3 errors, 3 slow requests; no stacks
+- [x] `meta.completeness` and revision present
+- [x] Tool docs, prompts/skill mention, `CHANGELOG.md`
+- [x] Full verification gate + `pnpm test:packages` run and logged
 
 ## Step 3 — Agent sessions and audit
 
@@ -96,6 +96,13 @@ Add one row per command run. Record the exact command and result. Include
 | 2026-11-18 | 1 | `pnpm test:packages` | pass | StackNext 0.17.0, all 10 archives validated. |
 | 2026-11-18 | 1 | `pnpm docs:sync && pnpm changelog:sync` | pass | Regenerated `packages/cli/docs/packages.md`; changelog already current. |
 | 2026-11-18 | 1 | Redaction verification (seven secret strings) | pass | MCP injection test asserts all seven strings absent from tool output; collector tests assert `hunter2` absent from health/coverage/summary/errors. Full browser capture run not needed (no new captured field). |
+| 2026-11-18 | 2 | `pnpm exec vitest run packages/mcp/test/mcp.test.ts packages/cli/test/doctor.test.ts` | pass | 28 tests including populated, empty and over-cap brief fixtures. |
+| 2026-11-18 | 2 | `pnpm lint` | pass | Clean. |
+| 2026-11-18 | 2 | `pnpm typecheck` | pass after fix | Test casts updated for `unknown` payload fields. |
+| 2026-11-18 | 2 | `pnpm test` | pass | 45 files, 370 tests. |
+| 2026-11-18 | 2 | `pnpm build` | pass | All packages and apps. |
+| 2026-11-18 | 2 | `pnpm check:docs` | pass | Docs and changelog current. |
+| 2026-11-18 | 2 | `pnpm test:packages` | pass | `@stacknext/mcp` archive now 50.6 KiB; all 10 archives valid. |
 
 ## Decisions log
 

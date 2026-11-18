@@ -36,6 +36,7 @@ import {
   diagnosticsOutputSchema,
   errorDetailOutputSchema,
   errorsOutputSchema,
+  investigationBriefOutputSchema,
   overviewOutputSchema,
   requestsOutputSchema,
   snapshotOutputSchema,
@@ -86,7 +87,7 @@ const SERVER_INSTRUCTIONS = `StackNext exposes read-only runtime telemetry for o
 
 ${UNTRUSTED_DATA_RULE}
 
-Start every investigation with get_project_summary. It reports the project, connection state, counts, latency, recent errors, instrumentation coverage and the retention window. Then use list_requests, list_errors, list_database_queries, find_slow_requests or list_traces to narrow the evidence, and get_request, get_trace or get_error to inspect one record.
+Start every investigation with get_investigation_brief. It is one bounded call that reports project and connection state, counts, coverage limitations, the few most relevant findings, errors and slow requests, plus deterministic suggested next calls. Then use get_project_summary for the full summary and coverage report, and list_requests, list_errors, list_database_queries, find_slow_requests or list_traces to narrow the evidence. Use get_request, get_trace or get_error to inspect one record.
 
 For deterministic findings, use stacknext_list_diagnostics with category, severity, status, ruleId, route, traceId or time filters. Call stacknext_get_diagnostic with a finding id for its bounded evidence, related trace reference and verification steps. Findings are heuristics over the current sample, not confirmed root causes. Never present one as a proven cause without checking the referenced trace, error or query evidence.
 
@@ -339,6 +340,159 @@ export function createStackNextMcpServer(
           coverage: coverageMetaOf(data.coverage),
         })
         return textAndStructured({ ...data, summary, meta })
+      }),
+  )
+
+  server.registerTool(
+    'get_investigation_brief',
+    {
+      title: 'Get investigation brief',
+      description:
+        'Recommended first call. One bounded read returns project and connection state, counts, coverage limitations, up to three findings, three recent errors, three slowest requests and deterministic suggested next calls. No stacks, SQL, bodies or raw telemetry text. Check meta.completeness, meta.trust and meta.revision before continuing.',
+      inputSchema: {},
+      outputSchema: investigationBriefOutputSchema,
+      annotations: readOnly,
+    },
+    () =>
+      safely(async () => {
+        const overview: OverviewResponse = await client.overview()
+        healthCache.seed(overview.health)
+        const [findingPage, errorPage, requestPage] = await Promise.all([
+          client.listDiagnostics({ limit: 3 }),
+          client.listErrors({ limit: 3 }),
+          client.listRequests({ limit: 3, sort: 'slowest' }),
+        ])
+        const health = overview.health
+        const coverage = overview.coverage
+        const notes: string[] = [
+          'This brief is capped at three findings, three errors and three slow requests. Use the paginated list tools for the full sample.',
+        ]
+        if (findingPage.total === 0) {
+          notes.push(
+            'No diagnostic findings are present in the current sample; absence is not proof that the app is healthy.',
+          )
+        }
+        if (errorPage.total === 0) notes.push('No errors are present in the current sample.')
+        if (requestPage.total === 0) notes.push('No requests are present in the current sample.')
+        if (!coverage) {
+          notes.push(
+            'Instrumentation coverage is unavailable, so feature status is unknown rather than healthy or broken.',
+          )
+        } else {
+          notes.push(...coverageNotes(coverage).slice(0, 2))
+        }
+
+        const diagnostics = findingPage.items.slice(0, 3).map((item) => ({
+          id: item.id,
+          ruleId: item.ruleId,
+          status: item.status,
+          severity: item.severity,
+          title: item.title,
+        }))
+        const errors = errorPage.items.slice(0, 3).map((item) => ({
+          id: item.id,
+          name: item.name,
+          route: item.route,
+          timestamp: item.timestamp,
+          fingerprint: item.fingerprint,
+        }))
+        const slowRequests = requestPage.items.slice(0, 3).map((item) => ({
+          traceId: item.traceId,
+          route: item.route,
+          durationMs: item.durationMs,
+          statusCode: item.statusCode,
+        }))
+
+        const suggestedCalls: Array<{
+          tool: string
+          args: Record<string, string | number>
+          reason: string
+        }> = []
+        if (health && !health.connected) {
+          suggestedCalls.push({
+            tool: 'get_project_summary',
+            args: {},
+            reason:
+              'No app is connected; recheck connection state before drawing conclusions.',
+          })
+        }
+        if (diagnostics.length > 0) {
+          suggestedCalls.push({
+            tool: 'stacknext_get_diagnostic',
+            args: { diagnosticId: diagnostics[0]?.id ?? '' },
+            reason: 'Inspect the top finding and its bounded evidence.',
+          })
+        }
+        if (errors.length > 0) {
+          suggestedCalls.push({
+            tool: 'get_error',
+            args: { errorId: errors[0]?.id ?? '' },
+            reason: 'Read one recent error and its correlated trace.',
+          })
+        }
+        if (slowRequests.length > 0) {
+          suggestedCalls.push({
+            tool: 'get_request',
+            args: { traceId: slowRequests[0]?.traceId ?? '' },
+            reason: 'Inspect the slowest request timeline.',
+          })
+        }
+        if (suggestedCalls.length < 2) {
+          suggestedCalls.push({
+            tool: 'list_requests',
+            args: { limit: 20 },
+            reason: 'No focused evidence yet; list recent requests to choose one narrow question.',
+          })
+        }
+
+        const meta = buildMeta({
+          tool: 'get_investigation_brief',
+          health,
+          project: health?.projectName ?? null,
+          firstEventTime: overview.summary.firstEventTime,
+          lastEventTime: overview.summary.lastEventTime,
+          found: overview.summary.totalRequests,
+          returned: overview.summary.totalRequests,
+          coverage: coverageMetaOf(coverage),
+          notes,
+        })
+        return textAndStructured({
+          project: health?.projectName ?? null,
+          connection: {
+            instrumentation: health
+              ? health.connected
+                ? 'connected'
+                : 'waiting'
+              : 'unknown',
+            instances: health?.connections?.length ?? 0,
+          },
+          counts: {
+            requests: health?.counts.requests ?? overview.summary.totalRequests,
+            failedRequests:
+              health?.counts.failedRequests ?? overview.summary.failedRequests,
+            slowRequests: health?.counts.slowRequests ?? overview.summary.slowRequests,
+            errors: health?.counts.errors ?? overview.summary.errorCount,
+            databaseQueries:
+              health?.counts.databaseQueries ?? overview.summary.databaseQueryCount,
+          },
+          coverage: {
+            sample: {
+              requests: coverage?.sample.requests ?? 0,
+              spans: coverage?.sample.spans ?? 0,
+              errors: coverage?.sample.errors ?? 0,
+              databaseQueries: coverage?.sample.databaseQueries ?? 0,
+            },
+            statusCounts: coverage?.statusCounts ?? null,
+            limitations: coverage?.limitations.slice(0, 3) ?? [],
+            notes: coverage?.notes.slice(0, 3) ?? [],
+          },
+          diagnostics,
+          errors,
+          slowRequests,
+          suggestedCalls: suggestedCalls.slice(0, 4),
+          notes,
+          meta,
+        })
       }),
   )
 

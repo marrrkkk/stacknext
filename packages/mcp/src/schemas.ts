@@ -750,3 +750,70 @@ export const snapshotOutputSchema = z
   .passthrough()
 
 export const snapshotTraceOutputSchema = traceDetailOutputSchema
+
+/**
+ * Bounded first-move brief. It intentionally carries no stacks, SQL, bodies,
+ * headers or free text copied from telemetry — only ids and short labels.
+ */
+export const investigationBriefOutputSchema = z
+  .object({
+    project: z.string().nullable(),
+    connection: z.object({
+      instrumentation: z.enum(['connected', 'waiting', 'unknown']),
+      instances: z.number().int(),
+    }),
+    counts: z.object({
+      requests: z.number().int(),
+      failedRequests: z.number().int(),
+      slowRequests: z.number().int(),
+      errors: z.number().int(),
+      databaseQueries: z.number().int(),
+    }),
+    coverage: z.object({
+      sample: z.object({
+        requests: z.number().int(),
+        spans: z.number().int(),
+        errors: z.number().int(),
+        databaseQueries: z.number().int(),
+      }),
+      statusCounts: z.record(z.string(), z.number().int()).nullable(),
+      limitations: z.array(z.string()),
+      notes: z.array(z.string()),
+    }),
+    diagnostics: z.array(
+      z.object({
+        id: z.string(),
+        ruleId: z.string(),
+        status: z.enum(['observed', 'possible', 'insufficient-evidence']),
+        severity: z.enum(['info', 'warning', 'error']),
+        title: z.string(),
+      }),
+    ),
+    errors: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        route: z.string().nullable(),
+        timestamp: z.number(),
+        fingerprint: z.string(),
+      }),
+    ),
+    slowRequests: z.array(
+      z.object({
+        traceId: z.string(),
+        route: z.string().nullable(),
+        durationMs: z.number().nullable(),
+        statusCode: z.number().nullable(),
+      }),
+    ),
+    suggestedCalls: z.array(
+      z.object({
+        tool: z.string(),
+        args: z.record(z.string(), z.union([z.string(), z.number()])),
+        reason: z.string(),
+      }),
+    ),
+    notes: z.array(z.string()),
+    meta: metaSchema,
+  })
+  .passthrough()

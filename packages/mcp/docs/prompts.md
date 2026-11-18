@@ -7,7 +7,8 @@ description: The five guided MCP prompts and what they can and cannot do.
 
 The server publishes five optional prompts. They shape an investigation and
 suggest tool calls; they do not execute tools, add capabilities or bypass the
-read-only boundary.
+read-only boundary. Call `get_investigation_brief` first for a bounded first
+move, then pick one narrow question and use the matching prompt below.
 
 | Prompt | Arguments | Use |
 | --- | --- | --- |
