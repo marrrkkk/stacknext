@@ -1709,6 +1709,37 @@ async function main() {
       )
       assert(pageErrors.length === beforeClipboardRequests, 'copying the prompt threw a client error')
       ok('diagnostic detail copies a bounded evidence prompt with no new API call')
+
+      await page.keyboard.press('Control+k')
+      const commandInput = page.locator('input[aria-label="Search views and actions"]')
+      await commandInput.waitFor({ state: 'visible' })
+      await commandInput.fill('Cases')
+      await page.keyboard.press('Enter')
+      await page.waitForURL('**/cases')
+      assert(page.url().includes('/cases'), 'command palette did not navigate to Cases')
+      ok('command palette navigates to the Cases view')
+
+      const auditForUi = await api('/api/agents')
+      if (auditForUi.sessions.length > 0) {
+        await page.goto(
+          `${runtime.dashboardUrl}/agents/${auditForUi.sessions[0].sessionId}`,
+          { waitUntil: 'domcontentloaded' },
+        )
+        await page.waitForSelector('.agent-evidence button', { timeout: 20_000 })
+        const beforePath = new URL(page.url()).pathname
+        await page.locator('.agent-evidence button').first().click()
+        await page.waitForFunction(
+          (previous) => window.location.pathname !== previous,
+          beforePath,
+        )
+        assert(
+          /(\/traces\/|\/errors\/|\/diagnostics\/|\/snapshots\/|\/comparisons\/|\/baselines\/|\/runs\/)/.test(
+            new URL(page.url()).pathname,
+          ),
+          `evidence link opened an unexpected route: ${page.url()}`,
+        )
+        ok('agent timeline evidence link opens its detail page')
+      }
     } finally {
       await browser.close()
     }

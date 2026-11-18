@@ -6,7 +6,7 @@
  * not use workspace aliases.
  *
  * Usage:
- *   node scripts/consumer-smoke.mjs [--next 16.4.3] [--pm npm|pnpm]
+ *   node scripts/consumer-smoke.mjs [--next 16.4.6] [--pm npm|pnpm]
  *     [--skip-build] [--keep] [--json]
  */
 import { spawn, spawnSync } from 'node:child_process'
@@ -21,7 +21,7 @@ function option(name, fallback) {
   return index >= 0 ? process.argv[index + 1] : fallback
 }
 
-const nextVersion = option('--next', process.env.STACKNEXT_NEXT ?? '16.4.3')
+const nextVersion = option('--next', process.env.STACKNEXT_NEXT ?? '16.4.6')
 const packageManager = option('--pm', process.env.STACKNEXT_PM ?? 'npm')
 const keep = process.argv.includes('--keep')
 const jsonOutput = process.argv.includes('--json')
