@@ -10,7 +10,6 @@ import type {
   VerificationResult,
 } from '@stacknext/core'
 import {
-  VERIFY_MAX_SINCE_MS,
   verifyDiagnosticStatus,
   verifyMaxDatabaseQueries,
   verifyMaxRequestDuration,
@@ -74,8 +73,9 @@ function routeValue(value: string | undefined): string {
   return value
 }
 
+/** `--since` is an absolute epoch-millisecond timestamp, like the diagnostics API. */
 function sinceValue(value: string | undefined): number {
-  const since = integerOption(value, '--since', 0, VERIFY_MAX_SINCE_MS)
+  const since = integerOption(value, '--since', 0, Number.MAX_SAFE_INTEGER)
   if (since === undefined) throw new Error('--since is required')
   return since
 }

@@ -1005,6 +1005,10 @@ async function runMcpChecks(runtime, errorId, diagnosticId, regression, snapshot
       agentState.sessions.some((session0) => session0.toolCalls > 0),
       'no attributed tool call was recorded',
     )
+    assert(
+      agentState.sessions.some((session0) => session0.client?.name === 'stacknext-e2e'),
+      'MCP client identity from initialize was not attributed',
+    )
     const serializedAgents = JSON.stringify(agentState)
     for (const secret of [
       'demo-url-secret',

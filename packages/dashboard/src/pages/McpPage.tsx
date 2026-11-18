@@ -59,12 +59,21 @@ export function McpPage({
 }): React.ReactElement {
   const state = useAsync<McpData>(
     async (signal) => {
-      const [config, health, agents] = await Promise.all([
+      // Agent audit is additive: an older collector without /api/agents must
+      // not hide the config and health this page already showed.
+      const [config, health, agentResult] = await Promise.all([
         api.config(signal),
         api.health(signal),
-        api.agents(signal),
+        api.agents(signal).then(
+          (value) => value,
+          () => null,
+        ),
       ])
-      return { config, health, agents }
+      return {
+        config,
+        health,
+        agents: agentResult ?? { enabled: false, sessions: [], total: 0, dropped: 0 },
+      }
     },
     'mcp',
     refreshKey,

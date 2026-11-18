@@ -408,7 +408,7 @@ export function createStackNextMcpServer(
         const errors = errorPage.items.slice(0, 3).map((item) => ({
           id: item.id,
           name: item.name,
-          route: item.route,
+          route: item.route ?? null,
           timestamp: item.timestamp,
           fingerprint: item.fingerprint,
         }))
@@ -1708,13 +1708,16 @@ export async function startMcpServer(
     attribution,
   })
   const server = createStackNextMcpServer(client)
-  const transport = new StdioServerTransport()
-  await server.connect(transport)
-  // Client identity is only known after initialize. Missing info is optional.
-  const info = server.server.getClientVersion()
-  if (info) {
+  // Client identity is only known once the client completes initialize. Reading
+  // it directly after connect() is too early: connect() only starts the stdio
+  // transport, and initialize arrives later over stdin.
+  server.server.oninitialized = () => {
+    const info = server.server.getClientVersion()
+    if (!info) return
     if (!attribution.clientName) attribution.clientName = info.name
     if (!attribution.clientVersion) attribution.clientVersion = info.version
   }
+  const transport = new StdioServerTransport()
+  await server.connect(transport)
   return server
 }

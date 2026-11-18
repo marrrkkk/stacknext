@@ -48,7 +48,14 @@ export function evidenceIdsFromPath(pathname: string): string[] {
   const segments = pathname.split('/').filter(Boolean)
   const ids: string[] = []
   const push = (value: string | undefined, pattern = DETAIL_ID_PATTERN): void => {
-    if (value && pattern.test(decodeURIComponent(value))) ids.push(value)
+    if (!value) return
+    // Path segments come from an untrusted request line. Malformed percent
+    // escapes must not throw after the response has already been sent.
+    try {
+      if (pattern.test(decodeURIComponent(value))) ids.push(value)
+    } catch {
+      // Skip ids we cannot decode; the pathname itself is still recorded.
+    }
   }
   if (segments[0] === 'api' && segments[2]) {
     const group = segments[1]

@@ -45,7 +45,11 @@ const HANDLERS: Record<
     argName: 'comparisonId',
     label: 'baseline comparison',
   },
-  snapshot: { tool: 'get_snapshot', argName: 'snapshotId', label: 'saved snapshot' },
+  snapshot: {
+    tool: 'stacknext_get_snapshot',
+    argName: 'snapshotId',
+    label: 'saved snapshot',
+  },
 }
 
 const ID_PATTERNS: Record<EvidenceKind, RegExp> = {
@@ -94,7 +98,7 @@ export function buildEvidencePrompt(
     lines.push(`Check the correlated trace with \`get_trace\` using traceId "${extras.traceId}".`)
   }
   lines.push(CITE_RULE, UNTRUSTED_WARNING)
-  const footer = `To persist this hand-off: \`stacknext case add ${target.id} --evidence ${target.kind}:${target.id}\``
+  const footer = `To persist this hand-off: \`${buildCaseCommand(target)}\``
   lines.push(
     extras.caseId && CASE_ID_PATTERN.test(extras.caseId)
       ? `${footer} (case ${extras.caseId})`

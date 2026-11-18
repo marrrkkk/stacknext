@@ -84,7 +84,13 @@ function VerificationBlock({
                   type="button"
                   className="link-button mono"
                   key={id}
-                  onClick={() => onNavigate(`/traces/${encodeURIComponent(id)}`)}
+                  onClick={() => {
+                    const href = evidenceHref(
+                      check.predicate === 'diagnosticStatus' ? 'diagnostic' : 'trace',
+                      id,
+                    )
+                    if (href) onNavigate(href)
+                  }}
                 >
                   <Id value={id} />
                 </button>
