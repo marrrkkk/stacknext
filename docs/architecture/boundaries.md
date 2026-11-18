@@ -106,8 +106,21 @@ All tools stay `readOnlyHint: true`; the API client only performs GETs and
 refuses non-loopback URLs. stdout is protocol-only. Prompts and the Agent Skill
 shape investigations but cannot add capabilities, mutate data or bypass
 redaction. Keep tool names and arguments stable; response metadata is additive.
-The six regression tools read runs, baselines and comparisons only, and the
-three snapshot tools read snapshots only.
+The six regression tools read runs, baselines and comparisons only, the three
+snapshot tools read snapshots only, and the two case tools read local cases only.
+Every result labels captured text as untrusted and carries a store revision;
+sanitization happens at the MCP boundary, never in the store.
+
+## Agent audit and cases stay local and bounded
+
+Agent attribution headers are untrusted labels: they grant no authority and are
+capped and stripped before storage. The audit keeps at most 500 events and 50
+sessions for 30 minutes with a drop counter, and never records query values,
+bodies, tokens or machine/user identifiers. Cases are append-only event files
+under `.stacknext/cases` with `0700` directories, `0600` files and explicit caps.
+Only the CLI writes; MCP, the collector API and the dashboard only read. Verification
+is deterministic and bounded, uses exact correlation rather than time windows,
+and reports `unverifiable` when evidence is missing or ambiguous.
 
 ## Playwright stays optional and sequential
 

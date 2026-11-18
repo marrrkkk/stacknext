@@ -144,9 +144,18 @@ the request, waterfall, database queries and errors on your machine.
 - **MCP** — twenty-three read-only tools for coding agents, over local stdio, with
   structured output, response metadata, coverage summary, diagnostic findings,
   regression records, saved snapshots and optional guided prompts.
+- **Agent activity and cases** — each `stacknext mcp` session is attributed by a
+  local random id; a bounded, redacted audit shows which evidence an agent read.
+  Append-only investigation cases link a hypothesis to evidence ids and a
+  deterministic verification result. No query values, bodies or identifiers are
+  captured, and agents never get a write tool.
+- **Verification** — `stacknext verify` checks a falsifiable claim against
+  bounded captured evidence and returns `supported`, `contradicted` or
+  `unverifiable` with evidence ids, revision and sample size.
 - **Agent Skill** — a portable `stacknext-debugging` skill with evidence-first
   workflows for errors, latency, database activity, traces, diagnostic findings,
-  coverage gaps and runtime regression evidence.
+  coverage gaps, investigation cases, verification and runtime regression
+  evidence.
 - **Privacy boundary** — no bodies, headers, cookies, query values or SQL bind
   parameters. Redaction happens in the app and again in the collector.
 - **Real local UX** — SSE updates, dark/light themes, responsive layout and
@@ -210,7 +219,8 @@ Routes: `/`, `/traces` (`?view=requests` for the HTTP-request view),
 `/comparisons`, `/comparisons/:id`, `/snapshots`, `/snapshots/:id`,
 `/snapshots/:id/traces`, `/snapshots/:id/traces/:traceId`,
 `/snapshots/:id/errors`, `/snapshots/:id/errors/:errorId`,
-`/snapshots/:id/database`, `/settings` and `/mcp`. Legacy `/requests` and
+`/snapshots/:id/database`, `/agents`, `/agents/:sessionId`, `/cases`,
+`/cases/:caseId`, `/settings` and `/mcp`. Legacy `/requests` and
 `/requests/:traceId` URLs redirect to the request view and trace detail.
 
 ## Integrations and manual setup
@@ -294,6 +304,17 @@ stacknext snapshot export <snapshot-id> [-o <file> | --stdout] [--force]
 stacknext snapshot import <file> [--label <text>] [--json]
 stacknext snapshot delete <snapshot-id> --yes [--json]
 stacknext export [-o <file> | --stdout] [--force]
+stacknext case new --title "..." [--hypothesis "..."] [--evidence trace:<id>] [--session <id>] [--json]
+stacknext case add <case-id> --evidence <kind>:<id> [--note "..."] [--json]
+stacknext case note <case-id> --text "..." [--json]
+stacknext case close <case-id> --status verified|refuted|abandoned [--json]
+stacknext case list [--json]
+stacknext case show <case-id> [--json]
+stacknext verify --trace <id> --expect-status <code> [--json]
+stacknext verify --route <route> --since <ms> --max-queries <n> [--json]
+stacknext verify --route <route> --since <ms> --max-duration <ms> [--json]
+stacknext verify --diagnostic <id> --expect-status <status> [--json]
+stacknext verify --case <case-id> --json
 stacknext uninstall [--yes] [--keep-config] [--remove-data] [--json]
 stacknext mcp [--collector <url>] [--token <token>] [--check]
 ```
@@ -301,7 +322,8 @@ stacknext mcp [--collector <url>] [--token <token>] [--check]
 `dev` starts the loopback collector, writes runtime state to
 `.stacknext/run.json` (`0600`), then runs the app's own `dev` script with the
 collector URL and token in its environment. `status`, `doctor`, `coverage`,
-`diagnose`, `snapshot`, `export` and `mcp` use that runtime state. `doctor` is
+`diagnose`, `snapshot`, `export`, `case`, `verify` and `mcp` use that runtime
+state. `doctor` is
 the first stop when data is missing; `coverage` shows what the current sample
 actually observed; `diagnose` lists or opens deterministic findings with
 filters; `snapshot` freezes the current sample into a redacted local file. Set

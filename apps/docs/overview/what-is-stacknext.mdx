@@ -12,7 +12,11 @@ in-memory sample and gives you four ways to read it:
 - a dashboard served by the local collector;
 - `stacknext` CLI commands for status, coverage, diagnostics, snapshots and
   regression records;
-- a read-only MCP server for AI coding agents;
+- a read-only MCP server for AI coding agents, with untrusted-data labelling and
+  a change revision on every result;
+- local agent session attribution, append-only investigation cases and
+  deterministic `stacknext verify` checks — a dashboard where humans see what an
+  agent read and concluded;
 - redacted snapshots and regression records stored under `.stacknext`.
 
 ## Data flow
