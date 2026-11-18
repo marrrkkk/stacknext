@@ -135,8 +135,27 @@ describe('stacknext verify', () => {
       runVerify({ trace: TRACE, expectStatus: '999' }, projectDir),
     ).rejects.toThrow(/--expect-status/)
     await expect(
-      runVerify({ route: '/api/projects', since: '999999999999', maxQueries: '3' }, projectDir),
+      runVerify({ route: '/api/projects', since: 'not-a-timestamp', maxQueries: '3' }, projectDir),
     ).rejects.toThrow(/--since/)
+  })
+
+  it('treats --since as an absolute epoch-millisecond timestamp', async () => {
+    const json = captureJson()
+    const included = await runVerify(
+      { route: '/api/projects', since: '1000', maxQueries: '3', json: true },
+      projectDir,
+    )
+    expect(included).toBe(0)
+    expect(json().result).toBe('supported')
+
+    const future = String(Date.now() + 60_000)
+    const futureJson = captureJson()
+    const excluded = await runVerify(
+      { route: '/api/projects', since: future, maxQueries: '3', json: true },
+      projectDir,
+    )
+    expect(excluded).toBe(2)
+    expect(futureJson().result).toBe('unverifiable')
   })
 
   it('appends one verification event when re-running a saved case claim', async () => {

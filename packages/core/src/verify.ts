@@ -3,7 +3,6 @@ import type { RequestSummary, TraceDetail } from './types.js'
 
 /** Deterministic, bounded checks over already-fetched evidence. No I/O here. */
 export const VERIFY_SAMPLE_LIMIT = 20
-export const VERIFY_MAX_SINCE_MS = 86_400_000
 
 export type VerificationOutcome = 'supported' | 'contradicted' | 'unverifiable'
 
