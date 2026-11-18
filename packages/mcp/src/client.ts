@@ -1,4 +1,5 @@
 import type {
+  CaseView,
   DatabaseFilters,
   DatabaseQueryListItem,
   DiagnosticDetailResponse,
@@ -315,6 +316,19 @@ export class StackNextApiClient {
 
   async getComparison(id: string): Promise<Comparison> {
     return this.get<Comparison>(`/api/comparisons/${encodeURIComponent(id)}`)
+  }
+
+  async listCases(
+    options: { limit?: number; offset?: number } = {},
+  ): Promise<PageResult<CaseView>> {
+    const params = new URLSearchParams()
+    appendNumber(params, 'limit', options.limit)
+    appendNumber(params, 'offset', options.offset)
+    return this.get<PageResult<CaseView>>('/api/cases', params)
+  }
+
+  async getCase(id: string): Promise<CaseView> {
+    return this.get<CaseView>(`/api/cases/${encodeURIComponent(id)}`)
   }
 
   async listSnapshots(options: {

@@ -23,7 +23,7 @@ source. It is copied into the CLI archive before packing.
 ## What it covers
 
 - local documentation discovery and version checks;
-- the twenty-one read-only MCP tools;
+- the twenty-three read-only MCP tools;
 - evidence-first workflows for errors, slow requests, database activity,
   diagnostic findings, regression records and snapshots;
 - mandatory reasoning rules: observation versus causation, null durations,

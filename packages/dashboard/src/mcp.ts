@@ -126,6 +126,16 @@ export const MCP_TOOLS: McpTool[] = [
     group: 'snapshots',
     purpose: 'One full trace inside a saved snapshot.',
   },
+  {
+    name: 'list_cases',
+    group: 'diagnostics',
+    purpose: 'Read local append-only investigation cases, newest first.',
+  },
+  {
+    name: 'get_case',
+    group: 'diagnostics',
+    purpose: 'One case with its hypothesis, evidence, notes and event timeline.',
+  },
 ]
 
 export const MCP_CONFIG = `{

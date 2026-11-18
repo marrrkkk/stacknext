@@ -64,6 +64,29 @@ runtime token is never printed. `--json` keeps the existing
 
 Exit code is `1` when a check fails.
 
+## `stacknext case`
+
+Manage local, append-only investigation cases under `.stacknext/cases`. Each
+command appends exactly one event file line; nothing rewrites or truncates
+earlier events. Titles and notes are length-capped and passed through the
+redactor. Files are `0600` inside `0700` directories; at most 200 cases, 500
+events per case and 100 evidence ids per case are retained. Cases are never
+uploaded or auto-deleted.
+
+| Command | Meaning |
+| --- | --- |
+| `case new --title "..." [--hypothesis "..."] [--evidence <kind>:<id>]... [--session <id>]` | Create a case. Evidence kinds: `trace`, `error`, `diagnostic`, `comparison`, `snapshot`. |
+| `case add <id> --evidence <kind>:<id> [--note "..."]` | Append one evidence id and, optionally, one redacted note. |
+| `case note <id> --text "..."` | Append a redacted note. |
+| `case close <id> --status verified\|refuted\|abandoned` | Append a terminal status. |
+| `case list` | List cases newest first. |
+| `case show <id>` | Show one folded case view. |
+
+Every command accepts `--json` and returns the current `CaseView` or a small
+result object. The collector exposes cases read-only at `GET /api/cases` and
+`GET /api/cases/:id`; MCP tools `list_cases` and `get_case` are read-only too.
+The dashboard's `/cases` pages never write.
+
 ## `stacknext coverage`
 
 Show what the current retention window observed. Evidence, not a score.

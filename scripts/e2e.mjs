@@ -656,6 +656,8 @@ async function runMcpChecks(runtime, errorId, diagnosticId, regression, snapshot
     const names = new Set(tools.tools.map((tool) => tool.name))
     for (const name of [
       'get_investigation_brief',
+      'get_case',
+      'list_cases',
       'get_project_summary',
       'list_requests',
       'get_request',
@@ -679,14 +681,14 @@ async function runMcpChecks(runtime, errorId, diagnosticId, regression, snapshot
     ]) {
       assert(names.has(name), `MCP tool ${name} is missing`)
     }
-    assert(tools.tools.length === 21, `MCP exposes ${tools.tools.length} tools, expected 21`)
+    assert(tools.tools.length === 23, `MCP exposes ${tools.tools.length} tools, expected 23`)
     const notReadOnly = tools.tools.find(
       (tool) => tool.annotations?.readOnlyHint !== true,
     )
     assert(!notReadOnly, `MCP tool ${notReadOnly?.name} is not marked read-only`)
     const withoutSchema = tools.tools.find((tool) => !tool.outputSchema)
     assert(!withoutSchema, `MCP tool ${withoutSchema?.name} has no output schema`)
-    ok('MCP exposes 21 read-only tools with output schemas')
+    ok('MCP exposes 23 read-only tools with output schemas')
 
     const prompts = await session.request('prompts/list', {})
     const promptNames = new Set(prompts.prompts.map((prompt) => prompt.name))
@@ -960,6 +962,29 @@ async function runMcpChecks(runtime, errorId, diagnosticId, regression, snapshot
     assert(typeof brief.structuredContent?.meta?.revision === 'number', 'MCP brief is missing the revision')
     assert(brief.structuredContent?.suggestedCalls?.length > 0, 'MCP brief has no suggested calls')
     ok('MCP investigation brief is bounded and labelled')
+
+    const caseListResult = await session.request('tools/call', {
+      name: 'list_cases',
+      arguments: { limit: 10 },
+    })
+    assert(
+      caseListResult.structuredContent?.items?.length > 0,
+      'MCP list_cases returned no cases',
+    )
+    const listedCase = caseListResult.structuredContent.items[0]
+    const caseDetailResult = await session.request('tools/call', {
+      name: 'get_case',
+      arguments: { caseId: listedCase.id },
+    })
+    assert(
+      caseDetailResult.structuredContent?.id === listedCase.id,
+      'MCP get_case returned the wrong case',
+    )
+    assert(
+      caseDetailResult.structuredContent?.meta?.trust === 'untrusted-application-data',
+      'MCP case result is missing the trust marker',
+    )
+    ok('MCP reads local cases read-only with trust metadata')
 
     const agentState = await fetchJson(`${runtime.collectorUrl}/api/agents`, runtime.token)
     assert(agentState.enabled === true, 'agent audit is not enabled by default')
@@ -1515,6 +1540,51 @@ async function main() {
 
     const snapshot = await runSnapshotChecks(api, secrets)
 
+    const createdCase = JSON.parse(
+      runCli([
+        'case',
+        'new',
+        '--title',
+        'E2E investigation',
+        '--hypothesis',
+        'The slow route issues bounded database work',
+        '--evidence',
+        `trace:${slow.traceId}`,
+        '--json',
+      ]),
+    )
+    assert(createdCase.id?.startsWith('case_'), 'case new returned no id')
+    assert(createdCase.status === 'open', 'new case is not open')
+    const addedCase = JSON.parse(
+      runCli([
+        'case',
+        'add',
+        createdCase.id,
+        '--evidence',
+        `error:${error.id}`,
+        '--note',
+        'verified with e2e fixture',
+        '--json',
+      ]),
+    )
+    assert(addedCase.evidence.length === 2, 'case add did not append evidence')
+    assert(addedCase.events.length === 3, 'case add did not append events')
+    const closedCase = JSON.parse(
+      runCli(['case', 'close', createdCase.id, '--status', 'verified', '--json']),
+    )
+    assert(closedCase.status === 'verified', 'case close did not set status')
+    const caseList = JSON.parse(runCli(['case', 'list', '--json']))
+    assert(
+      caseList.items.some((entry) => entry.id === createdCase.id),
+      'case list is missing the new case',
+    )
+    const apiCase = await api(`/api/cases/${createdCase.id}`)
+    assert(apiCase.id === createdCase.id, 'collector case detail returned the wrong case')
+    for (const secret of secrets) {
+      assert(!JSON.stringify(apiCase).includes(secret), `secret ${secret} leaked into a case`)
+    }
+    ok('CLI case round-trip writes append-only evidence and the collector reads it')
+
     await runMcpChecks(
       runtime,
       error.id,
@@ -1634,6 +1704,8 @@ async function main() {
       ['settings', '/settings'],
       ['mcp', '/mcp'],
       ['agents', '/agents'],
+      ['cases', '/cases'],
+      ['case detail', `/cases/${createdCase.id}`],
     ]) {
       const page = await fetch(`${runtime.dashboardUrl}${pathname}`)
       assert(page.ok, `${label} dashboard route responded ${page.status}`)

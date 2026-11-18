@@ -21,13 +21,13 @@ describe('MCP tool catalog', () => {
 
   it('derives a breakdown whose parts sum to the full catalog', () => {
     const counts = mcpToolCounts()
-    expect(counts.map((entry) => entry.count)).toEqual([10, 2, 6, 3])
+    expect(counts.map((entry) => entry.count)).toEqual([10, 4, 6, 3])
     expect(counts.reduce((sum, entry) => sum + entry.count, 0)).toBe(
       MCP_TOOLS.length,
     )
-    expect(MCP_TOOLS).toHaveLength(21)
+    expect(MCP_TOOLS).toHaveLength(23)
     expect(mcpToolBreakdown()).toBe(
-      '10 live · 2 diagnostics · 6 regression · 3 snapshots',
+      '10 live · 4 diagnostics · 6 regression · 3 snapshots',
     )
   })
 
@@ -61,7 +61,7 @@ describe('filterMcpTools', () => {
       'stacknext_get_comparison',
     ])
     expect(filterMcpTools(MCP_TOOLS, 'snapshot', 'regression')).toEqual([])
-    expect(filterMcpTools(MCP_TOOLS, '', 'diagnostics')).toHaveLength(2)
+    expect(filterMcpTools(MCP_TOOLS, '', 'diagnostics')).toHaveLength(4)
   })
 
   it('matches the readable group label as well as the id', () => {

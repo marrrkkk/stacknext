@@ -33,6 +33,8 @@ import {
 import {
   baselineOutputSchema,
   baselinesOutputSchema,
+  caseOutputSchema,
+  casesOutputSchema,
   comparisonOutputSchema,
   comparisonsOutputSchema,
   databaseOutputSchema,
@@ -1419,6 +1421,71 @@ export function createStackNextMcpServer(
         {
           404: `No trace "${args.traceId}" exists in snapshot "${args.snapshotId}". Call stacknext_get_snapshot to list the snapshot's first traces.`,
           400: 'Snapshot ids look like snap-xxxxxxxxxxxxxxxx and trace ids are 32 hexadecimal characters.',
+        },
+      ),
+  )
+
+  server.registerTool(
+    'list_cases',
+    {
+      title: 'List investigation cases',
+      description:
+        'Lists local, append-only investigation cases with status, title, evidence count and session, newest first. Cases are written by "stacknext case" in the CLI; this tool is read-only.',
+      inputSchema: {
+        limit: limitSchema,
+        offset: offsetSchema,
+      },
+      outputSchema: casesOutputSchema,
+      annotations: readOnly,
+    },
+    (args) =>
+      safely(async () => {
+        const page = await toolClient('list_cases').listCases({
+          ...(args.limit !== undefined ? { limit: args.limit } : {}),
+          ...(args.offset !== undefined ? { offset: args.offset } : {}),
+        })
+        const health = await healthCache.get()
+        const meta = pageMeta('list_cases', health, page, null, null, [
+          'Cases are local, manual records. Their notes are redacted free text, not raw telemetry.',
+        ])
+        return textAndStructured({ ...page, meta })
+      }),
+  )
+
+  server.registerTool(
+    'get_case',
+    {
+      title: 'Get investigation case',
+      description:
+        'Returns one local investigation case: its hypothesis, evidence ids, redacted notes, session and the folded event timeline. Read-only; the CLI owns all case writes.',
+      inputSchema: {
+        caseId: z
+          .string()
+          .regex(/^case_[0-9a-f-]{36}$/i, 'caseId must look like case_<uuid>'),
+      },
+      outputSchema: caseOutputSchema,
+      annotations: readOnly,
+    },
+    (args) =>
+      safely(
+        async () => {
+          const view = await toolClient('get_case').getCase(args.caseId)
+          const health = await healthCache.get()
+          const meta = buildMeta({
+            tool: 'get_case',
+            health,
+            found: 1,
+            returned: 1,
+            identifiers: { caseId: args.caseId },
+            notes: [
+              'Cases are local, manual records. Their notes are redacted free text, not raw telemetry.',
+            ],
+          })
+          return textAndStructured({ ...view, meta })
+        },
+        {
+          404: `No case with id "${args.caseId}" exists. Call list_cases to find a current case id.`,
+          400: 'Case ids look like case_<uuid>.',
         },
       ),
   )

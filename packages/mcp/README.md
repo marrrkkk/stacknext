@@ -11,7 +11,7 @@ npx stacknext mcp
 
 It reads `.stacknext/run.json` from the current app, connects to the loopback
 collector and reserves stdout for the MCP protocol. Logs go to stderr. The
-server exposes twenty-one read-only tools and five guided prompts; it cannot capture
+server exposes twenty-three read-only tools and five guided prompts; it cannot capture
 runs, save baselines or snapshots, edit files or reach a non-loopback URL.
 
 ## Tools

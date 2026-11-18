@@ -1,6 +1,6 @@
 ---
 title: MCP tools
-description: The twenty-one read-only tools, five prompts and response metadata the StackNext MCP server exposes to AI coding agents.
+description: The twenty-three read-only tools, five prompts and response metadata the StackNext MCP server exposes to AI coding agents.
 keywords: ["mcp tools","mcp prompts","tool output schemas","structured content"]
 ---
 
@@ -33,6 +33,8 @@ The StackNext MCP server is read-only. Every tool is annotated
 | `stacknext_list_snapshots` | `limit`, `offset` | Frozen snapshots with source, capture time, sample window, counts, file size and invalid-record count |
 | `stacknext_get_snapshot` | `snapshotId` | One snapshot with captured config, limitations and its first traces, errors and database queries |
 | `stacknext_get_snapshot_trace` | `snapshotId`, `traceId` | One trace from a snapshot's detached view, without live diagnostics |
+| `list_cases` | `limit`, `offset` | Local append-only investigation cases, newest first |
+| `get_case` | `caseId` | One case with hypothesis, evidence ids and folded event timeline |
 
 ## Argument constraints
 

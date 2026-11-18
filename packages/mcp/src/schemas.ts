@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { DIAGNOSTIC_RULE_IDS } from '@stacknext/core'
+import { CASE_EVIDENCE_KINDS, DIAGNOSTIC_RULE_IDS } from '@stacknext/core'
 import {
   baselineSchema,
   comparisonSchema,
@@ -750,6 +750,57 @@ export const snapshotOutputSchema = z
   .passthrough()
 
 export const snapshotTraceOutputSchema = traceDetailOutputSchema
+
+const caseActorSchema = z.string()
+const caseEventBase = {
+  at: z.number(),
+  actor: caseActorSchema,
+}
+const caseOutputEventSchema = z.discriminatedUnion('kind', [
+  z.object({
+    ...caseEventBase,
+    kind: z.literal('created'),
+    title: z.string(),
+    hypothesis: z.string().nullable().optional(),
+    evidence: z.array(z.object({ kind: z.enum(CASE_EVIDENCE_KINDS), id: z.string() })).optional(),
+    agentSessionId: z.string().nullable().optional(),
+  }),
+  z.object({
+    ...caseEventBase,
+    kind: z.literal('evidence_added'),
+    evidence: z.object({ kind: z.enum(CASE_EVIDENCE_KINDS), id: z.string() }),
+  }),
+  z.object({ ...caseEventBase, kind: z.literal('note_added'), text: z.string() }),
+  z.object({
+    ...caseEventBase,
+    kind: z.literal('verification_added'),
+    verification: z.unknown(),
+  }),
+  z.object({
+    ...caseEventBase,
+    kind: z.literal('closed'),
+    status: z.enum(['verified', 'refuted', 'abandoned']),
+  }),
+])
+
+const caseSchema = z
+  .object({
+    version: z.literal(1),
+    id: z.string(),
+    title: z.string(),
+    status: z.enum(['open', 'verified', 'refuted', 'abandoned']),
+    hypothesis: z.string().nullable(),
+    evidence: z.array(z.object({ kind: z.enum(CASE_EVIDENCE_KINDS), id: z.string() })),
+    agentSessionId: z.string().nullable(),
+    verification: z.unknown().nullable(),
+    createdAt: z.number(),
+    updatedAt: z.number(),
+    events: z.array(caseOutputEventSchema),
+  })
+  .passthrough()
+
+export const casesOutputSchema = pageSchema(caseSchema)
+export const caseOutputSchema = caseSchema.extend({ meta: metaSchema }).passthrough()
 
 /**
  * Bounded first-move brief. It intentionally carries no stacks, SQL, bodies,

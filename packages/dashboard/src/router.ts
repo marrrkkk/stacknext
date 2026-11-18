@@ -66,6 +66,8 @@ export interface RouteMatch {
     | 'mcp'
     | 'agents'
     | 'agent'
+    | 'cases'
+    | 'case'
     | 'redirect'
     | 'not-found'
   id?: string
@@ -157,6 +159,11 @@ export function matchRoute(path: string): RouteMatch {
     return segments[1]
       ? { page: 'agent', id: decodeSegment(segments[1]) }
       : { page: 'agents' }
+  }
+  if (segments[0] === 'cases') {
+    return segments[1]
+      ? { page: 'case', id: decodeSegment(segments[1]) }
+      : { page: 'cases' }
   }
   return { page: 'not-found' }
 }

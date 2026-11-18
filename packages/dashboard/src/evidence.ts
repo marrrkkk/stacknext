@@ -68,6 +68,12 @@ export function isValidEvidenceId(kind: EvidenceKind, id: string): boolean {
   return validId(kind, id)
 }
 
+/** A copyable CLI command that creates a case and pins one evidence id. */
+export function buildCaseCommand(target: EvidenceTarget): string {
+  if (!validId(target.kind, target.id)) return ''
+  return `stacknext case new --title "Investigate ${target.kind} ${target.id}" --evidence ${target.kind}:${target.id}`
+}
+
 /**
  * Returns a bounded, ids-only prompt, or an empty string for an invalid target.
  * An empty result means the UI must not offer the copy action.

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { SnapshotDetailResponse } from '@stacknext/core'
 import { api } from '../api'
-import { buildEvidencePrompt } from '../evidence'
+import { buildCaseCommand, buildEvidencePrompt } from '../evidence'
 import { useAsync } from '../hooks'
 import {
   Badge,
@@ -391,6 +391,11 @@ export function SnapshotDetailPage({
               <CopyButton
                 value={buildEvidencePrompt({ kind: 'snapshot', id: snapshot.id })}
                 label="Copy evidence prompt"
+                small
+              />
+              <CopyButton
+                value={buildCaseCommand({ kind: 'snapshot', id: snapshot.id })}
+                label="Copy case command"
                 small
               />
             </div>

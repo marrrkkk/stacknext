@@ -1,6 +1,6 @@
 ---
 title: Tools
-description: The twenty-one read-only StackNext MCP tools, arguments and response metadata.
+description: The twenty-three read-only StackNext MCP tools, arguments and response metadata.
 ---
 
 # Tools
@@ -31,6 +31,8 @@ Every tool is annotated `readOnlyHint: true`, `destructiveHint: false`,
 | `stacknext_list_snapshots` | `limit`, `offset` | Frozen snapshots with source, time, stats and invalid count. |
 | `stacknext_get_snapshot` | `snapshotId` | Snapshot config, limitations and first records. |
 | `stacknext_get_snapshot_trace` | `snapshotId`, `traceId` | One scoped trace without live diagnostics. |
+| `list_cases` | `limit`, `offset` | Local append-only investigation cases, newest first. |
+| `get_case` | `caseId` | One case with its hypothesis, evidence and folded event timeline. |
 
 ## Limits and enums
 

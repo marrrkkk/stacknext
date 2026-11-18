@@ -11,7 +11,7 @@ import { runDoctor } from '../src/commands/doctor.js'
 import { CLI_VERSION } from '../src/version.js'
 
 const mcpCheck = vi.hoisted(() =>
-  vi.fn(async () => ({ ok: true, toolCount: 21, promptCount: 5 })),
+  vi.fn(async () => ({ ok: true, toolCount: 23, promptCount: 5 })),
 )
 vi.mock('@stacknext/mcp', () => ({ verifyMcpServer: mcpCheck }))
 
@@ -112,7 +112,7 @@ describe('doctor agent-readiness group', () => {
     const result = await doctorJson(dir)
     const mcp = agentsOf(result).find((check) => check.label.startsWith('MCP server'))
     expect(mcp?.status).toBe('pass')
-    expect(mcp?.detail).toContain('21 tools')
+    expect(mcp?.detail).toContain('23 tools')
     expect(mcpCheck).toHaveBeenCalledWith({
       baseUrl: 'http://127.0.0.1:4400',
       token: 'x'.repeat(32),

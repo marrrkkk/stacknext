@@ -7,7 +7,7 @@ import type {
   DiagnosticTraceContext,
 } from '@stacknext/core'
 import { api } from '../api'
-import { buildEvidencePrompt } from '../evidence'
+import { buildCaseCommand, buildEvidencePrompt } from '../evidence'
 import { useAsync } from '../hooks'
 import {
   Badge,
@@ -282,6 +282,10 @@ export function DiagnosticDetailPage({
                 { traceId: trace?.traceId },
               )}
               label="Copy evidence prompt"
+            />
+            <CopyButton
+              value={buildCaseCommand({ kind: 'diagnostic', id: finding.id })}
+              label="Copy case command"
             />
             {trace && (
               <button
