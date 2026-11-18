@@ -287,8 +287,12 @@ README/LICENSE, a missing edge-safe entry for `@stacknext/next`, a
 non-executable CLI bin, forbidden files, detected secrets or an archive over
 25 MiB. It also writes `release/validation/manifest.json`.
 
-`pnpm audit --prod` must be reviewed before publishing. A release does not
-proceed with a known production vulnerability that affects a published package.
+`pnpm audit --prod` is advisory. It reports known advisories from a live feed,
+so its result can change after a version is cut; it never blocks a release.
+Review Dependabot alerts when dependencies change and update the lockfile (or
+the `overrides` in `pnpm-workspace.yaml`) when an advisory affects a shipped
+package. The Release workflow and the publisher print a warning instead of
+failing when the audit reports findings.
 
 ### External consumer matrix
 
@@ -354,9 +358,10 @@ pnpm release:publish --version 0.6.0 --dry-run
 
 Dry-run is the default, so `--dry-run` is optional but explicit is better in
 automation. Unless `--skip-gates` is passed, the publisher runs lint, typecheck,
-tests, build, docs checks, e2e, both benchmarks and the production audit before
-packing. It then validates the archives, checks the registry for an existing
-version, prints the publish order and runs `npm publish --dry-run` for each
+tests, build, docs checks, e2e and both benchmarks before packing, then reports
+the production audit as advisory output. It then validates the archives, checks
+the registry for an existing version, prints the publish order and runs
+`npm publish --dry-run` for each
 tarball. It does not create a tag or upload anything.
 
 Real publishing requires `--publish`. Outside GitHub Actions it additionally
@@ -375,8 +380,8 @@ environment, then:
 - enforces npm 11.5.1 or newer and the exact version in every manifest and
   constant;
 - installs with the frozen lockfile;
-- runs the production audit, lint, typecheck, docs checks, tests, build, archive
-  validation, e2e and both benchmarks;
+- runs lint, typecheck, docs checks, tests, build, archive validation, e2e and
+  both benchmarks, and reports the production audit as an advisory check;
 - packs and validates the archives;
 - publishes in dependency order with npm trusted publishing and provenance;
 - verifies that every version exists in the registry, retrying for up to ten

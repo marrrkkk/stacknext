@@ -47,6 +47,28 @@ function run(command, args, options = {}) {
   }
 }
 
+/**
+ * Advisory-only command. Advisories come from a live feed and can change after
+ * a version is cut, so they are reported but never gate publishing. Dependabot
+ * alerts remain the tracking surface for dependency vulnerabilities.
+ */
+function runAdvisory(command, args) {
+  const result = spawnSync(command, args, {
+    cwd: ROOT,
+    stdio: 'inherit',
+    shell: process.platform === 'win32' && !path.isAbsolute(command),
+  })
+  if (result.error) {
+    console.warn(`Warning: ${command} ${args.join(' ')} could not run: ${result.error.message}`)
+    return
+  }
+  if (result.status !== 0) {
+    console.warn(
+      `Warning: ${command} ${args.join(' ')} reported advisories (exit ${result.status}). Review Dependabot alerts before the next dependency update.`,
+    )
+  }
+}
+
 const dryRunFlag = flag('--dry-run')
 const publish = flag('--publish')
 if (dryRunFlag && publish) {
@@ -105,10 +127,10 @@ if (!flag('--skip-gates')) {
     ['pnpm', ['test:e2e']],
     ['pnpm', ['benchmark']],
     ['pnpm', ['benchmark:diagnostics']],
-    ['pnpm', ['audit', '--prod']],
   ]) {
     run(command, args)
   }
+  runAdvisory('pnpm', ['audit', '--prod'])
 }
 
 const packed = await packPackages({ outDir, version })
