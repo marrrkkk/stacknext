@@ -14,7 +14,6 @@ import { api } from './api'
 import { useAsync, useLiveTelemetry, useTheme, type Theme } from './hooks'
 import { legacyRedirect, matchRoute } from './router'
 import { BrandMark } from './components/BrandMark'
-import { CommandPalette } from './components/CommandPalette'
 import { Icon, type IconName } from './components/Icon'
 import { TooltipLayer } from './components/TooltipLayer'
 import { Banner, cx, Kbd, PageChromeContext, shortcutLabel, StatusDot } from './components/ui'
@@ -89,6 +88,11 @@ const SettingsPage = lazy(() =>
 const McpPage = lazy(() =>
   import('./pages/McpPage').then((module) => ({ default: module.McpPage })),
 )
+const CommandPalette = lazy(() =>
+  import('./components/CommandPalette').then((module) => ({
+    default: module.CommandPalette,
+  })),
+)
 
 function RouteFallback(): React.ReactElement {
   return (
@@ -103,11 +107,23 @@ function RouteFallback(): React.ReactElement {
 
 interface LiveRefreshKeys {
   telemetry: number
+  spans: number
   errors: number
   queries: number
 }
 
-const ZERO_REFRESH_KEYS: LiveRefreshKeys = { telemetry: 0, errors: 0, queries: 0 }
+const ZERO_REFRESH_KEYS: LiveRefreshKeys = {
+  telemetry: 0,
+  spans: 0,
+  errors: 0,
+  queries: 0,
+}
+
+/** List pages re-render the most rows per tick, so they refresh half as often. */
+function isLiveListPath(path: string): boolean {
+  const pathname = path.split(/[?#]/)[0] ?? '/'
+  return /(^|\/)(traces|database)$/.test(pathname)
+}
 
 function isLiveRowTarget(target: EventTarget | null): boolean {
   return (
@@ -421,7 +437,7 @@ export function App(): React.ReactElement {
   const sidebarToggleFocusPending = useRef(false)
   const commandTriggerRef = useRef<HTMLButtonElement | null>(null)
   const contentRef = useRef<HTMLElement | null>(null)
-  const live = useLiveTelemetry()
+  const live = useLiveTelemetry(isLiveListPath(path) ? 2_000 : 1_000)
   const [refreshKeys, setRefreshKeys] = useState<LiveRefreshKeys>(ZERO_REFRESH_KEYS)
   const [pausedAtSequence, setPausedAtSequence] = useState<number | null>(null)
   const seenErrorMarker = useSyncExternalStore(
@@ -437,6 +453,7 @@ export function App(): React.ReactElement {
     const applied = appliedLiveKeys.current
     if (
       next.telemetry === applied.telemetry &&
+      next.spans === applied.spans &&
       next.errors === applied.errors &&
       next.queries === applied.queries
     ) {
@@ -464,16 +481,18 @@ export function App(): React.ReactElement {
   useEffect(() => {
     liveKeysRef.current = {
       telemetry: live.telemetryEpoch,
+      spans: live.spanEpoch,
       errors: live.errorEpoch,
       queries: live.queryEpoch,
     }
-  }, [live.telemetryEpoch, live.errorEpoch, live.queryEpoch])
+  }, [live.telemetryEpoch, live.spanEpoch, live.errorEpoch, live.queryEpoch])
 
   useEffect(() => {
     if (pausedAtSequence !== null) return
     const applied = appliedLiveKeys.current
     if (
       live.telemetryEpoch === applied.telemetry &&
+      live.spanEpoch === applied.spans &&
       live.errorEpoch === applied.errors &&
       live.queryEpoch === applied.queries
     ) {
@@ -485,6 +504,7 @@ export function App(): React.ReactElement {
     applyPendingLiveKey()
   }, [
     live.telemetryEpoch,
+    live.spanEpoch,
     live.errorEpoch,
     live.queryEpoch,
     pausedAtSequence,
@@ -984,7 +1004,7 @@ export function App(): React.ReactElement {
               {pathname === 'traces' && (
                 <TracesPage
                   key={tracesEpoch}
-                  refreshKey={refreshKeys.telemetry}
+                  refreshKey={refreshKeys.spans}
                   onNavigate={navigate}
                   onReplaceUrl={replacePath}
                   slowThresholdMs={pageHealth?.config.slowRequestMs ?? 250}
@@ -1001,7 +1021,7 @@ export function App(): React.ReactElement {
               {pathname === 'redirect' && null}
               {pathname === 'database' && (
                 <DatabasePage
-                  refreshKey={refreshKeys.telemetry}
+                  refreshKey={refreshKeys.queries}
                   onNavigate={navigate}
                   repeatedQueryMin={pageHealth?.config.diagnostics.repeatedQueryMin}
                 />
@@ -1147,15 +1167,19 @@ export function App(): React.ReactElement {
       </div>
       </div>
 
-      <CommandPalette
-        open={commandOpen}
-        projectName={projectName}
-        theme={theme}
-        returnFocusRef={commandTriggerRef}
-        onClose={() => setCommandOpen(false)}
-        onNavigate={navigate}
-        onCycleTheme={cycleTheme}
-      />
+      {commandOpen && (
+        <Suspense fallback={null}>
+          <CommandPalette
+            open
+            projectName={projectName}
+            theme={theme}
+            returnFocusRef={commandTriggerRef}
+            onClose={() => setCommandOpen(false)}
+            onNavigate={navigate}
+            onCycleTheme={cycleTheme}
+          />
+        </Suspense>
+      )}
 
       <TooltipLayer />
     </div>

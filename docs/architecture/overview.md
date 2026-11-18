@@ -95,7 +95,7 @@ Read API groups:
 
 | Group | Routes |
 | --- | --- |
-| Health and state | `/api/health`, `/api/ping`, `/api/summary`, `/api/config`, `/api/coverage`, `/api/stream` |
+| Health and state | `/api/health`, `/api/ping`, `/api/summary`, `/api/overview`, `/api/config`, `/api/coverage`, `/api/stream` |
 | Telemetry | `/api/requests`, `/api/traces`, `/api/database`, `/api/errors`, `/api/export` |
 | Diagnostics | `/api/diagnostics`, `/api/diagnostics/:id` |
 | Regression | `/api/test-runs`, `/api/test-runs/:id`, `/api/baselines`, `/api/baselines/:id`, `/api/comparisons`, `/api/comparisons/:id` |

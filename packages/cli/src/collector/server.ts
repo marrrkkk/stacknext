@@ -16,6 +16,7 @@ import {
   ingestEnvelopeSchema,
   nextOtelVerboseStatus,
   type ApiErrorResponse,
+  type CombinedOverviewResponse,
   type ConnectionInfo,
   type CoverageReport,
   type DiagnosticCategory,
@@ -618,6 +619,15 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
       evidence: store.getCoverageEvidence(),
     })
   }
+
+  /** Shared by `/api/summary` and the combined overview read. */
+  const buildOverview = (now: number, connectionList: ConnectionInfo[]): OverviewResponse => ({
+    health: getHealth(now, connectionList),
+    summary: store.summary(options.config.slowRequestMs),
+    coverage: getCoverage(now, connectionList),
+    diagnosticOverview: buildDiagnosticOverview(getDiagnosticReport(now, connectionList)),
+    recentErrorGroups: store.getErrorGroups(5),
+  })
 
   /**
    * Returns the diagnostics report, rebuilding it only when the store revision
@@ -1507,15 +1517,18 @@ export async function startCollector(options: StartCollectorOptions): Promise<Co
     }
     if (pathname === '/api/summary') {
       const now = Date.now()
+      sendJson(response, 200, buildOverview(now, getConnections(now)))
+      return
+    }
+    if (pathname === '/api/overview') {
+      const now = Date.now()
       const connectionList = getConnections(now)
-      const payload: OverviewResponse = {
-        health: getHealth(now, connectionList),
-        summary: store.summary(options.config.slowRequestMs),
-        coverage: getCoverage(now, connectionList),
-        diagnosticOverview: buildDiagnosticOverview(
-          getDiagnosticReport(now, connectionList),
+      const payload: CombinedOverviewResponse = {
+        ...buildOverview(now, connectionList),
+        requests: store.listRequests(
+          filtersFromSearch(url.searchParams),
+          options.config.slowRequestMs,
         ),
-        recentErrorGroups: store.getErrorGroups(5),
       }
       sendJson(response, 200, payload)
       return

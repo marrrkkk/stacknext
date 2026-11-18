@@ -226,8 +226,15 @@ interface PendingLive {
  * render or fetch rate. While the tab is hidden the pending update is retained
  * but never pushed to React; one flush runs when the tab becomes visible.
  */
-export function useLiveTelemetry(): LiveState {
+export function useLiveTelemetry(flushMs = LIVE_FLUSH_MS): LiveState {
   const [state, setState] = useState<LiveState>(INITIAL_LIVE_STATE)
+  // A busier page can widen the coalescing window without restarting the SSE
+  // stream: the timer reads the current value when it schedules the next flush.
+  const flushMsRef = useRef(flushMs)
+
+  useEffect(() => {
+    flushMsRef.current = flushMs
+  }, [flushMs])
 
   useEffect(() => {
     const source = new EventSource('/api/stream')
@@ -257,7 +264,7 @@ export function useLiveTelemetry(): LiveState {
 
     const schedule = (): void => {
       if (document.hidden || timer !== undefined) return
-      timer = window.setTimeout(flush, LIVE_FLUSH_MS)
+      timer = window.setTimeout(flush, flushMsRef.current)
     }
 
     let streamStatus: LiveStatus = 'connecting'

@@ -14,6 +14,22 @@ All notable changes to StackNext are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Added `GET /api/overview`, an authenticated combined read that returns the
+  summary payload and the recent request page so the dashboard refreshes every
+  overview panel with one request.
+
+### Changed
+
+- Dashboard trace and database lists now coalesce live refreshes every two
+  seconds and use span/query-specific refresh keys; trace rows are memoized.
+  Live evidence and snapshots are unchanged.
+- The dashboard bundles only the Latin Inter font subset and loads the command
+  palette on first use, restoring headroom under the initial JavaScript budget.
+- CI now enforces the dashboard performance budgets with
+  `pnpm benchmark:dashboard -- --enforce`.
+
 ### Fixed
 
 - Aligned the website install command and `stacknext init` with the documented

@@ -59,6 +59,10 @@ The collector also serves read APIs used by the dashboard, CLI and MCP:
 
 <!-- /coderabbit-ai-generated:v1 -->
 
+The Overview page reads `/api/overview`, which combines the `/api/summary`
+payload with the recent request page in one authenticated request. Collectors
+without that endpoint fall back to `/api/summary` plus `/api/requests`.
+
 Dashboard API access uses a `HttpOnly`, `SameSite=Strict` session cookie issued
 when the dashboard HTML is loaded. Ingestion and regression capture writes
 require the bearer token.
