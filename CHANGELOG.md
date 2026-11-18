@@ -53,8 +53,9 @@ All notable changes to StackNext are documented here. The format follows
   predicates (`requestStatus`, `maxDatabaseQueries`, `maxRequestDuration`,
   `diagnosticStatus`) and returns `supported`, `contradicted` or `unverifiable`
   with evidence ids, revision and sample size. Exit codes are 0, 1 and 2;
-  `--case` appends the result to a case and the dashboard renders it. No LLM,
-  source edit or MCP write tool is involved.
+  `--case` saves a claim with any predicate or re-runs a saved claim, appends
+  the result to a case, and the dashboard renders it. No LLM, source edit or MCP
+  write tool is involved.
 
 ### Changed
 

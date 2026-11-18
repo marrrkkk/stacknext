@@ -98,14 +98,15 @@ stacknext verify --trace <id> --expect-status <code> [--json]
 stacknext verify --route <route> --since <ms> --max-queries <n> [--json]
 stacknext verify --route <route> --since <ms> --max-duration <ms> [--json]
 stacknext verify --diagnostic <id> --expect-status <status> [--json]
+stacknext verify --trace <id> --expect-status <code> --case <case-id> [--json]
 stacknext verify --case <case-id> --json
 ```
 
 The result contains `claim`, `result`, `checks` (`predicate`, `expected`,
 `observed`, `passed`, `evidence`), `revision` and `sampleSize`. At most 20
 matching requests are sampled, newest first. Missing evidence, ambiguous
-correlation and null query durations produce `unverifiable`. `--case` re-runs
-the claim saved on a case and appends one `verification_added` event.
+correlation and null query durations produce `unverifiable`. With a predicate, `--case` saves the claim and result on the case; used alone it
+re-runs the saved claim. Both append one `verification_added` event.
 
 Exit codes: `0` supported, `1` contradicted, `2` unverifiable or error.
 

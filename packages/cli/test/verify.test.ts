@@ -4,7 +4,6 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VerificationResult } from '@stacknext/core'
 import { startCollector, type CollectorHandle } from '../src/collector/server.js'
-import { appendCaseEvent } from '../src/cases-storage.js'
 import { runCaseNew } from '../src/commands/case.js'
 import { runVerify } from '../src/commands/verify.js'
 import { parseStackNextConfig } from '@stacknext/core'
@@ -147,14 +146,13 @@ describe('stacknext verify', () => {
       projectDir,
     )
     const caseId = (json() as unknown as { id: string }).id
-    await appendCaseEvent(projectDir, caseId, {
-      kind: 'verification_added',
-      at: Date.now(),
-      actor: 'human',
-      verification: {
-        args: { mode: 'trace', trace: TRACE, expectStatus: 200 },
-      },
-    })
+    // A fresh case has no saved claim: save one with a predicate and --case.
+    captureJson()
+    const first = await runVerify(
+      { trace: TRACE, expectStatus: '200', case: caseId, json: true },
+      projectDir,
+    )
+    expect(first).toBe(0)
     captureJson()
     const code = await runVerify({ case: caseId, json: true }, projectDir)
     expect(code).toBe(0)

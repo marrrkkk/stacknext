@@ -149,10 +149,12 @@ function argsFromOptions(options: VerifyOptions): CaseArgs {
   const trace = options.trace?.trim()
   const diagnostic = options.diagnostic?.trim()
   const route = options.route?.trim()
-  const modes = [trace ? 1 : 0, route ? 1 : 0, diagnostic ? 1 : 0, options.case ? 1 : 0]
+  const modes = [trace ? 1 : 0, route ? 1 : 0, diagnostic ? 1 : 0]
   if (modes.reduce((sum, value) => sum + value, 0) !== 1) {
     throw new Error(
-      'Choose exactly one: --trace, --route, --diagnostic or --case.',
+      options.case
+        ? 'Choose exactly one predicate with --case, or use --case alone to re-run a saved claim.'
+        : 'Choose exactly one: --trace, --route or --diagnostic.',
     )
   }
   if (trace) {
@@ -257,6 +259,7 @@ export async function runVerify(
   const revision = health.store.revision
   const project = await detectProject(cwd)
 
+  const hasPredicate = Boolean(options.trace || options.route || options.diagnostic)
   let args: CaseArgs
   if (options.case) {
     const caseId = options.case.trim()
@@ -266,16 +269,21 @@ export async function runVerify(
     const { events } = await readCaseEvents(project.dir, caseId)
     const view = foldCaseEvents(events, caseId)
     if (!view) throw new Error(`No case found with id ${caseId}`)
-    const saved = [...view.events]
-      .reverse()
-      .find((event) => event.kind === 'verification_added')
-    const savedArgs = saved?.kind === 'verification_added'
-      ? (saved.verification as { args?: CaseArgs }).args
-      : undefined
-    if (!savedArgs) {
-      throw new Error(`Case ${caseId} has no saved verification claim to re-run`)
+    if (hasPredicate) {
+      // Save the claim and its result in one step so --case alone can re-run it.
+      args = argsFromOptions(options)
+    } else {
+      const saved = [...view.events]
+        .reverse()
+        .find((event) => event.kind === 'verification_added')
+      const savedArgs = saved?.kind === 'verification_added'
+        ? (saved.verification as { args?: CaseArgs }).args
+        : undefined
+      if (!savedArgs) {
+        throw new Error(`Case ${caseId} has no saved verification claim to re-run`)
+      }
+      args = savedArgs
     }
-    args = savedArgs
   } else {
     args = argsFromOptions(options)
   }
@@ -306,7 +314,10 @@ export function registerVerifyCommand(program: Command, cwd: string): void {
     .option('--max-queries <n>', 'maximum correlated database queries per request')
     .option('--max-duration <ms>', 'maximum request duration in milliseconds')
     .option('--diagnostic <id>', 'diagnostic finding id')
-    .option('--case <id>', 're-run the claim saved on a case and append the result')
+    .option(
+      '--case <id>',
+      'with a predicate, save the claim and result on a case; alone, re-run the saved claim',
+    )
     .option('--json', 'print machine-readable verification result')
     .action(async (options: VerifyOptions) => {
       const code = await runVerify(options, cwd)

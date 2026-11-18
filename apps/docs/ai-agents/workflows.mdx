@@ -48,9 +48,11 @@ Turn a finding into one falsifiable claim and check it with `stacknext verify`.
 For example, `stacknext verify --route /api/projects --since <ms> --max-queries
 3 --json` samples at most 20 matching requests, newest first. The result is
 `supported`, `contradicted` or `unverifiable`; missing evidence and null
-durations are `unverifiable`, never a pass. Exit codes are 0, 1 and 2. Append
-the result to a case with `stacknext verify --case <case-id> --json` and review
-it on the case detail page. There is no write tool in MCP and no LLM involved.
+durations are `unverifiable`, never a pass. Exit codes are 0, 1 and 2. Add
+`--case <case-id>` to any verify command to save the claim and result on a case,
+then run `stacknext verify --case <case-id> --json` alone to re-run it. Review
+the result on the case detail page. There is no write tool in MCP and no LLM
+involved.
 
 ## Error
 

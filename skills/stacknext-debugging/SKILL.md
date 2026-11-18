@@ -118,8 +118,10 @@ is involved.
    <status>`. Pass `--json` for a stable result.
 3. Report `supported`, `contradicted` or `unverifiable` with the evidence ids.
    `unverifiable` is never a pass and is never a confirmed fix.
-4. Append the result to a case with `stacknext verify --case <case-id> --json`;
-   the CLI re-runs the saved claim and appends one verification event.
+4. Append the result to a case by adding `--case <case-id>` to any verify
+   command; the CLI saves the claim and result. Use `stacknext verify --case
+   <case-id> --json` alone to re-run the saved claim. Each run appends one
+   verification event.
 5. Exit codes are 0 supported, 1 contradicted and 2 unverifiable/error.
 
 ## Documentation sources
