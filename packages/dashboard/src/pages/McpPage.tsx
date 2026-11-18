@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { HealthResponse } from '@stacknext/core'
+import type { AgentsResponse, HealthResponse } from '@stacknext/core'
 import { api, type ConfigResponse } from '../api'
 import { useAsync } from '../hooks'
 import {
@@ -45,6 +45,7 @@ import {
 interface McpData {
   config: ConfigResponse
   health: HealthResponse
+  agents: AgentsResponse
 }
 
 type ToolFilter = McpToolGroupId | 'all'
@@ -58,8 +59,12 @@ export function McpPage({
 }): React.ReactElement {
   const state = useAsync<McpData>(
     async (signal) => {
-      const [config, health] = await Promise.all([api.config(signal), api.health(signal)])
-      return { config, health }
+      const [config, health, agents] = await Promise.all([
+        api.config(signal),
+        api.health(signal),
+        api.agents(signal),
+      ])
+      return { config, health, agents }
     },
     'mcp',
     refreshKey,
@@ -103,7 +108,7 @@ function McpContent({
   onRefresh: () => void
   onNavigate: (path: string) => void
 }): React.ReactElement {
-  const { config, health } = data
+  const { config, health, agents } = data
   const connected = health.connections.filter((connection) => connection.connected)
   const lastHeartbeat =
     connected.length > 0
@@ -159,6 +164,17 @@ function McpContent({
                 'No app heartbeat'
               )
             }
+            className="stat--wrap"
+          />
+          <StatCard
+            label="Active agents"
+            value={formatNumber(agents.sessions.length)}
+            hint={
+              agents.enabled
+                ? `${plural(agents.sessions.reduce((sum, session) => sum + session.reads, 0), 'read')} in the local audit`
+                : 'agent audit is disabled'
+            }
+            tone={agents.sessions.length > 0 ? 'good' : 'default'}
             className="stat--wrap"
           />
           <StatCard

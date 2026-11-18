@@ -43,6 +43,12 @@ paths and the browser handles the view.
 
 <!-- /coderabbit-ai-generated:v1 -->
 
+Agent activity adds two read-only views: `/agents` lists local MCP sessions and
+`/agents/:sessionId` shows one session's bounded read timeline. Detail pages for
+errors, traces, diagnostics, comparisons and snapshots show a "Read by agent"
+chip backed by `/api/agents?recordId=<id>`. Session ids are random and local;
+these views never expose query values, bodies or tokens.
+
 Deep links are stable for the lifetime of a record. A missing or expired
 telemetry record shows an empty state rather than inventing data.
 
@@ -56,6 +62,10 @@ The collector also serves read APIs used by the dashboard, CLI and MCP:
 `/api/health`, `/api/summary`, `/api/requests`, `/api/traces`, `/api/errors`,
 `/api/database`, `/api/coverage`, `/api/diagnostics`, `/api/export`,
 `/api/test-runs`, `/api/baselines`, `/api/comparisons` and `/api/snapshots`.
+
+Agent read APIs also include `/api/agents`, `/api/agents/:sessionId` and
+`/api/agents?recordId=<id>`. All require the same read authorization as every
+other `/api` route.
 
 <!-- /coderabbit-ai-generated:v1 -->
 

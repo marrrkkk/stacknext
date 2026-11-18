@@ -20,6 +20,7 @@ import {
   shortId,
 } from '../components/ui'
 import { DurationValue, Notice, RefreshButton } from '../components/details'
+import { ReadByAgents } from '../components/ReadByAgents'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Icon } from '../components/Icon'
 import {
@@ -133,6 +134,7 @@ export function SnapshotDetailPage({
             </Badge>
             <Badge tone="accent">frozen</Badge>
             <Badge tone="muted">read-only</Badge>
+            <ReadByAgents recordId={snapshot.id} onNavigate={onNavigate} />
           </>
         }
         description={

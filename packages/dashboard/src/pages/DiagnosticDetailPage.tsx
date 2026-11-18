@@ -34,6 +34,7 @@ import {
   RefreshButton,
   RelativeTime,
 } from '../components/details'
+import { ReadByAgents } from '../components/ReadByAgents'
 import { Icon } from '../components/Icon'
 import {
   formatAbsolute,
@@ -241,6 +242,7 @@ export function DiagnosticDetailPage({
             <Badge tone={SEVERITY_TONE[finding.severity]}>{finding.severity}</Badge>
             <Badge tone={STATUS_TONE[finding.status]}>{finding.status}</Badge>
             <Badge tone="muted">{finding.category}</Badge>
+            <ReadByAgents recordId={finding.id} onNavigate={onNavigate} />
           </>
         }
         description={

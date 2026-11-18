@@ -17,7 +17,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Trust foundation | S | Done | `68abef9` | 2026-11-18 | 2026-11-18 |
 | 2 | Investigation brief | S | Done | `f646466` | 2026-11-18 | 2026-11-18 |
-| 3 | Agent sessions and audit | M | Not started | — | — | — |
+| 3 | Agent sessions and audit | M | Done | `ec595c9` | 2026-11-18 | 2026-11-19 |
 | 4 | Evidence hand-off | S | Not started | — | — | — |
 | 5 | Investigation cases | L | Not started | — | — | — |
 | 6 | Verification | M/L | Not started | — | — | — |
@@ -44,13 +44,13 @@
 
 ## Step 3 — Agent sessions and audit
 
-- [ ] Local session id in `stacknext mcp`; headers via `client.forTool(name)`
-- [ ] Bounded audit ring with drop counter; no query values or bodies
-- [ ] `GET /api/agents`, `/api/agents/:id`, `?recordId=`; read auth unchanged
-- [ ] Config `agents.audit` default true, documented opt-out
-- [ ] Dashboard Agents nav, session list/timeline, read-by chips, stats
-- [ ] Privacy docs + secret-leak tests in the same PR
-- [ ] Full gate + `test:packages` + `test:e2e` + benchmark run and logged
+- [x] Local session id in `stacknext mcp`; headers via `client.forTool(name)`
+- [x] Bounded audit ring with drop counter; no query values or bodies
+- [x] `GET /api/agents`, `/api/agents/:id`, `?recordId=`; read auth unchanged
+- [x] Config `agents.audit` default true, documented opt-out
+- [x] Dashboard Agents nav, session list/timeline, read-by chips, stats
+- [x] Privacy docs + secret-leak tests in the same PR
+- [x] Full gate + `test:packages` + `test:e2e` + benchmark run and logged
 
 ## Step 4 — Evidence hand-off
 
@@ -103,6 +103,17 @@ Add one row per command run. Record the exact command and result. Include
 | 2026-11-18 | 2 | `pnpm build` | pass | All packages and apps. |
 | 2026-11-18 | 2 | `pnpm check:docs` | pass | Docs and changelog current. |
 | 2026-11-18 | 2 | `pnpm test:packages` | pass | `@stacknext/mcp` archive now 50.6 KiB; all 10 archives valid. |
+| 2026-11-19 | 3 | `pnpm exec vitest run packages/mcp/test/mcp.test.ts packages/cli/test/collector.test.ts packages/cli/test/agent-activity.test.ts` | pass after fix | 48 tests. `--check` sends no attribution after gating the tool header on a session; fetch headers cannot contain bidi characters, so control-char sanitization is covered by the store unit test. |
+| 2026-11-19 | 3 | `pnpm lint` | pass after fix | Removed two unused type imports. |
+| 2026-11-19 | 3 | `pnpm typecheck` | pass | All 13 workspace projects. |
+| 2026-11-19 | 3 | `pnpm test` | pass | 46 files, 381 tests. |
+| 2026-11-19 | 3 | `pnpm build` | pass | All packages and apps; new `AgentsPage` and `ReadByAgents` chunks remain small. |
+| 2026-11-19 | 3 | `pnpm check:docs` | pass | 141 Markdown files, 500 text files. |
+| 2026-11-19 | 3 | `pnpm test:packages` | pass | All 10 archives valid; dashboard 312.3 KiB, CLI 157.4 KiB. |
+| 2026-11-19 | 3 | `pnpm test:e2e` | pass | 45 checks including 21 read-only tools, brief trust/revision, attributed MCP reads with no secrets, and `/agents` deep link. |
+| 2026-11-19 | 3 | Port check after e2e | pass | No listeners on 4400-4429; no `apps/example/.stacknext/run.json` left behind. |
+| 2026-11-19 | 3 | `pnpm benchmark:dashboard -- --enforce` | pass | Initial JS 118.7 KiB gzip (budget 121), all enforced budgets passed. |
+| 2026-11-19 | 3 | Redaction verification (seven secret strings) | pass | Collector secret-leak test injected `q=demo-url-secret` plus Bearer token and asserted all seven strings absent from `/api/agents`; e2e asserts all seven absent from the live agent audit. |
 
 ## Decisions log
 

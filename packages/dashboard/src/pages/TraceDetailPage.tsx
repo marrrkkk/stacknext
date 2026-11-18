@@ -36,6 +36,7 @@ import {
   useUrlParam,
 } from '../components/details'
 import { SpanDetail, SpanTimeline } from '../components/Timeline'
+import { ReadByAgents } from '../components/ReadByAgents'
 import { Icon } from '../components/Icon'
 import {
   formatAbsolute,
@@ -382,6 +383,7 @@ export function TraceDetailPage({
                 {plural(queries.length, 'query', 'queries')}
               </Badge>
             )}
+            {!snapshotId && <ReadByAgents recordId={traceId} onNavigate={onNavigate} />}
           </>
         }
         description={

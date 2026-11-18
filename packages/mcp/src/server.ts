@@ -19,7 +19,11 @@ import {
   type TraceDetail,
 } from '@stacknext/core'
 import type { Baseline, Comparison, TestRun } from '@stacknext/regression'
-import { StackNextApiClient, StackNextApiError } from './client.js'
+import {
+  StackNextApiClient,
+  StackNextApiError,
+  type ClientAttribution,
+} from './client.js'
 import {
   HealthCache,
   buildMeta,
@@ -300,6 +304,16 @@ export function createStackNextMcpServer(
     { instructions: SERVER_INSTRUCTIONS },
   )
   const healthCache = new HealthCache(client)
+  const attributedClients = new Map<string, StackNextApiClient>()
+  /** One attributed view per tool; attribution never leaks between callbacks. */
+  const toolClient = (name: string): StackNextApiClient => {
+    let view = attributedClients.get(name)
+    if (!view) {
+      view = client.forTool(name)
+      attributedClients.set(name, view)
+    }
+    return view
+  }
 
   server.registerTool(
     'get_project_summary',
@@ -313,7 +327,7 @@ export function createStackNextMcpServer(
     },
     () =>
       safely(async () => {
-        const data: OverviewResponse = await client.overview()
+        const data: OverviewResponse = await toolClient('get_project_summary').overview()
         healthCache.seed(data.health)
         const hadStacks = data.summary.recentErrors.some((error) => error.stack)
         const summary = {
@@ -355,12 +369,12 @@ export function createStackNextMcpServer(
     },
     () =>
       safely(async () => {
-        const overview: OverviewResponse = await client.overview()
+        const overview: OverviewResponse = await toolClient('get_investigation_brief').overview()
         healthCache.seed(overview.health)
         const [findingPage, errorPage, requestPage] = await Promise.all([
-          client.listDiagnostics({ limit: 3 }),
-          client.listErrors({ limit: 3 }),
-          client.listRequests({ limit: 3, sort: 'slowest' }),
+          toolClient('get_investigation_brief').listDiagnostics({ limit: 3 }),
+          toolClient('get_investigation_brief').listErrors({ limit: 3 }),
+          toolClient('get_investigation_brief').listRequests({ limit: 3, sort: 'slowest' }),
         ])
         const health = overview.health
         const coverage = overview.coverage
@@ -517,7 +531,7 @@ export function createStackNextMcpServer(
     },
     (args) =>
       safely(async () => {
-        const page = await client.listRequests({
+        const page = await toolClient('list_requests').listRequests({
           ...(args.limit !== undefined ? { limit: args.limit } : {}),
           ...(args.offset !== undefined ? { offset: args.offset } : {}),
           ...(args.q !== undefined ? { q: args.q } : {}),
@@ -557,7 +571,7 @@ export function createStackNextMcpServer(
     (args) =>
       safely(
         async () => {
-          const detail = await client.getTrace(args.traceId)
+          const detail = await toolClient('get_request').getTrace(args.traceId)
           const health = await healthCache.get()
           const meta = buildMeta({
             tool: 'get_request',
@@ -596,7 +610,7 @@ export function createStackNextMcpServer(
     },
     (args) =>
       safely(async () => {
-        const page = await client.listTraces({
+        const page = await toolClient('list_traces').listTraces({
           ...(args.limit !== undefined ? { limit: args.limit } : {}),
           ...(args.offset !== undefined ? { offset: args.offset } : {}),
           ...(args.q !== undefined ? { q: args.q } : {}),
@@ -630,7 +644,7 @@ export function createStackNextMcpServer(
     (args) =>
       safely(
         async () => {
-          const detail = await client.getTrace(args.traceId)
+          const detail = await toolClient('get_trace').getTrace(args.traceId)
           const health = await healthCache.get()
           const references = detail.diagnostics ?? []
           const notes = [...detailNotes(detail)]
@@ -681,7 +695,7 @@ export function createStackNextMcpServer(
     },
     (args) =>
       safely(async () => {
-        const page: ErrorListResponse = await client.listErrors({
+        const page: ErrorListResponse = await toolClient('list_errors').listErrors({
           ...(args.limit !== undefined ? { limit: args.limit } : {}),
           ...(args.offset !== undefined ? { offset: args.offset } : {}),
           ...(args.q !== undefined ? { q: args.q } : {}),
@@ -731,7 +745,7 @@ export function createStackNextMcpServer(
     (args) =>
       safely(
         async () => {
-          const detail: ErrorDetailResponse = await client.getError(args.errorId)
+          const detail: ErrorDetailResponse = await toolClient('get_error').getError(args.errorId)
           const health = await healthCache.get()
           const identifiers: Record<string, string> = { errorId: args.errorId }
           if (detail.error.resolvedTraceId) {
@@ -781,7 +795,7 @@ export function createStackNextMcpServer(
     },
     (args) =>
       safely(async () => {
-        const page = await client.listDatabaseQueries({
+        const page = await toolClient('list_database_queries').listDatabaseQueries({
           ...(args.limit !== undefined ? { limit: args.limit } : {}),
           ...(args.offset !== undefined ? { offset: args.offset } : {}),
           ...(args.q !== undefined ? { q: args.q } : {}),
@@ -827,7 +841,7 @@ export function createStackNextMcpServer(
     },
     (args) =>
       safely(async () => {
-        const page = await client.findSlowRequests({
+        const page = await toolClient('find_slow_requests').findSlowRequests({
           ...(args.minDurationMs !== undefined
             ? { minDurationMs: args.minDurationMs }
             : {}),
@@ -872,7 +886,7 @@ export function createStackNextMcpServer(
     },
     (args) =>
       safely(async () => {
-        const page: DiagnosticListResponse = await client.listDiagnostics({
+        const page: DiagnosticListResponse = await toolClient('stacknext_list_diagnostics').listDiagnostics({
           ...(args.limit !== undefined ? { limit: args.limit } : {}),
           ...(args.offset !== undefined ? { offset: args.offset } : {}),
           ...(args.category !== undefined ? { category: args.category } : {}),
@@ -924,7 +938,7 @@ export function createStackNextMcpServer(
     (args) =>
       safely(
         async () => {
-          const detail: DiagnosticDetailResponse = await client.getDiagnostic(
+          const detail: DiagnosticDetailResponse = await toolClient('stacknext_get_diagnostic').getDiagnostic(
             args.diagnosticId,
           )
           const health = await healthCache.get()
@@ -1003,7 +1017,7 @@ export function createStackNextMcpServer(
     },
     (args) =>
       safely(async () => {
-        const page = await client.listTestRuns({
+        const page = await toolClient('stacknext_list_test_runs').listTestRuns({
           ...(args.limit !== undefined ? { limit: args.limit } : {}),
           ...(args.offset !== undefined ? { offset: args.offset } : {}),
         })
@@ -1044,7 +1058,7 @@ export function createStackNextMcpServer(
     (args) =>
       safely(
         async () => {
-          const run: TestRun = await client.getTestRun(args.runId)
+          const run: TestRun = await toolClient('stacknext_get_test_run').getTestRun(args.runId)
           const health = await healthCache.get()
           const reasons: string[] = []
           if (run.status !== 'completed') {
@@ -1104,7 +1118,7 @@ export function createStackNextMcpServer(
     },
     (args) =>
       safely(async () => {
-        const page = await client.listBaselines({
+        const page = await toolClient('stacknext_list_baselines').listBaselines({
           ...(args.limit !== undefined ? { limit: args.limit } : {}),
           ...(args.offset !== undefined ? { offset: args.offset } : {}),
         })
@@ -1142,7 +1156,7 @@ export function createStackNextMcpServer(
     (args) =>
       safely(
         async () => {
-          const baseline: Baseline = await client.getBaseline(args.baselineId)
+          const baseline: Baseline = await toolClient('stacknext_get_baseline').getBaseline(args.baselineId)
           const health = await healthCache.get()
           const meta = buildMeta({
             tool: 'stacknext_get_baseline',
@@ -1184,7 +1198,7 @@ export function createStackNextMcpServer(
     },
     (args) =>
       safely(async () => {
-        const page = await client.listComparisons({
+        const page = await toolClient('stacknext_list_comparisons').listComparisons({
           ...(args.limit !== undefined ? { limit: args.limit } : {}),
           ...(args.offset !== undefined ? { offset: args.offset } : {}),
         })
@@ -1222,7 +1236,7 @@ export function createStackNextMcpServer(
     (args) =>
       safely(
         async () => {
-          const comparison: Comparison = await client.getComparison(
+          const comparison: Comparison = await toolClient('stacknext_get_comparison').getComparison(
             args.comparisonId,
           )
           const health = await healthCache.get()
@@ -1280,7 +1294,7 @@ export function createStackNextMcpServer(
     },
     (args) =>
       safely(async () => {
-        const page: SnapshotListResponse = await client.listSnapshots({
+        const page: SnapshotListResponse = await toolClient('stacknext_list_snapshots').listSnapshots({
           ...(args.limit !== undefined ? { limit: args.limit } : {}),
           ...(args.offset !== undefined ? { offset: args.offset } : {}),
         })
@@ -1324,7 +1338,7 @@ export function createStackNextMcpServer(
     (args) =>
       safely(
         async () => {
-          const detail: SnapshotDetailResponse = await client.getSnapshot(args.snapshotId)
+          const detail: SnapshotDetailResponse = await toolClient('stacknext_get_snapshot').getSnapshot(args.snapshotId)
           const health = await healthCache.get()
           const reasons: string[] = []
           if (detail.snapshot.sample.firstEventTime === null) {
@@ -1376,7 +1390,7 @@ export function createStackNextMcpServer(
     (args) =>
       safely(
         async () => {
-          const detail: TraceDetail = await client.getSnapshotTrace(
+          const detail: TraceDetail = await toolClient('stacknext_get_snapshot_trace').getSnapshotTrace(
             args.snapshotId,
             args.traceId,
           )
@@ -1603,6 +1617,10 @@ export interface StartMcpServerOptions {
   baseUrl: string
   token: string
   version?: string
+  /** Local random session id; never persisted or derived from machine data. */
+  sessionId?: string
+  clientName?: string
+  clientVersion?: string
 }
 
 /**
@@ -1612,12 +1630,24 @@ export interface StartMcpServerOptions {
 export async function startMcpServer(
   options: StartMcpServerOptions,
 ): Promise<McpServer> {
+  const attribution: ClientAttribution = {
+    ...(options.sessionId ? { sessionId: options.sessionId } : {}),
+    ...(options.clientName ? { clientName: options.clientName } : {}),
+    ...(options.clientVersion ? { clientVersion: options.clientVersion } : {}),
+  }
   const client = new StackNextApiClient({
     baseUrl: options.baseUrl,
     token: options.token,
+    attribution,
   })
   const server = createStackNextMcpServer(client)
   const transport = new StdioServerTransport()
   await server.connect(transport)
+  // Client identity is only known after initialize. Missing info is optional.
+  const info = server.server.getClientVersion()
+  if (info) {
+    if (!attribution.clientName) attribution.clientName = info.name
+    if (!attribution.clientVersion) attribution.clientVersion = info.version
+  }
   return server
 }

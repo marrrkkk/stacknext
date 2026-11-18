@@ -85,6 +85,17 @@ snapshot data that is not live telemetry.
 Tool text content is pretty-printed JSON. Successful calls also return
 `structuredContent` and advertise an `outputSchema` when the client supports it.
 
+## Agent attribution
+
+Each `stacknext mcp` process generates a random local session id. Tool reads send
+`x-stacknext-agent-session`, `x-stacknext-client`, `x-stacknext-client-version`
+and `x-stacknext-tool` headers so a human can see which session read which
+evidence in the dashboard's Agents page. These headers are attribution labels
+only: the collector still authorizes reads with the bearer token or session
+cookie, caps and strips header text, and never treats the labels as authority or
+as machine/user identity. `stacknext mcp --check` sends no attribution. Audit can
+be disabled with `agents.audit: false` in `stacknext.config.json`.
+
 ## Read-only contract
 
 The tools cannot edit the app, capture runs, save baselines, compare records,

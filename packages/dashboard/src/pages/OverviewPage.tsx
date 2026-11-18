@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type {
+  AgentsResponse,
   CombinedOverviewResponse,
   CoverageItem,
   CoverageReport,
@@ -16,6 +17,7 @@ import { api } from '../api'
 import { useAsync } from '../hooks'
 import {
   Banner,
+  Badge,
   Card,
   cx,
   EmptyState,
@@ -450,6 +452,12 @@ export function OverviewPage({
     !paused,
   )
   const reload = state.reload
+  const agentState = useAsync<AgentsResponse>(
+    (signal) => api.agents(signal),
+    'overview-agents',
+    refreshKey,
+    30_000,
+  )
 
   const [coverageFilter, setCoverageFilter] = useState<CoverageStatus | null>(null)
   const [showUnsupported, setShowUnsupported] = useState(false)
@@ -754,6 +762,19 @@ export function OverviewPage({
         description={liveLine}
         actions={
           <div className="overview-actions">
+            {(agentState.data?.sessions.length ?? 0) > 0 && (
+              <button
+                type="button"
+                className="agent-stat-button"
+                onClick={() => onNavigate('/agents')}
+                title="Open the local agent activity page"
+              >
+                <Badge tone="accent">
+                  {agentState.data?.sessions.length} agent
+                  {(agentState.data?.sessions.length ?? 0) === 1 ? '' : 's'} active
+                </Badge>
+              </button>
+            )}
             {paused && pendingLive > 0 && (
               <button
                 type="button"
