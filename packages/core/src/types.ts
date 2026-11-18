@@ -443,6 +443,15 @@ export interface OverviewResponse {
   recentErrorGroups?: ErrorGroup[]
 }
 
+/**
+ * Additive combined payload for the dashboard overview. It returns the same
+ * summary as `/api/summary` plus the recent request page, so one request can
+ * refresh every overview panel.
+ */
+export interface CombinedOverviewResponse extends OverviewResponse {
+  requests: PageResult<RequestSummary>
+}
+
 export interface ErrorListResponse extends PageResult<ErrorListItem> {
   groups: ErrorGroup[]
 }

@@ -262,7 +262,11 @@ pnpm benchmark:dashboard -- --enforce --verbose
 - JavaScript sizes are gzip sizes of the files in `packages/dashboard/dist`
   referenced by `index.html` (initial) and of every other route chunk.
   `--enforce` caps total initial JavaScript at 121 KiB gzip and the largest
-  initial chunk at 120 KiB gzip.
+  initial chunk at 120 KiB gzip. CI runs the enforced form in the
+  `dashboard-benchmark` job on every push and pull request.
+- Overview issues one `/api/overview` read per live flush (the summary payload
+  plus its recent request page). Older collectors fall back to `/api/summary`
+  and `/api/requests`, but the benchmark always exercises the combined path.
 - The collector uses a 20,000-span cap so detail routes stay readable for the
   full run. The browser receives already-redacted synthetic telemetry.
 
@@ -299,6 +303,28 @@ separately. The one longest live task was a 51 ms trace-list render on
 | Largest route chunk | 7.8 KiB gzip (`OverviewPage`) |
 | Browser page errors | 0 |
 
+### Current verification (combined Overview read)
+
+Measured on Node.js 24.21.0 with Playwright 1.58.2 Chromium while the changes
+above were verified, using the same 10 events/s workload and `--enforce`.
+Machine-specific; compare it with the table above on the same host.
+
+| Route | Read requests / 10 s | Long tasks > 50 ms | Max long task |
+| --- | ---: | ---: | ---: |
+| `/` | 12 | 0 | — |
+| `/traces` | 7 | 2 | 77 ms |
+| `/database` | 7 | 1 | 50 ms |
+| `/errors`, `/diagnostics`, detail routes | 12 | 0 | — |
+| Static regression/settings/MCP pages | 2 each | 0 | — |
+
+Overview's twelve reads are ten `/api/overview` calls plus the two shell checks;
+the trace and database lists issue five list reads plus the same two shell
+checks. Initial JavaScript fell to **118.4 KiB gzip** (budget 121 KiB), the
+largest route chunk stayed at 8.1 KiB, the hidden tab made 0 reads, the heap
+returned to 3.60 MiB after forced GC, and there were no console errors. All
+enforced budgets passed. A focused 15-second `/traces` probe under the same
+ingest rate recorded **0 long tasks** after the change, versus 18 before it.
+
 ### Dashboard caveats
 
 - **Headless browser.** Chromium is headless and the hidden-tab check uses a
@@ -313,8 +339,9 @@ separately. The one longest live task was a 51 ms trace-list render on
 - **Bundle sizes are build-local.** The collector serves assets without gzip;
   these numbers describe parse and transfer cost on loopback, not a network
   deployment.
-- **Not a CI gate by default.** The script is report-only unless `--enforce` is
-  passed, and it requires Playwright Chromium.
+- **Report-only locally, enforced in CI.** The script is report-only unless
+  `--enforce` is passed; the CI job installs Chromium and always uses
+  `--enforce`.
 
 
 

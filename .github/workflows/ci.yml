@@ -149,6 +149,35 @@ jobs:
           NEXT_TELEMETRY_DISABLED: '1'
           CI: 'true'
 
+  dashboard-benchmark:
+    name: Dashboard performance budgets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.16.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install chromium
+
+      - name: Build
+        run: pnpm build
+
+      - name: Enforce dashboard performance budgets
+        run: pnpm benchmark:dashboard -- --enforce
+
   consumer:
     name: Consumer (Node ${{ matrix.node }}, Next ${{ matrix.next }}, ${{ matrix.pm }})
     runs-on: ubuntu-24.04

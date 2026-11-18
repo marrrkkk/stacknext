@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type {
+  CombinedOverviewResponse,
   CoverageItem,
   CoverageReport,
   CoverageStatus,
@@ -388,14 +389,33 @@ export function OverviewPage({
 }): React.ReactElement {
   const state = useAsync<OverviewData>(
     async (signal) => {
-      const [overview, requests] = await Promise.allSettled([
-        api.overview(signal),
-        api.requests({ limit: 24, sort: 'recent' }, signal),
-      ])
-      const overviewValue = fulfilledValue(overview)
-      // `/api/summary` already carries coverage and bounded error groups on
-      // current collectors. Only ask for them separately when talking to an
-      // older collector.
+      let overviewValue: OverviewResponse | null = null
+      let requestsValue: PageResult<RequestSummary> | null = null
+      const errors: { overview: string | null; requests: string | null } = {
+        overview: null,
+        requests: null,
+      }
+      let combined: CombinedOverviewResponse | null = null
+      try {
+        combined = await api.overviewCombined({ limit: 24, sort: 'recent' }, signal)
+      } catch (error) {
+        if (signal.aborted) throw error
+        // Older collectors have no combined endpoint; keep the two reads.
+        const [overview, requests] = await Promise.allSettled([
+          api.overview(signal),
+          api.requests({ limit: 24, sort: 'recent' }, signal),
+        ])
+        overviewValue = fulfilledValue(overview)
+        requestsValue = fulfilledValue(requests)
+        errors.overview = rejectionMessage(overview)
+        errors.requests = rejectionMessage(requests)
+      }
+      if (combined) {
+        overviewValue = combined
+        requestsValue = combined.requests
+      }
+      // The combined payload already carries coverage and bounded error groups.
+      // Only ask for them separately when talking to an older collector.
       let coverage = overviewValue?.coverage ?? null
       let coverageError: string | null = null
       if (!coverage) {
@@ -415,16 +435,13 @@ export function OverviewPage({
       }
       return {
         overview: overviewValue,
-        requests: fulfilledValue(requests),
+        requests: requestsValue,
         coverage,
         coverageError,
         errorGroups,
         errorTotal,
         errorError,
-        errors: {
-          overview: rejectionMessage(overview),
-          requests: rejectionMessage(requests),
-        },
+        errors,
       }
     },
     'overview',

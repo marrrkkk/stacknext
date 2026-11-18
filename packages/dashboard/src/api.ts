@@ -1,4 +1,5 @@
 import type {
+  CombinedOverviewResponse,
   CoverageReport,
   DatabaseQueryListItem,
   DiagnosticCategory,
@@ -271,6 +272,13 @@ export const api = {
   },
   overview(signal?: AbortSignal): Promise<OverviewResponse> {
     return getJson<OverviewResponse>('/api/summary', signal)
+  },
+  /** One read for every Overview panel; collectors before 0.17 need the fallback. */
+  overviewCombined(query: RequestQuery = {}, signal?: AbortSignal): Promise<CombinedOverviewResponse> {
+    return getJson<CombinedOverviewResponse>(
+      `/api/overview${buildQuery({ limit: query.limit, sort: query.sort })}`,
+      signal,
+    )
   },
   coverage(signal?: AbortSignal): Promise<CoverageReport> {
     return getJson<CoverageReport>('/api/coverage', signal)

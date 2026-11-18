@@ -195,6 +195,42 @@ describe('local collector', () => {
     expect(errors.items[0]?.message).not.toContain('hunter2')
   })
 
+  it('serves one authenticated combined overview read', async () => {
+    const ingest = await fetch(`${collector.url}/__stacknext/v1/ingest`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(envelope()),
+    })
+    expect(ingest.status).toBe(202)
+
+    const unauthenticated = await fetch(`${collector.url}/api/overview`)
+    expect(unauthenticated.status).toBe(401)
+
+    const response = await fetch(
+      `${collector.url}/api/overview?limit=24&sort=recent`,
+      { headers: { authorization: `Bearer ${TOKEN}` } },
+    )
+    expect(response.status).toBe(200)
+    const overview = (await response.json()) as {
+      summary: { totalRequests: number }
+      coverage: { sample: { requests: number } }
+      recentErrorGroups: Array<{ count: number }>
+      requests: {
+        items: Array<{ traceId: string }>
+        total: number
+        limit: number
+        sort?: string
+      }
+    }
+    expect(overview.summary.totalRequests).toBe(1)
+    expect(overview.coverage.sample.requests).toBe(1)
+    expect(overview.recentErrorGroups).toHaveLength(1)
+    expect(overview.requests.total).toBe(1)
+    expect(overview.requests.items[0]?.traceId).toMatch(/^[0-9a-f]{32}$/)
+    expect(overview.requests.limit).toBe(24)
+    expect(JSON.stringify(overview)).not.toContain('hunter2')
+  })
+
   it('records an external provider heartbeat without request spans', async () => {
     const heartbeat = envelope()
     heartbeat.instance = { ...heartbeat.instance, provider: 'external' }

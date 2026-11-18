@@ -100,6 +100,34 @@ describe('refresh recovery', () => {
     expect(loader).toHaveBeenCalledTimes(4)
   })
 
+  it('honors a custom live flush window without reconnecting the stream', () => {
+    vi.useFakeTimers()
+    const listeners = new Map<string, (event: { data: string }) => void>()
+    let closeCount = 0
+    vi.stubGlobal('window', globalThis)
+    vi.stubGlobal('document', { hidden: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })
+    vi.stubGlobal('EventSource', class {
+      addEventListener(name: string, callback: (event: { data: string }) => void) { listeners.set(name, callback) }
+      removeEventListener() {}
+      close() { closeCount += 1 }
+    })
+    const telemetry = () =>
+      listeners.get('telemetry')?.({ data: JSON.stringify({ sequence: 1, accepted: { spans: 1 } }) })
+
+    render(() => useLiveTelemetry(2_000))
+    telemetry()
+    vi.advanceTimersByTime(1_999)
+    expect(render(() => useLiveTelemetry(2_000)).spanEpoch).toBe(0)
+    vi.advanceTimersByTime(1)
+    expect(render(() => useLiveTelemetry(2_000)).spanEpoch).toBe(1)
+
+    render(() => useLiveTelemetry(1_000))
+    telemetry()
+    vi.advanceTimersByTime(1_000)
+    expect(render(() => useLiveTelemetry(1_000)).spanEpoch).toBe(2)
+    expect(closeCount).toBe(0)
+  })
+
   it('preserves reconnecting status through a delayed telemetry flush', () => {
     vi.useFakeTimers()
     const listeners = new Map<string, (event: { data: string }) => void>()

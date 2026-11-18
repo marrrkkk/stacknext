@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import type { TraceListResult, TraceSummary } from '@stacknext/core'
 import { api } from '../api'
 import { useAsync, useDebounced } from '../hooks'
@@ -243,6 +243,98 @@ function TracesTableHead(): React.ReactElement {
   )
 }
 
+/**
+ * Rows are memoized so shell updates (health, connection state, theme) do not
+ * re-diff the whole table. Live trace refreshes still replace changed rows.
+ */
+const TraceRow = memo(function TraceRow({
+  trace,
+  basePath,
+  slowThresholdMs,
+  onNavigate,
+}: {
+  trace: TraceSummary
+  basePath: string
+  slowThresholdMs: number
+  onNavigate: (path: string) => void
+}): React.ReactElement {
+  const request = trace.request
+  const route = request?.route ?? trace.rootName
+  const tracePath = `${basePath}/traces/${trace.traceId}`
+  const navigate = (): void => onNavigate(tracePath)
+  return (
+    <tr
+      className="row-clickable"
+      tabIndex={0}
+      title={traceTitle(trace, slowThresholdMs)}
+      onClick={navigate}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          navigate()
+        }
+      }}
+    >
+      <td className="traces-col--root">
+        <div className="traces-request">
+          <span className="traces-request__method">
+            <MethodBadge method={request?.method} />
+          </span>
+          <span className="traces-request__text">
+            <span className="route-cell" title={route}>
+              {route}
+            </span>
+            <span className="sub-cell mono" title={trace.traceId}>
+              {truncate(trace.traceId, TRACE_ID_LENGTH)}
+            </span>
+          </span>
+        </div>
+      </td>
+      <td className="traces-col--status">
+        <span title={statusTitle(trace)}>
+          <StatusCodeBadge code={request?.statusCode ?? null} failed={trace.failed} />
+        </span>
+      </td>
+      <td className="traces-col--service muted mono">{trace.serviceName}</td>
+      <td className="list-col--duration numeric">
+        <span className="list-duration">
+          <span className="list-duration__slot" aria-hidden="true">
+            {request?.slow && (
+              <span
+                className="list-duration__dot"
+                role="img"
+                title={`Slow (> ${formatDuration(slowThresholdMs)})`}
+                aria-label={`Slow, over ${formatDuration(slowThresholdMs)}`}
+              />
+            )}
+          </span>
+          <span className="duration">{formatDuration(trace.durationMs)}</span>
+        </span>
+      </td>
+      <td className="list-col--errors numeric">
+        {trace.errorCount > 0 ? (
+          <Badge tone="bad">{formatNumber(trace.errorCount)}</Badge>
+        ) : (
+          <span className="muted">—</span>
+        )}
+      </td>
+      <td className="list-col--db numeric muted tabular">
+        {formatNumber(trace.databaseQueryCount)}
+      </td>
+      <td className="list-col--spans numeric muted tabular">
+        {formatNumber(trace.spanCount)}
+      </td>
+      <td
+        className="list-col--when numeric muted tabular"
+        title={formatDateTime(trace.startTime)}
+      >
+        <span className="nowrap">{formatRelative(trace.startTime)}</span>
+      </td>
+      <td className="list-col--chevron" aria-hidden="true" />
+    </tr>
+  )
+})
+
 export function TracesPage({
   refreshKey,
   onNavigate,
@@ -333,7 +425,6 @@ export function TracesPage({
 
   const traces = state.data?.items ?? []
   const basePath = snapshotId ? `/snapshots/${snapshotId}` : ''
-  const tracePath = (traceId: string): string => `${basePath}/traces/${traceId}`
   const total = state.data?.total ?? 0
   const filtersActive = Boolean(debouncedSearch || method || status || slow)
   const shownErrors = traces.reduce((sum, trace) => sum + trace.errorCount, 0)
@@ -569,91 +660,15 @@ export function TracesPage({
             <table className="table list-table traces-table">
               <TracesTableHead />
               <tbody>
-                {traces.map((trace) => {
-                  const request = trace.request
-                  const route = request?.route ?? trace.rootName
-                  return (
-                    <tr
-                      key={trace.traceId}
-                      className="row-clickable"
-                      tabIndex={0}
-                      title={traceTitle(trace, slowThresholdMs)}
-                      onClick={() => onNavigate(tracePath(trace.traceId))}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault()
-                          onNavigate(tracePath(trace.traceId))
-                        }
-                      }}
-                    >
-                      <td className="traces-col--root">
-                        <div className="traces-request">
-                          <span className="traces-request__method">
-                            <MethodBadge method={request?.method} />
-                          </span>
-                          <span className="traces-request__text">
-                            <span className="route-cell" title={route}>
-                              {route}
-                            </span>
-                            <span className="sub-cell mono" title={trace.traceId}>
-                              {truncate(trace.traceId, TRACE_ID_LENGTH)}
-                            </span>
-                          </span>
-                        </div>
-                      </td>
-                      <td className="traces-col--status">
-                        <span title={statusTitle(trace)}>
-                          <StatusCodeBadge
-                            code={request?.statusCode ?? null}
-                            failed={trace.failed}
-                          />
-                        </span>
-                      </td>
-                      <td className="traces-col--service muted mono">
-                        {trace.serviceName}
-                      </td>
-                      <td className="list-col--duration numeric">
-                        <span className="list-duration">
-                          <span className="list-duration__slot" aria-hidden="true">
-                            {request?.slow && (
-                              <span
-                                className="list-duration__dot"
-                                role="img"
-                                title={`Slow (> ${formatDuration(slowThresholdMs)})`}
-                                aria-label={`Slow, over ${formatDuration(slowThresholdMs)}`}
-                              />
-                            )}
-                          </span>
-                          <span className="duration">
-                            {formatDuration(trace.durationMs)}
-                          </span>
-                        </span>
-                      </td>
-                      <td className="list-col--errors numeric">
-                        {trace.errorCount > 0 ? (
-                          <Badge tone="bad">{formatNumber(trace.errorCount)}</Badge>
-                        ) : (
-                          <span className="muted">—</span>
-                        )}
-                      </td>
-                      <td className="list-col--db numeric muted tabular">
-                        {formatNumber(trace.databaseQueryCount)}
-                      </td>
-                      <td className="list-col--spans numeric muted tabular">
-                        {formatNumber(trace.spanCount)}
-                      </td>
-                      <td
-                        className="list-col--when numeric muted tabular"
-                        title={formatDateTime(trace.startTime)}
-                      >
-                        <span className="nowrap">
-                          {formatRelative(trace.startTime)}
-                        </span>
-                      </td>
-                      <td className="list-col--chevron" aria-hidden="true" />
-                    </tr>
-                  )
-                })}
+                {traces.map((trace) => (
+                  <TraceRow
+                    key={trace.traceId}
+                    trace={trace}
+                    basePath={basePath}
+                    slowThresholdMs={slowThresholdMs}
+                    onNavigate={onNavigate}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
