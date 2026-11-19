@@ -20,9 +20,11 @@
 StackNext is a free, MIT-licensed debugging center for Next.js. It collects
 OpenTelemetry spans from your dev server, adds Drizzle/Prisma query events and
 server errors, and shows them in a local dashboard, CLI and read-only MCP
-server. It also derives deterministic diagnostic findings, compares
-Playwright-linked runtime captures against saved baselines, and freezes the
-current sample into redacted snapshots that outlive the live retention window.
+server. It also derives deterministic diagnostic findings, audits what local
+agents read, records append-only investigation cases with CLI verification,
+compares Playwright-linked runtime captures against saved baselines, and freezes
+the current sample into redacted snapshots that outlive the live retention
+window.
 There is no cloud account, hosted backend, AI API client or telemetry upload.
 
 **Start here:** [Quick start](#quick-start) · [Installation](apps/docs/installation.mdx) · [CLI commands](apps/docs/cli/commands.mdx) · [MCP server](apps/docs/mcp.mdx) · [Privacy](apps/docs/privacy.mdx)
@@ -30,6 +32,12 @@ There is no cloud account, hosted backend, AI API client or telemetry upload.
 ![StackNext dashboard in dark mode](apps/docs/screenshots/overview-dark.png)
 
 <p align="center"><sub>Local telemetry, deterministic findings and saved evidence — no hosted backend.</sub></p>
+
+| Agent activity | Investigation case |
+| --- | --- |
+| ![Agents page showing a local MCP session and its read timeline](apps/docs/screenshots/agents.png) | ![Case detail showing evidence and verification](apps/docs/screenshots/cases.png) |
+
+<p align="center"><sub>A bounded local audit of what an agent read, and an append-only case that records what it concluded.</sub></p>
 
 ## Quick start
 
