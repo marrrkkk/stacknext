@@ -21,7 +21,7 @@ const PRODUCT_POINTS = [
   {
     number: '03',
     title: 'Inspect',
-    body: 'Open a request in the dashboard and move from route to span to query. The CLI and MCP server read the same data.',
+    body: 'Open a request in the dashboard and move from route to span to query. MCP agents read the same evidence, and a human can watch what they inspected.',
   },
 ] as const
 
@@ -179,7 +179,7 @@ export function Access(): React.ReactElement {
             you work.
           </>
         }
-        lede="The dashboard, CLI and MCP server all read the same local sample. Start in the browser, script a check, or hand the data to your coding agent."
+        lede="The dashboard, CLI and MCP server all read the same local sample. Start in the browser, script a check, hand the data to your coding agent, then verify what it concluded."
       />
 
       <div className="grid grid-cols-3 gap-[14px] max-940:grid-cols-1" data-reveal>
