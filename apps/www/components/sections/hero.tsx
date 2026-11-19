@@ -35,8 +35,8 @@ export function Hero(): React.ReactElement {
         </h1>
         <p className="mx-auto mt-[26px] max-w-[690px] animate-[rise_820ms_var(--ease-soft)_both_270ms] text-pretty text-[clamp(1rem,1.24vw,1.14rem)] leading-[1.58] text-[#a6a6a6] max-720:mt-5 max-720:text-[15px] max-560:text-[14.5px]">
           StackNext collects the spans Next.js already emits, plus Drizzle and Prisma query
-          events and server errors. Follow any request through the dashboard, CLI or a
-          read-only MCP server.
+          events and server errors. Follow any request, watch what a coding agent reads,
+          and verify its conclusion against the same local evidence.
         </p>
         <SetupPrompt />
         <InstallCommand className="mt-5 max-720:mt-4 animate-[rise_820ms_var(--ease-soft)_both_340ms]" />

@@ -45,7 +45,9 @@ export const SPECS = [
   { label: 'Diagnostics', value: '6 deterministic rules' },
   { label: 'Snapshots', value: '64 MiB each · autoKeep 10' },
   { label: 'Records', value: '16 MiB per file' },
-  { label: 'MCP', value: '20 read-only tools · 5 prompts' },
+  { label: 'MCP', value: '23 read-only tools · 5 prompts' },
+  { label: 'Agent audit', value: '500 local reads · 30 minutes' },
+  { label: 'Cases', value: 'Append-only · redacted' },
 ] as const
 
 export const ACCESS_PATHS = [
@@ -53,7 +55,7 @@ export const ACCESS_PATHS = [
     number: '01',
     title: 'Dashboard',
     description:
-      'The full sample: requests, traces, database queries, errors, diagnostics, snapshots and saved test runs.',
+      'The full sample: requests, traces, queries, errors, diagnostics, snapshots and saved runs — plus the agent sessions that read them and the cases that record conclusions.',
     command: 'stacknext dev',
     href: '#tour',
     linkLabel: 'See the dashboard',
@@ -63,7 +65,7 @@ export const ACCESS_PATHS = [
     number: '02',
     title: 'CLI',
     description:
-      'Coverage, diagnostics, exports, snapshots, captures and comparisons from a terminal.',
+      'Coverage, diagnostics, exports, snapshots, captures, append-only cases and deterministic verify from a terminal.',
     command: 'stacknext diagnose',
     href: LINKS.cli,
     linkLabel: 'CLI reference',
@@ -73,7 +75,7 @@ export const ACCESS_PATHS = [
     number: '03',
     title: 'MCP',
     description:
-      'A read-only server for coding agents: 20 tools, 5 prompts and GET requests over loopback.',
+      'A read-only server for coding agents: 23 tools, 5 prompts, untrusted-data labelling, a one-call investigation brief and GET requests over loopback.',
     command: 'stacknext mcp',
     href: LINKS.mcp,
     linkLabel: 'MCP reference',
@@ -154,6 +156,36 @@ export const TOUR: TourItem[] = [
     href: LINKS.diagnostics,
   },
   {
+    id: 'agents',
+    label: 'Agents',
+    title: 'See what the agent actually read.',
+    description:
+      'Each local MCP session gets a random id. A bounded, redacted audit shows which records it read, so a human can follow the investigation instead of trusting a summary.',
+    bullets: [
+      'Pathnames and sorted filter keys only; no query values or bodies.',
+      'At most 500 reads and 50 sessions, kept for 30 minutes.',
+      'Audit is local and can be disabled with agents.audit: false.',
+    ],
+    image: 'agents',
+    alt: 'StackNext Agents page showing a local MCP session and its bounded read timeline',
+    href: LINKS.mcp,
+  },
+  {
+    id: 'cases',
+    label: 'Cases',
+    title: 'Pin a hypothesis to its evidence.',
+    description:
+      'Investigation cases are append-only local records. They link a claim to evidence ids and a deterministic verification result, with no write tool in MCP and no POST surface in the dashboard.',
+    bullets: [
+      'Written with stacknext case; read by MCP and the dashboard.',
+      'Verification reports supported, contradicted or unverifiable.',
+      'Unverifiable is never shown as a pass.',
+    ],
+    image: 'cases',
+    alt: 'StackNext case detail page showing evidence, links and a verification result',
+    href: LINKS.cli,
+  },
+  {
     id: 'regression',
     label: 'Regression',
     title: 'Check a flow against a baseline.',
@@ -204,7 +236,7 @@ export const FAQS = [
   {
     question: 'Does it work with AI coding agents?',
     answer:
-      'Yes. StackNext ships a read-only MCP server, so agents such as Claude Code, Codex and OpenCode can query the live sample and diagnostics. Findings still come from deterministic rules, not model output, and no AI provider is bundled.',
+      'Yes. StackNext ships a read-only MCP server with 23 tools and five prompts, so agents such as Claude Code, Codex and OpenCode can query the live sample and diagnostics. Captured text is labelled untrusted, local sessions are audited, and agents can persist findings in append-only cases. Findings still come from deterministic rules, not model output, and no AI provider is bundled.',
   },
   {
     question: 'Can I use it in CI?',

@@ -5,7 +5,7 @@ export const SITE_NAME = 'StackNext'
 export const HOME_TITLE = 'StackNext: local debugging for Next.js'
 
 export const SITE_DESCRIPTION =
-  'Open-source Next.js debugging: trace requests through OpenTelemetry spans, Drizzle and Prisma queries, errors and diagnostics, all on your machine.'
+  'Open-source Next.js debugging: trace requests, watch what a coding agent reads, and verify its conclusion against local spans, queries, errors and diagnostics.'
 
 /**
  * Optional deployed origin. Without it, canonical URLs, sitemap entries and
